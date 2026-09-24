@@ -372,6 +372,13 @@
     return new TextDecoder().decode(pt);
   }
   window.storage={
+    async exportEncryptedText(value){
+      return await encryptValue(value);
+    },
+    async importEncryptedText(record){
+      if(!record || record.v!==1 || record.alg!=='AES-256-GCM') throw new Error('Invalid encrypted backup');
+      return await decryptValue(record);
+    },
     async get(key){
       const record=await rawGet(key);
       if(record==null) return null;
@@ -2592,22 +2599,27 @@ async function setOpenedDate(id){
   await saveData(); render();
   showToast('Opening date saved');
 }
-async function downloadBackup(){
-  const payload={version:1,app:'Card Ledger PWA',savedAt:new Date().toISOString(),cards,dueBills,cashbackLog};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='card-ledger-backup-'+todayStr()+'.json'; a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000); showToast('Backup downloaded');
+async async function downloadBackup(){
+  try{
+    const payload={version:2,app:'Card Ledger PWA',savedAt:new Date().toISOString(),cards,dueBills,cashbackLog};
+    const encrypted=await window.storage.exportEncryptedText(JSON.stringify(payload));
+    const blob=new Blob([JSON.stringify(encrypted)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='card-ledger-encrypted-backup-'+todayStr()+'.json'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000); showToast('Encrypted backup downloaded');
+  }catch(e){ showToast('Could not create encrypted backup'); }
 }
 async function restoreBackup(evt){
   const file=evt.target.files&&evt.target.files[0]; if(!file) return;
   try{
-    const data=JSON.parse(await file.text());
+    const raw=JSON.parse(await file.text());
+    const plain=await window.storage.importEncryptedText(raw);
+    const data=JSON.parse(plain);
     if(!Array.isArray(data.cards)) throw new Error('Invalid backup');
-    if(!confirm('Restore this backup? Current local data will be replaced.')) return;
+    if(!confirm('Restore this encrypted backup? Current local data will be replaced.')) return;
     cards=data.cards; dueBills=Array.isArray(data.dueBills)?data.dueBills:[]; cashbackLog=Array.isArray(data.cashbackLog)?data.cashbackLog:[];
     await window.storage.set(STORAGE_KEY,JSON.stringify(cards)); await window.storage.set(DUES_KEY,JSON.stringify(dueBills)); await window.storage.set(CASHBACK_KEY,JSON.stringify(cashbackLog)); await writeAutoBackup();
-    render(); showToast('Backup restored');
-  }catch(e){ showToast('Invalid backup file'); }
+    render(); showToast('Encrypted backup restored');
+  }catch(e){ showToast('Invalid or incompatible encrypted backup'); }
   evt.target.value='';
 }
 let deferredInstallPrompt=null;
