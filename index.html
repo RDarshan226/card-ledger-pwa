@@ -301,7 +301,7 @@
     <button class="tab-btn" onclick="exportChatRecoveryKey()">Export recovery key</button>
     <button class="tab-btn" onclick="importChatRecoveryKey()">Import recovery key</button>
   </div>
-  <div class="disclaimer">AES-256-GCM is used in the browser. The secret key stays in this device's local app storage; GitHub and ChatGPT receive only ciphertext. Keep the recovery key offline and private. Clearing the browser/PWA data without a recovery key can make encrypted updates unreadable.</div>
+  <div class="disclaimer">AES-256-GCM is used for both the Chat Sync feed and the local IndexedDB ledger. The local encryption key is generated on this device and never uploaded to GitHub. ChatGPT and GitHub receive only ciphertext. The existing local ledger is migrated to encrypted storage when it is next read. Keep the recovery key offline and private. Clearing browser/PWA data can make encrypted Chat Sync updates unreadable.</div>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
   <div class="footnote">Tap a card to log a spend or repayment, edit its limit / billing date, or view its statement. Use Bills & Dues to record actual statement totals, minimum dues and payments. Changes auto-save and refresh the rolling backup.</div>
@@ -309,10 +309,11 @@
 <div id="toast"></div>
 
 <script>
-/* PWA local database layer: keeps the existing app API, but stores everything in IndexedDB. */
+/* PWA local database layer: IndexedDB values are encrypted at rest with AES-256-GCM.
+   The device key is stored separately in IndexedDB and is never uploaded to GitHub. */
 (function(){
-  const DB_NAME='card-ledger-pwa-db', DB_VERSION=1, STORE='kv';
-  let dbPromise;
+  const DB_NAME='card-ledger-pwa-db', DB_VERSION=1, STORE='kv', RAW_KEY='__card_ledger_local_key_v1__';
+  let dbPromise, keyPromise;
   function openDB(){
     if(dbPromise) return dbPromise;
     dbPromise=new Promise((resolve,reject)=>{
@@ -322,10 +323,74 @@
     });
     return dbPromise;
   }
+  async function rawGet(key){
+    const db=await openDB();
+    return await new Promise((resolve,reject)=>{
+      const r=db.transaction(STORE,'readonly').objectStore(STORE).get(key);
+      r.onsuccess=()=>resolve(r.result==null?null:r.result);
+      r.onerror=()=>reject(r.error);
+    });
+  }
+  async function rawSet(key,value){
+    const db=await openDB();
+    return await new Promise((resolve,reject)=>{
+      const r=db.transaction(STORE,'readwrite').objectStore(STORE).put(value,key);
+      r.onsuccess=()=>resolve({ok:true}); r.onerror=()=>reject(r.error);
+    });
+  }
+  function b64(bytes){
+    let s=''; for(let i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]); return btoa(s);
+  }
+  function unb64(s){
+    const x=atob(s), a=new Uint8Array(x.length);
+    for(let i=0;i<x.length;i++) a[i]=x.charCodeAt(i); return a;
+  }
+  async function localKey(){
+    if(keyPromise) return keyPromise;
+    keyPromise=(async()=>{
+      if(!crypto.subtle) throw new Error('Web Crypto unavailable');
+      const existing=await rawGet(RAW_KEY);
+      if(existing && existing.jwk){
+        return crypto.subtle.importKey('jwk',existing.jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+      }
+      const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+      const jwk=await crypto.subtle.exportKey('jwk',key);
+      await rawSet(RAW_KEY,{v:1,jwk});
+      return key;
+    })();
+    return keyPromise;
+  }
+  async function encryptValue(value){
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await localKey();
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(String(value)));
+    return {v:1,alg:'AES-256-GCM',iv:b64(iv),ct:b64(new Uint8Array(ct))};
+  }
+  async function decryptValue(record){
+    const key=await localKey();
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(record.iv)},key,unb64(record.ct));
+    return new TextDecoder().decode(pt);
+  }
   window.storage={
-    async get(key){ const db=await openDB(); return await new Promise((resolve,reject)=>{ const r=db.transaction(STORE,'readonly').objectStore(STORE).get(key); r.onsuccess=()=>resolve(r.result==null?null:{value:r.result}); r.onerror=()=>reject(r.error); }); },
-    async set(key,value){ const db=await openDB(); return await new Promise((resolve,reject)=>{ const r=db.transaction(STORE,'readwrite').objectStore(STORE).put(value,key); r.onsuccess=()=>resolve({ok:true}); r.onerror=()=>reject(r.error); }); },
-    async remove(key){ const db=await openDB(); return await new Promise((resolve,reject)=>{ const r=db.transaction(STORE,'readwrite').objectStore(STORE).delete(key); r.onsuccess=()=>resolve({ok:true}); r.onerror=()=>reject(r.error); }); }
+    async get(key){
+      const record=await rawGet(key);
+      if(record==null) return null;
+      // Existing v1 records were plaintext. Read them once and rewrite encrypted.
+      if(record && record.v===1 && record.alg==='AES-256-GCM' && record.iv && record.ct){
+        return {value:await decryptValue(record)};
+      }
+      if(typeof record==='string'){
+        const value=record;
+        try{ await rawSet(key,await encryptValue(value)); }catch(e){}
+        return {value};
+      }
+      return {value:String(record)};
+    },
+    async set(key,value){
+      if(key===RAW_KEY) return rawSet(key,value);
+      return rawSet(key,await encryptValue(value));
+    },
+    async remove(key){ return (async()=>{ const db=await openDB(); return await new Promise((resolve,reject)=>{ const r=db.transaction(STORE,'readwrite').objectStore(STORE).delete(key); r.onsuccess=()=>resolve({ok:true}); r.onerror=()=>reject(r.error); }); })(); }
   };
 })();
 
