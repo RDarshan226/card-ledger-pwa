@@ -762,7 +762,31 @@ function showToast(msg){
   showToast._h = setTimeout(()=> t.classList.remove('show'), 1600);
 }
 
+const CHAT_UPDATES_URL = './chat-updates.json';
+let chatUpdates = { version: 1, entries: [], cashback: [] };
+
+async function loadChatUpdates(){
+  try{
+    const res = await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), { cache:'no-store' });
+    if(res.ok){
+      const data = await res.json();
+      chatUpdates = { version:data.version||1, entries:Array.isArray(data.entries)?data.entries:[], cashback:Array.isArray(data.cashback)?data.cashback:[] };
+    }
+  }catch(e){}
+  return chatUpdates;
+}
+function mergeChatEntries(){
+  let changed=false;
+  (chatUpdates.entries||[]).forEach(seed=>{
+    const card=cards.find(c=>c.name===seed.card); if(!card||!seed.id) return;
+    if(!card.entries.some(e=>e.id===seed.id)){
+      card.entries.push({id:seed.id,type:seed.type||'txn',date:seed.date||todayStr(),amount:Number(seed.amount)||0,note:seed.note||'',category:seed.category||'',platform:seed.platform||'',_fresh:true}); changed=true;
+    }
+  });
+  return changed;
+}
 async function loadData(){
+  await loadChatUpdates();
   try{
     if(window.storage && typeof window.storage.get === 'function'){
       const res = await window.storage.get(STORAGE_KEY, false);
@@ -930,7 +954,7 @@ async function loadData(){
     c.entries = c.entries.filter(e => !(e.id.indexOf('union-plat-2026') === 0 && e.date >= CANCELLED_UNION_DAILY_FROM && e.date <= CANCELLED_UNION_DAILY_TO));
   });
 
-  let addedAny = false;
+  let addedAny = mergeChatEntries();
   SEED_ENTRIES.forEach(seed => {
     const card = cards.find(c => c.name === seed.card);
     if(!card) return;
