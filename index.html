@@ -284,7 +284,7 @@
   <div class="sub">Create an encrypted transaction here, paste only the encrypted code into ChatGPT, and I can upload it to GitHub. The PWA decrypts it locally.</div>
   <div class="due-form" style="grid-template-columns:1.4fr .8fr .9fr 1fr 1fr 1fr auto;">
     <div><label>Card</label><select id="chat-card"></select></div>
-    <div><label>Type</label><select id="chat-type"><option value="txn">Transaction</option><option value="repay">Repayment</option></select></div>
+    <div><label>Ledger type</label><select id="chat-type"><option value="txn">Expense</option><option value="repay">Card repayment</option></select></div>
     <div><label>Date</label><input id="chat-date" type="date" value="${todayStr()}"></div>
     <div><label>Amount ₹</label><input id="chat-amount" type="number" inputmode="decimal" placeholder="2500"></div>
     <div><label>Category</label><input id="chat-category" type="text" placeholder="Shopping"></div>
@@ -293,6 +293,17 @@
   </div>
   <div style="margin-top:8px;">
     <input id="chat-note" type="text" placeholder="Note (optional)" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:Inter,sans-serif;font-size:12px;">
+  </div>  <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);">
+    <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin-bottom:3px;">Cashback / Charges</div>
+    <div class="sub">Add cashback earned or charges paid. These will appear in the Cashback &amp; Charges tab.</div>
+    <div class="due-form" style="grid-template-columns:1.1fr .9fr .9fr 1.2fr 1.4fr auto;">
+      <div><label>Entry type</label><select id="chat-cb-type"><option value="cashback">Cashback earned</option><option value="charge">Charge paid</option></select></div>
+      <div><label>Date</label><input id="chat-cb-date" type="date" value="${todayStr()}"></div>
+      <div><label>Amount ₹</label><input id="chat-cb-amount" type="number" inputmode="decimal" placeholder="100"></div>
+      <div><label>Category</label><input id="chat-cb-category" type="text" placeholder="Cashback / Fee"></div>
+      <div><label>Note</label><input id="chat-cb-note" type="text" placeholder="Optional"></div>
+      <button onclick="encryptChatCashback()">Encrypt</button>
+    </div>
   </div>
   <textarea id="chat-encrypted" readonly placeholder="Encrypted code will appear here — this is what you paste into ChatGPT." style="width:100%;min-height:76px;margin-top:8px;padding:9px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:'IBM Plex Mono',monospace;font-size:10px;word-break:break-all;resize:vertical;"></textarea>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
@@ -916,7 +927,7 @@ async function encryptChatTransaction(){
     const platform = document.getElementById('chat-platform').value.trim();
     const note = document.getElementById('chat-note').value.trim();
     if(!card || !amount || amount<=0){ showToast('Choose a card and amount'); return; }
-    const payload = {v:1,id:(crypto.randomUUID?crypto.randomUUID():uid()),card,type,date,amount,category,platform,note};
+    const payload = {v:1,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type,date,amount,category,platform,note};
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await getChatCryptoKey();
     const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
@@ -926,6 +937,25 @@ async function encryptChatTransaction(){
     catch(e){ showToast('Encrypted transaction created — tap Copy'); }
   }catch(e){ showToast('Could not encrypt transaction'); }
 }
+async function encryptChatCashback(){
+  try{
+    const type=document.getElementById('chat-cb-type').value;
+    const date=document.getElementById('chat-cb-date').value || todayStr();
+    const amount=Number(document.getElementById('chat-cb-amount').value);
+    const category=document.getElementById('chat-cb-category').value.trim();
+    const note=document.getElementById('chat-cb-note').value.trim();
+    if(!amount || amount<=0){ showToast('Enter a valid amount'); return; }
+    const payload={v:1,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'cashback',type,date,amount,category,note};
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await getChatCryptoKey();
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
+    const token='CL1.'+bytesToB64(iv)+'.'+bytesToB64(new Uint8Array(ct));
+    document.getElementById('chat-encrypted').value=token;
+    try{ await navigator.clipboard.writeText(token); showToast('Encrypted cashback/charge copied'); }
+    catch(e){ showToast('Encrypted cashback/charge created — tap Copy'); }
+  }catch(e){ showToast('Could not encrypt cashback/charge'); }
+}
+
 async function copyEncryptedChat(){
   const el=document.getElementById('chat-encrypted');
   if(!el || !el.value) return;
@@ -957,10 +987,18 @@ async function mergeChatEntries(){
   for(const seed of (chatUpdates.entries||[])){
     try{
       const item=await decryptChatPayload(seed.payload);
+      if(!item.id) continue;
+      if(item.kind==='cashback'){
+        if(!cashbackLog.some(e=>e.id===item.id)){
+          cashbackLog.push({id:item.id,type:item.type==='charge'?'charge':'cashback',date:item.date||todayStr(),amount:Number(item.amount)||0,category:item.category||'',note:item.note||'',_fresh:true});
+          changed=true;
+        }
+        continue;
+      }
       const card=cards.find(c=>c.name===item.card);
-      if(!card || !item.id) continue;
+      if(!card) continue;
       if(!card.entries.some(e=>e.id===item.id)){
-        card.entries.push({id:item.id,type:item.type||'txn',date:item.date||todayStr(),amount:Number(item.amount)||0,note:item.note||'',category:item.category||'',platform:item.platform||'',_fresh:true});
+        card.entries.push({id:item.id,type:item.type==='repay'?'repay':'txn',date:item.date||todayStr(),amount:Number(item.amount)||0,note:item.note||'',category:item.category||'',platform:item.platform||'',_fresh:true});
         changed=true;
       }
     }catch(e){ failed++; }
@@ -970,7 +1008,7 @@ async function mergeChatEntries(){
 }
 async function syncEncryptedChatUpdates(showResult){
   const added=await mergeChatEntries();
-  if(added){ await saveData(); render(); refreshChatCardOptions(); }
+  if(added){ await saveData(); await saveCashback(); render(); refreshChatCardOptions(); }
   else if(showResult){ showToast('No new encrypted transactions'); }
   return added;
 }
