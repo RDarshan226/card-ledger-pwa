@@ -279,6 +279,30 @@
   <input id="restoreFile" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
+<div id="chatSyncPanel" class="panel" style="margin-top:14px;">
+  <h2>🔐 Encrypted Chat Sync</h2>
+  <div class="sub">Create an encrypted transaction here, paste only the encrypted code into ChatGPT, and I can upload it to GitHub. The PWA decrypts it locally.</div>
+  <div class="due-form" style="grid-template-columns:1.4fr .8fr .9fr 1fr 1fr 1fr auto;">
+    <div><label>Card</label><select id="chat-card"></select></div>
+    <div><label>Type</label><select id="chat-type"><option value="txn">Transaction</option><option value="repay">Repayment</option></select></div>
+    <div><label>Date</label><input id="chat-date" type="date" value="\${todayStr()}"></div>
+    <div><label>Amount ₹</label><input id="chat-amount" type="number" inputmode="decimal" placeholder="2500"></div>
+    <div><label>Category</label><input id="chat-category" type="text" placeholder="Shopping"></div>
+    <div><label>Platform</label><input id="chat-platform" type="text" placeholder="Amazon"></div>
+    <button onclick="encryptChatTransaction()">Encrypt</button>
+  </div>
+  <div style="margin-top:8px;">
+    <input id="chat-note" type="text" placeholder="Note (optional)" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:Inter,sans-serif;font-size:12px;">
+  </div>
+  <textarea id="chat-encrypted" readonly placeholder="Encrypted code will appear here — this is what you paste into ChatGPT." style="width:100%;min-height:76px;margin-top:8px;padding:9px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:'IBM Plex Mono',monospace;font-size:10px;word-break:break-all;resize:vertical;"></textarea>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+    <button class="tab-btn" onclick="copyEncryptedChat()">Copy encrypted code</button>
+    <button class="tab-btn" onclick="syncEncryptedChatUpdates(true)">Sync now</button>
+    <button class="tab-btn" onclick="exportChatRecoveryKey()">Export recovery key</button>
+    <button class="tab-btn" onclick="importChatRecoveryKey()">Import recovery key</button>
+  </div>
+  <div class="disclaimer">AES-256-GCM is used in the browser. The secret key stays in this device's local app storage; GitHub and ChatGPT receive only ciphertext. Keep the recovery key offline and private. Clearing the browser/PWA data without a recovery key can make encrypted updates unreadable.</div>
+</div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
   <div class="footnote">Tap a card to log a spend or repayment, edit its limit / billing date, or view its statement. Use Bills & Dues to record actual statement totals, minimum dues and payments. Changes auto-save and refresh the rolling backup.</div>
 </div>
@@ -763,27 +787,128 @@ function showToast(msg){
 }
 
 const CHAT_UPDATES_URL = './chat-updates.json';
-let chatUpdates = { version: 1, entries: [], cashback: [] };
+const CHAT_KEY_STORAGE_KEY = 'card-ledger-chat-aes-key-v1';
+let chatUpdates = { version: 2, entries: [], cashback: [] };
 
+function bytesToB64(bytes){
+  let s='';
+  for(let i=0;i<bytes.length;i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function b64ToBytes(str){
+  const s=atob(str);
+  const out=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++) out[i]=s.charCodeAt(i);
+  return out;
+}
+async function getChatCryptoKey(){
+  if(!window.crypto || !window.crypto.subtle) throw new Error('Web Crypto is unavailable. Open the PWA over HTTPS.');
+  try{
+    const saved = await window.storage.get(CHAT_KEY_STORAGE_KEY, false);
+    if(saved && saved.value){
+      const jwk = JSON.parse(saved.value);
+      return await crypto.subtle.importKey('jwk', jwk, {name:'AES-GCM'}, true, ['encrypt','decrypt']);
+    }
+  }catch(e){}
+  const key = await crypto.subtle.generateKey({name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
+  const jwk = await crypto.subtle.exportKey('jwk', key);
+  await window.storage.set(CHAT_KEY_STORAGE_KEY, JSON.stringify(jwk));
+  return key;
+}
+async function exportChatRecoveryKey(){
+  const key = await getChatCryptoKey();
+  const jwk = await crypto.subtle.exportKey('jwk', key);
+  const token = 'CLKEY1.' + bytesToB64(new TextEncoder().encode(JSON.stringify(jwk)));
+  await navigator.clipboard.writeText(token);
+  showToast('Recovery key copied — keep it private');
+}
+async function importChatRecoveryKey(){
+  const token = prompt('Paste your Card Ledger recovery key (CLKEY1....)');
+  if(!token) return;
+  try{
+    if(!token.startsWith('CLKEY1.')) throw new Error('Bad key format');
+    const jwk = JSON.parse(new TextDecoder().decode(b64ToBytes(token.slice(7))));
+    await crypto.subtle.importKey('jwk', jwk, {name:'AES-GCM'}, true, ['encrypt','decrypt']);
+    await window.storage.set(CHAT_KEY_STORAGE_KEY, JSON.stringify(jwk));
+    showToast('Recovery key imported');
+    await syncEncryptedChatUpdates(true);
+  }catch(e){ showToast('Invalid recovery key'); }
+}
+async function encryptChatTransaction(){
+  try{
+    const card = document.getElementById('chat-card').value;
+    const type = document.getElementById('chat-type').value;
+    const date = document.getElementById('chat-date').value || todayStr();
+    const amount = Number(document.getElementById('chat-amount').value);
+    const category = document.getElementById('chat-category').value.trim();
+    const platform = document.getElementById('chat-platform').value.trim();
+    const note = document.getElementById('chat-note').value.trim();
+    if(!card || !amount || amount<=0){ showToast('Choose a card and amount'); return; }
+    const payload = {v:1,id:(crypto.randomUUID?crypto.randomUUID():uid()),card,type,date,amount,category,platform,note};
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await getChatCryptoKey();
+    const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
+    const token = 'CL1.' + bytesToB64(iv) + '.' + bytesToB64(new Uint8Array(ct));
+    document.getElementById('chat-encrypted').value = token;
+    try{ await navigator.clipboard.writeText(token); showToast('Encrypted transaction copied'); }
+    catch(e){ showToast('Encrypted transaction created — tap Copy'); }
+  }catch(e){ showToast('Could not encrypt transaction'); }
+}
+async function copyEncryptedChat(){
+  const el=document.getElementById('chat-encrypted');
+  if(!el || !el.value) return;
+  await navigator.clipboard.writeText(el.value);
+  showToast('Encrypted transaction copied');
+}
+async function decryptChatPayload(token){
+  if(typeof token!=='string' || !token.startsWith('CL1.')) throw new Error('Unsupported encrypted payload');
+  const parts=token.split('.');
+  if(parts.length!==3) throw new Error('Invalid encrypted payload');
+  const iv=b64ToBytes(parts[1]);
+  const ct=b64ToBytes(parts[2]);
+  const key=await getChatCryptoKey();
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
 async function loadChatUpdates(){
   try{
-    const res = await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), { cache:'no-store' });
+    const res = await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), {cache:'no-store'});
     if(res.ok){
       const data = await res.json();
-      chatUpdates = { version:data.version||1, entries:Array.isArray(data.entries)?data.entries:[], cashback:Array.isArray(data.cashback)?data.cashback:[] };
+      chatUpdates = {version:2, entries:Array.isArray(data.entries)?data.entries:[], cashback:Array.isArray(data.cashback)?data.cashback:[]};
     }
   }catch(e){}
   return chatUpdates;
 }
-function mergeChatEntries(){
-  let changed=false;
-  (chatUpdates.entries||[]).forEach(seed=>{
-    const card=cards.find(c=>c.name===seed.card); if(!card||!seed.id) return;
-    if(!card.entries.some(e=>e.id===seed.id)){
-      card.entries.push({id:seed.id,type:seed.type||'txn',date:seed.date||todayStr(),amount:Number(seed.amount)||0,note:seed.note||'',category:seed.category||'',platform:seed.platform||'',_fresh:true}); changed=true;
-    }
-  });
+async function mergeChatEntries(){
+  let changed=false, failed=0;
+  for(const seed of (chatUpdates.entries||[])){
+    try{
+      const item=await decryptChatPayload(seed.payload);
+      const card=cards.find(c=>c.name===item.card);
+      if(!card || !item.id) continue;
+      if(!card.entries.some(e=>e.id===item.id)){
+        card.entries.push({id:item.id,type:item.type||'txn',date:item.date||todayStr(),amount:Number(item.amount)||0,note:item.note||'',category:item.category||'',platform:item.platform||'',_fresh:true});
+        changed=true;
+      }
+    }catch(e){ failed++; }
+  }
+  if(failed && (chatUpdates.entries||[]).length) console.warn('Some encrypted chat updates could not be decrypted.');
   return changed;
+}
+async function syncEncryptedChatUpdates(showResult){
+  const added=await mergeChatEntries();
+  if(added){ await saveData(); render(); refreshChatCardOptions(); }
+  else if(showResult){ showToast('No new encrypted transactions'); }
+  return added;
+}
+function refreshChatCardOptions(){
+  const sel=document.getElementById('chat-card');
+  if(!sel) return;
+  const current=sel.value;
+  const usable=cards.filter(c=>!c.isInsurance);
+  sel.innerHTML=usable.map(c=>'<option value="'+String(c.name).replace(/"/g,'&quot;')+'">'+c.name+'</option>').join('');
+  if(current && usable.some(c=>c.name===current)) sel.value=current;
 }
 async function loadData(){
   await loadChatUpdates();
@@ -954,7 +1079,7 @@ async function loadData(){
     c.entries = c.entries.filter(e => !(e.id.indexOf('union-plat-2026') === 0 && e.date >= CANCELLED_UNION_DAILY_FROM && e.date <= CANCELLED_UNION_DAILY_TO));
   });
 
-  let addedAny = mergeChatEntries();
+  let addedAny = await mergeChatEntries();
   SEED_ENTRIES.forEach(seed => {
     const card = cards.find(c => c.name === seed.card);
     if(!card) return;
@@ -1498,7 +1623,8 @@ function buildInsights(rows, p){
   await loadCashback();
   await loadDues();
   render();
-  if(merged) showToast('New entries synced from chat');
+  refreshChatCardOptions();
+  if(merged) showToast('New encrypted entries synced from chat');
 })();
 
 /* ---------------- Card Fees ---------------- */
