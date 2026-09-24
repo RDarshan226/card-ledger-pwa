@@ -2599,7 +2599,7 @@ async function setOpenedDate(id){
   await saveData(); render();
   showToast('Opening date saved');
 }
-async async function downloadBackup(){
+async function downloadBackup(){
   try{
     const payload={version:2,app:'Card Ledger PWA',savedAt:new Date().toISOString(),cards,dueBills,cashbackLog};
     const encrypted=await window.storage.exportEncryptedText(JSON.stringify(payload));
