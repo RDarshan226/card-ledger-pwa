@@ -1,5 +1,5 @@
-const CACHE='card-ledger-pwa-v1';
-const APP=['./','./card-ledger-pwa.html','./manifest.json','./sw.js','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE='card-ledger-pwa-v2';
+const APP=['./','./card-ledger-pwa.html','./manifest.json','./sw.js','./chat-updates.json','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',event=>{
