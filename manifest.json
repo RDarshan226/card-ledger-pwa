@@ -2,7 +2,7 @@
   "name": "Card Ledger",
   "short_name": "Card Ledger",
   "description": "Offline-first personal credit and debit card ledger",
-  "start_url": "./card-ledger-pwa.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
