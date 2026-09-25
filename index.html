@@ -1434,32 +1434,11 @@ function renderDetail(card){
 
   return `
     ${limitFields}
-    <div class="entry-form">
-      <select id="type-${card.id}" onchange="toggleEntryFields('${card.id}')">
-        <option value="txn">Spend</option>
-        ${card.isDebit ? '' : '<option value="repay">Repayment</option>'}
-      </select>
-      <input type="date" id="date-${card.id}" value="${todayStr()}">
-      <input type="number" id="amt-${card.id}" placeholder="Amount ₹">
-      <input list="cat-list" id="cat-${card.id}" placeholder="Category">
-      <input type="text" id="plat-${card.id}" placeholder="Platform (optional)">
-      <input type="text" id="note-${card.id}" placeholder="Note (optional)">
-      <button onclick="addEntry('${card.id}', event)">Log</button>
-    </div>
     ${entries.length ? `<table class="statement">
       <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category / Platform</th><th>Note</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>` : '<div class="empty-stmt">No entries logged yet for this card.</div>'}
   `;
-}
-
-function toggleEntryFields(id){
-  const type = document.getElementById('type-'+id).value;
-  const catEl = document.getElementById('cat-'+id);
-  const platEl = document.getElementById('plat-'+id);
-  const disabled = type === 'repay';
-  catEl.disabled = disabled; platEl.disabled = disabled;
-  catEl.style.opacity = disabled ? .4 : 1; platEl.style.opacity = disabled ? .4 : 1;
 }
 
 function toggleCard(id){ openId = (openId === id) ? null : id; render(); }
@@ -2377,25 +2356,13 @@ function renderCashback(){
   `).join('');
 
   html += `<div class="panel">
-    <h2>Log an entry</h2>
-    <div class="sub">Add convenience charges, bank charges, or cashback received — card annual fees are pulled in automatically from Card Fees, no need to add them here</div>
-    <div class="entry-form">
-      <select id="cb-type">
-        <option value="cashback">Cashback</option>
-        <option value="charge">Charge</option>
-      </select>
-      <input type="date" id="cb-date" value="${todayStr()}">
-      <input type="number" id="cb-amount" placeholder="Amount ₹">
-      <input type="text" id="cb-category" placeholder="Category (e.g. Convenience Fee)">
-      <input type="text" id="cb-note" placeholder="Note (optional)">
-      <button onclick="addCashbackEntry(event)">Log</button>
-    </div>
+    <h2>Cashback &amp; charges history</h2>
+    <div class="sub">Use the unified entry form in Ledger to add cashback or charges. Card annual fees and automatic voucher surcharges appear here automatically.</div>
     ${entries.length ? `<div class="table-scroll"><table class="statement">
       <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category</th><th>Note</th><th></th></tr></thead>
       <tbody>${entryRows}</tbody>
     </table></div>` : '<div class="empty-stmt">No entries yet.</div>'}
   </div>`;
-
   app.innerHTML = html;
 }
 
