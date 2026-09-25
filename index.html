@@ -295,6 +295,10 @@
   .status-badge.soon{background:var(--ok-soft);color:var(--ok);}
   .entry-form button,.due-toolbar button,.due-form button{color:#06100B;}
   @media(prefers-color-scheme:light){input,select,textarea{color-scheme:light;}}
+  .chat-section,.chat-steps>div,.chat-choice{background:var(--paper-card)!important;color:var(--ink)!important;}
+  .chat-choice:has(input:checked){background:var(--paper-card)!important;border-color:var(--brass);}
+  .chat-secondary{background:var(--paper-card)!important;color:var(--ink)!important;}
+  .chat-form .field label{color:var(--ink-soft)!important;}
 </style>
 </head>
 <body>
@@ -963,7 +967,7 @@ async function importRecoveryPackageUI(){
     setTimeout(()=>location.reload(),700);
   }catch(e){ showToast(e.message||'Invalid recovery package'); }
 }
-async async function encryptChatEntry(){
+async function encryptChatEntry(){
   try{
     const entryType=document.getElementById('chat-entry-type').value;
     const date=document.getElementById('chat-date').value || todayStr();
