@@ -1332,6 +1332,30 @@ function render(){
   if(activeTab === 'ledger') { updateChatEntryFields(); refreshRecoveryStatus(); }
 }
 
+function renderQuickEntryPanel(){
+  return `
+    <div class="panel chat-panel" id="chatSyncPanel">
+      <div class="chat-head"><div><div class="chat-kicker">QUICK ENTRY</div><h2>🔐 Add entry</h2><div class="sub">One form for card expenses, repayments, cashback and charges. The encrypted code can be pasted into ChatGPT for chat-driven updates.</div></div><div class="secure-badge">AES-256-GCM</div></div>
+      <div class="chat-section">
+        <div class="chat-section-title"><span class="chat-icon">＋</span><div><strong>New entry</strong><small>Choose the type and fill only the fields that apply</small></div></div>
+        <div class="chat-form" style="grid-template-columns:1fr 1.2fr 1fr 1fr 1fr 1.2fr;">
+          <div class="field"><label>Entry type</label><select id="chat-entry-type" onchange="updateChatEntryFields()"><option value="txn">Expense</option><option value="repay">Card repayment</option><option value="cashback">Cashback earned</option><option value="charge">Charge paid</option></select></div>
+          <div class="field" id="chat-card-field"><label>Card</label><select id="chat-card"></select></div>
+          <div class="field"><label>Date</label><input id="chat-date" type="date" value="${todayStr()}"></div>
+          <div class="field"><label>Amount ₹</label><input id="chat-amount" type="number" inputmode="decimal" placeholder="2500"></div>
+          <div class="field"><label>Category</label><input id="chat-category" type="text" list="cat-list" placeholder="Shopping / Cashback / Fee"></div>
+          <div class="field" id="chat-platform-field"><label>Platform / merchant</label><input id="chat-platform" type="text" placeholder="Amazon"></div>
+          <div class="field chat-wide" style="grid-column:span 2;"><label>Note <em>optional</em></label><input id="chat-note" type="text" placeholder="e.g. groceries, bill payment, annual fee"></div>
+        </div>
+        <button class="chat-primary" onclick="encryptChatEntry()">🔒 Encrypt entry</button>
+      </div>
+      <div class="chat-output"><div class="chat-output-head"><div><strong>Encrypted code</strong><small>Paste this code into ChatGPT to upload the update</small></div><span>CL1</span></div><textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea><button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="syncEncryptedChatUpdates(true)">↻ Sync now</button><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button></div>
+      <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
+      <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub/ChatGPT receive ciphertext only. Keep the recovery package and password private.</div>
+    </div>`;
+}
+
 function renderLedger(){
   const app = document.getElementById('app');
   const creditCards = cards.filter(c=>!c.isDebit && !c.feeOnly);
@@ -1356,6 +1380,8 @@ function renderLedger(){
     </div>
     <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
   </div>`;
+
+  html += renderQuickEntryPanel();
 
   html += `<div class="toolbar">
     <input type="text" id="search" placeholder="Find a card…" value="${filterText}" oninput="onSearch(this.value)">
