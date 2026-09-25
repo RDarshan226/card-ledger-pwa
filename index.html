@@ -378,10 +378,10 @@
 
   <div class="chat-actions">
     <button class="tab-btn" onclick="syncEncryptedChatUpdates(true)">↻ Sync now</button>
-    <button class="tab-btn" onclick="exportChatRecoveryKey()">Export recovery key</button>
-    <button class="tab-btn" onclick="importChatRecoveryKey()">Import recovery key</button>
+    <button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button>
+    <button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button>
   </div>
-  <div class="disclaimer">AES-256-GCM protects the Chat Sync payload and local ledger storage. GitHub/ChatGPT receive ciphertext only. Keep recovery information private. Clearing browser/PWA data can make locally encrypted data unreadable.</div>
+  <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub/ChatGPT receive ciphertext only. The recovery package contains both encryption keys wrapped with your password using PBKDF2 + AES-256-GCM. Keep the package and password private. If PWA/browser data is cleared, open the PWA again, import this package, then restore your encrypted backup if needed.</div>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
   <div class="footnote">Use Ledger to view cards and statements. Use ＋ Entry for new expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
@@ -451,14 +451,45 @@
     const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(record.iv)},key,unb64(record.ct));
     return new TextDecoder().decode(pt);
   }
+  async function exportRecoveryPackage(password, chatJwk){
+    if(!password || password.length < 8) throw new Error('Recovery password must be at least 8 characters');
+    const existing=await rawGet(RAW_KEY);
+    if(!existing || !existing.jwk) await localKey();
+    const local=await rawGet(RAW_KEY);
+    if(!local || !local.jwk) throw new Error('Local encryption key unavailable');
+    const payload={v:1,app:'Card Ledger',localJwk:local.jwk,chatJwk:chatJwk||null};
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+    const wrap=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},wrap,new TextEncoder().encode(JSON.stringify(payload)));
+    return 'CLREC1.'+b64(salt)+'.'+b64(iv)+'.'+b64(new Uint8Array(ct));
+  }
+  async function importRecoveryPackage(token,password){
+    if(!password || password.length < 8) throw new Error('Recovery password required');
+    const parts=String(token||'').trim().split('.');
+    if(parts.length!==4 || parts[0]!=='CLREC1') throw new Error('Invalid recovery package');
+    const salt=unb64(parts[1]), iv=unb64(parts[2]), ct=unb64(parts[3]);
+    const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+    const wrap=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+    let payload;
+    try{ payload=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv},wrap,ct))); }catch(e){ throw new Error('Wrong password or damaged recovery package'); }
+    if(!payload || payload.v!==1 || !payload.localJwk) throw new Error('Invalid recovery package');
+    await crypto.subtle.importKey('jwk',payload.localJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    if(payload.chatJwk) await crypto.subtle.importKey('jwk',payload.chatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    await rawSet(RAW_KEY,{jwk:payload.localJwk});
+    keyPromise=null;
+    if(payload.chatJwk) await rawSet('card-ledger-chat-aes-key-v1',await encryptValue(JSON.stringify(payload.chatJwk)));
+    return true;
+  }
   window.storage={
-    async exportEncryptedText(value){
-      return await encryptValue(value);
-    },
+    async exportEncryptedText(value){ return await encryptValue(value); },
     async importEncryptedText(record){
       if(!record || record.v!==1 || record.alg!=='AES-256-GCM') throw new Error('Invalid encrypted backup');
       return await decryptValue(record);
     },
+    async exportRecoveryPackage(password,chatJwk){ return await exportRecoveryPackage(password,chatJwk); },
+    async importRecoveryPackage(token,password){ return await importRecoveryPackage(token,password); },
     async get(key){
       const record=await rawGet(key);
       if(record==null) return null;
@@ -967,24 +998,29 @@ async function getChatCryptoKey(){
   await window.storage.set(CHAT_KEY_STORAGE_KEY, JSON.stringify(jwk));
   return key;
 }
-async function exportChatRecoveryKey(){
-  const key = await getChatCryptoKey();
-  const jwk = await crypto.subtle.exportKey('jwk', key);
-  const token = 'CLKEY1.' + bytesToB64(new TextEncoder().encode(JSON.stringify(jwk)));
-  await navigator.clipboard.writeText(token);
-  showToast('Recovery key copied — keep it private');
-}
-async function importChatRecoveryKey(){
-  const token = prompt('Paste your Card Ledger recovery key (CLKEY1....)');
-  if(!token) return;
+async function exportRecoveryPackageUI(){
   try{
-    if(!token.startsWith('CLKEY1.')) throw new Error('Bad key format');
-    const jwk = JSON.parse(new TextDecoder().decode(b64ToBytes(token.slice(7))));
-    await crypto.subtle.importKey('jwk', jwk, {name:'AES-GCM'}, true, ['encrypt','decrypt']);
-    await window.storage.set(CHAT_KEY_STORAGE_KEY, JSON.stringify(jwk));
-    showToast('Recovery key imported');
-    await syncEncryptedChatUpdates(true);
-  }catch(e){ showToast('Invalid recovery key'); }
+    const p1=prompt('Create a recovery password (minimum 8 characters). You will need this after clearing PWA data.');
+    if(!p1) return;
+    const p2=prompt('Confirm your recovery password');
+    if(p1!==p2){ showToast('Passwords do not match'); return; }
+    const chatKey=await getChatCryptoKey();
+    const chatJwk=await crypto.subtle.exportKey('jwk',chatKey);
+    const token=await window.storage.exportRecoveryPackage(p1,chatJwk);
+    await navigator.clipboard.writeText(token);
+    showToast('Password-protected recovery package copied');
+  }catch(e){ showToast(e.message||'Could not create recovery package'); }
+}
+async function importRecoveryPackageUI(){
+  const token=prompt('Paste your Card Ledger recovery package (CLREC1....)');
+  if(!token) return;
+  const password=prompt('Enter your recovery password');
+  if(!password) return;
+  try{
+    await window.storage.importRecoveryPackage(token,password);
+    showToast('Recovery keys restored — reload the PWA');
+    setTimeout(()=>location.reload(),700);
+  }catch(e){ showToast(e.message||'Invalid recovery package'); }
 }
 async function encryptChatTransaction(){
   try{
