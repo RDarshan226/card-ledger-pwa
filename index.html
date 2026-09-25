@@ -1307,14 +1307,12 @@ async function saveData(){
 
 function utilised(card){ return card.entries.reduce((sum,e)=> sum + (e.type==='txn' ? e.amount : -e.amount), 0); }
 
-function setTab(t){ activeTab = t; render(); if(t==='entry') refreshRecoveryStatus(); }
+function setTab(t){ activeTab = t; render(); }
 
 function render(){
   document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
   document.getElementById('tab-ledger').classList.toggle('active', activeTab==='ledger');
   document.getElementById('tab-entry').classList.toggle('active', activeTab==='entry');
-  const entryPage = document.getElementById('chatSyncPanel');
-  if(entryPage) entryPage.style.display = activeTab==='entry' ? 'block' : 'none';
   document.getElementById('tab-analysis').classList.toggle('active', activeTab==='analysis');
   document.getElementById('tab-fees').classList.toggle('active', activeTab==='fees');
   document.getElementById('tab-dues').classList.toggle('active', activeTab==='dues');
@@ -1323,7 +1321,6 @@ function render(){
   document.getElementById('tab-rewards').classList.toggle('active', activeTab==='rewards');
   document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
   if(activeTab === 'ledger') renderLedger();
-  else if(activeTab === 'entry') document.getElementById('app').innerHTML = '';
   else if(activeTab === 'analysis') renderAnalysis();
   else if(activeTab === 'fees') renderFees();
   else if(activeTab === 'dues') renderDues();
@@ -1331,6 +1328,8 @@ function render(){
   else if(activeTab === 'cashback') renderCashback();
   else if(activeTab === 'rewards') renderRewards();
   else if(activeTab === 'accounts') renderAccounts();
+  refreshChatCardOptions();
+  if(activeTab === 'ledger') { updateChatEntryFields(); refreshRecoveryStatus(); }
 }
 
 function renderLedger(){
