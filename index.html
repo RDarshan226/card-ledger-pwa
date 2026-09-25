@@ -988,21 +988,22 @@ async function importRecoveryPackageUI(){
 }
 async function encryptChatEntry(){
   try{
-    const entryType=document.getElementById('chat-entry-type').value;
+    const mainType=document.getElementById('chat-entry-type').value;
+    const subtype=document.getElementById('chat-entry-subtype').value;
+    const entryType=mainType==='expense' ? (subtype==='cashback'?'cashback':'txn') : (subtype==='charge'?'charge':'repay');
     const date=document.getElementById('chat-date').value || todayStr();
     const amount=Number(document.getElementById('chat-amount').value);
     const category=document.getElementById('chat-category').value.trim();
     const platform=document.getElementById('chat-platform').value.trim();
     const note=document.getElementById('chat-note').value.trim();
     if(!amount || amount<=0){ showToast('Enter a valid amount'); return; }
-    let payload;
-    if(entryType==='txn' || entryType==='repay'){
-      const card=document.getElementById('chat-card').value;
-      if(!card){ showToast('Choose a card'); return; }
-      payload={v:1,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type:entryType,date,amount,category,platform,note};
-    }else{
-      payload={v:1,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'cashback',type:entryType,date,amount,category,note};
-    }
+    const card=document.getElementById('chat-card').value;
+    if(!card){ showToast('Choose a card'); return; }
+    const id=(crypto.randomUUID?crypto.randomUUID():uid());
+    const isLedger=entryType==='txn' || entryType==='repay';
+    const payload=isLedger
+      ? {v:1,id,kind:'ledger',card,type:entryType,date,amount,category,platform,note}
+      : {v:2,id,kind:'cashback',card,type:entryType,date,amount,category,platform,note};
     const iv=crypto.getRandomValues(new Uint8Array(12));
     const key=await getChatCryptoKey();
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
@@ -1012,13 +1013,31 @@ async function encryptChatEntry(){
   }catch(e){ showToast('Could not encrypt entry'); }
 }
 function updateChatEntryFields(){
-  const type=document.getElementById('chat-entry-type').value;
-  const isCardEntry=type==='txn' || type==='repay';
-  document.getElementById('chat-card-field').style.display=isCardEntry?'':'none';
-  document.getElementById('chat-platform-field').style.display=isCardEntry?'':'none';
-  document.getElementById('chat-card').disabled=!isCardEntry;
-  document.getElementById('chat-platform').disabled=!isCardEntry;
+  const mainType=document.getElementById('chat-entry-type').value;
+  const subtype=document.getElementById('chat-entry-subtype');
+  const isExpense=mainType==='expense';
+  const options=isExpense
+    ? [['txn','Regular expense'],['cashback','Cashback earned']]
+    : [['repay','Regular repayment'],['charge','Charge paid']];
+  const current=subtype.value;
+  subtype.innerHTML=options.map(([v,l])=>'<option value="'+v+'">'+l+'</option>').join('');
+  if(options.some(([v])=>v===current)) subtype.value=current;
+  else subtype.value=options[0][0];
+
+  // All four subtypes are tied to a card.
+  document.getElementById('chat-card-field').style.display='';
+  document.getElementById('chat-platform-field').style.display='';
+  document.getElementById('chat-card').disabled=false;
+  document.getElementById('chat-platform').disabled=false;
+
+  const isCashback=subtype.value==='cashback';
+  const isCharge=subtype.value==='charge';
+  const category=document.getElementById('chat-category');
+  const platform=document.getElementById('chat-platform');
+  category.placeholder=isCashback?'Cashback / Reward':'Shopping / Fee / Payment';
+  platform.placeholder=isCashback?'Amazon / SmartBuy / etc.':(isCharge?'Fee / charge type':'Amazon / merchant');
 }
+
 async function copyEncryptedChat(){
   const el=document.getElementById('chat-encrypted');
   if(!el || !el.value) return;
@@ -1388,11 +1407,17 @@ function render(){
 function renderQuickEntryPanel(){
   return `
     <div class="panel chat-panel" id="chatSyncPanel">
-      <div class="chat-head"><div><div class="chat-kicker">QUICK ENTRY</div><h2>🔐 Add entry</h2><div class="sub">One form for card expenses, repayments, cashback and charges. The encrypted code can be pasted into ChatGPT for chat-driven updates.</div></div><div class="secure-badge">AES-256-GCM</div></div>
+      <div class="chat-head"><div><div class="chat-kicker">QUICK ENTRY</div><h2>🔐 Add entry</h2><div class="sub">Expense and Card repayment are the main types. Cashback and Charge paid are subtypes within them. The encrypted code can be pasted into ChatGPT for chat-driven updates.</div></div><div class="secure-badge">AES-256-GCM</div></div>
       <div class="chat-section">
-        <div class="chat-section-title"><span class="chat-icon">＋</span><div><strong>New entry</strong><small>Choose the type and fill only the fields that apply</small></div></div>
-        <div class="chat-form" style="grid-template-columns:1fr 1.2fr 1fr 1fr 1fr 1.2fr;">
-          <div class="field"><label>Entry type</label><select id="chat-entry-type" onchange="updateChatEntryFields()"><option value="txn">Expense</option><option value="repay">Card repayment</option><option value="cashback">Cashback earned</option><option value="charge">Charge paid</option></select></div>
+        <div class="chat-section-title"><span class="chat-icon">＋</span><div><strong>New entry</strong><small>Choose the main type, then select its subtype</small></div></div>
+        <div class="chat-form" style="grid-template-columns:1fr 1.1fr 1.2fr 1fr 1fr 1.2fr;">
+          <div class="field"><label>Entry type</label><select id="chat-entry-type" onchange="updateChatEntryFields()">
+            <option value="expense">Expense</option>
+            <option value="repayment">Card repayment</option>
+          </select></div>
+          <div class="field" id="chat-subtype-field"><label>Entry subtype</label>
+            <select id="chat-entry-subtype" onchange="updateChatEntryFields()"></select>
+          </div>
           <div class="field" id="chat-card-field"><label>Card</label><select id="chat-card"></select></div>
           <div class="field"><label>Date</label><input id="chat-date" type="date" value="${todayStr()}"></div>
           <div class="field"><label>Amount ₹</label><input id="chat-amount" type="number" inputmode="decimal" placeholder="2500"></div>
