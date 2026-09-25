@@ -301,6 +301,7 @@
   <h1>Utilisation &amp; Repayments</h1>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
+    <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Entry</button>
     <button class="tab-btn" id="tab-analysis" onclick="setTab('analysis')">Spend Analysis</button>
     <button class="tab-btn" id="tab-fees" onclick="setTab('fees')">Card Fees</button>
     <button class="tab-btn" id="tab-dues" onclick="setTab('dues')">Upcoming Dues</button>
@@ -316,7 +317,7 @@
   <input id="restoreFile" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
-<div id="chatSyncPanel" class="panel chat-panel">
+<div id="chatSyncPanel" class="panel chat-panel entry-page" style="display:none;">
   <div class="chat-head">
     <div>
       <div class="chat-kicker">QUICK ENTRY</div>
@@ -383,7 +384,7 @@
   <div class="disclaimer">AES-256-GCM protects the Chat Sync payload and local ledger storage. GitHub/ChatGPT receive ciphertext only. Keep recovery information private. Clearing browser/PWA data can make locally encrypted data unreadable.</div>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Tap a card to log a spend or repayment, edit its limit / billing date, or view its statement. Use Bills & Dues to record actual statement totals, minimum dues and payments. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Use Ledger to view cards and statements. Use ＋ Entry for new expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -1350,6 +1351,9 @@ function setTab(t){ activeTab = t; render(); }
 function render(){
   document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
   document.getElementById('tab-ledger').classList.toggle('active', activeTab==='ledger');
+  document.getElementById('tab-entry').classList.toggle('active', activeTab==='entry');
+  const entryPage = document.getElementById('chatSyncPanel');
+  if(entryPage) entryPage.style.display = activeTab==='entry' ? 'block' : 'none';
   document.getElementById('tab-analysis').classList.toggle('active', activeTab==='analysis');
   document.getElementById('tab-fees').classList.toggle('active', activeTab==='fees');
   document.getElementById('tab-dues').classList.toggle('active', activeTab==='dues');
@@ -1358,6 +1362,7 @@ function render(){
   document.getElementById('tab-rewards').classList.toggle('active', activeTab==='rewards');
   document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
   if(activeTab === 'ledger') renderLedger();
+  else if(activeTab === 'entry') document.getElementById('app').innerHTML = '';
   else if(activeTab === 'analysis') renderAnalysis();
   else if(activeTab === 'fees') renderFees();
   else if(activeTab === 'dues') renderDues();
