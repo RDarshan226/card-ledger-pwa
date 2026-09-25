@@ -316,6 +316,11 @@
   .chat-choice:has(input:checked){background:var(--paper-card)!important;border-color:var(--brass);}
   .chat-secondary{background:var(--paper-card)!important;color:var(--ink)!important;}
   .chat-form .field label{color:var(--ink-soft)!important;}
+  .chat-form-stacked{display:grid;grid-template-columns:1fr;gap:11px;}
+  .chat-form-stacked .field{width:100%;}
+  .chat-form-stacked .chat-wide{grid-column:auto!important;}
+  .chat-form-stacked input,.chat-form-stacked select{min-height:42px;}
+  .chat-form-stacked + .chat-primary{width:100%;margin-top:12px;}
 </style>
 </head>
 <body>
@@ -1410,7 +1415,7 @@ function renderQuickEntryPanel(){
       <div class="chat-head"><div><div class="chat-kicker">QUICK ENTRY</div><h2>🔐 Add entry</h2><div class="sub">Expense and Card repayment are the main types. Cashback and Charge paid are subtypes within them. The encrypted code can be pasted into ChatGPT for chat-driven updates.</div></div><div class="secure-badge">AES-256-GCM</div></div>
       <div class="chat-section">
         <div class="chat-section-title"><span class="chat-icon">＋</span><div><strong>New entry</strong><small>Choose the main type, then select its subtype</small></div></div>
-        <div class="chat-form" style="grid-template-columns:1fr 1.1fr 1.2fr 1fr 1fr 1.2fr;">
+        <div class="chat-form chat-form-stacked">
           <div class="field"><label>Entry type</label><select id="chat-entry-type" onchange="updateChatEntryFields()">
             <option value="expense">Expense</option>
             <option value="repayment">Card repayment</option>
