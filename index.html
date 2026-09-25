@@ -2746,13 +2746,24 @@ async function setOpenedDate(id){
   await saveData(); render();
   showToast('Opening date saved');
 }
+async function hasRecoveryPackage(){
+  try{ return !!(await rawGet(RAW_KEY)) && !!(await rawGet('card-ledger-chat-aes-key-v1')); }catch(e){ return false; }
+}
+
 async function downloadBackup(){
   try{
     const payload={version:2,app:'Card Ledger PWA',savedAt:new Date().toISOString(),cards,dueBills,cashbackLog};
     const encrypted=await window.storage.exportEncryptedText(JSON.stringify(payload));
     const blob=new Blob([JSON.stringify(encrypted)],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='card-ledger-encrypted-backup-'+todayStr()+'.json'; a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),1000); showToast('Encrypted backup downloaded');
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    if(!(await hasRecoveryPackage())){
+      const create=confirm('Encrypted backup created. You do not appear to have a recovery package. Create one now so this backup can be restored after PWA data is cleared?');
+      if(create) await exportRecoveryPackageUI();
+      else showToast('Backup saved — create a recovery package before clearing PWA data');
+    } else {
+      showToast('Encrypted backup downloaded');
+    }
   }catch(e){ showToast('Could not create encrypted backup'); }
 }
 async function restoreBackup(evt){
