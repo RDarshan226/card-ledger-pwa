@@ -1050,7 +1050,7 @@ async function loadChatUpdates(){
   }catch(e){}
   return chatUpdates;
 }
-async async function mergeChatEntries(){{
+async function mergeChatEntries(){
   for(const item of chatUpdates.entries||[]){
     if(!item.payload) continue;
     try{
@@ -1058,9 +1058,9 @@ async async function mergeChatEntries(){{
       if(p.kind!=='transaction') continue;
       if(!p.id || !p.card) continue;
       const c=cards.find(x=>x.name===p.card);
-      if(!c || (c.transactions||[]).some(t=>t.id===p.id)) continue;
-      c.transactions=c.transactions||[];
-      c.transactions.push({id:p.id,type:p.mainType==='repayment'?'repay':'txn',date:p.date,amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0});
+      if(!c || (c.entries||[]).some(t=>t.id===p.id)) continue;
+      c.entries=c.entries||[];
+      c.entries.push({id:p.id,type:p.mainType==='repayment'?'repay':'txn',date:p.date,amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true});
       if((Number(p.cashback)||0)>0){
         cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:p.date,amount:Number(p.cashback),category:'Cashback',platform:p.platform||'',note:p.note||''});
       }
