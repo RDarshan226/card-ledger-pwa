@@ -381,6 +381,9 @@
     <button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button>
     <button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button>
   </div>
+  <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:#fffaf0;font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">
+    Recovery status: checking…
+  </div>
   <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub/ChatGPT receive ciphertext only. The recovery package contains both encryption keys wrapped with your password using PBKDF2 + AES-256-GCM. Keep the package and password private. If PWA/browser data is cleared, open the PWA again, import this package, then restore your encrypted backup if needed.</div>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
@@ -516,6 +519,7 @@ const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
 const BACKUP_KEY = 'card-ledger-auto-backup-v1';
+const RECOVERY_STATUS_KEY = 'card-ledger-recovery-package-status-v1';
 let dueBills = [];
 let backupSeq = 0;
 let cashbackLog = [];
@@ -1008,6 +1012,8 @@ async function exportRecoveryPackageUI(){
     const chatJwk=await crypto.subtle.exportKey('jwk',chatKey);
     const token=await window.storage.exportRecoveryPackage(p1,chatJwk);
     await navigator.clipboard.writeText(token);
+    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:true, exportedAt:new Date().toISOString()}));
+    refreshRecoveryStatus();
     showToast('Password-protected recovery package copied');
   }catch(e){ showToast(e.message||'Could not create recovery package'); }
 }
@@ -1018,6 +1024,8 @@ async function importRecoveryPackageUI(){
   if(!password) return;
   try{
     await window.storage.importRecoveryPackage(token,password);
+    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:true, importedAt:new Date().toISOString()}));
+    refreshRecoveryStatus();
     showToast('Recovery keys restored — reload the PWA');
     setTimeout(()=>location.reload(),700);
   }catch(e){ showToast(e.message||'Invalid recovery package'); }
@@ -1382,7 +1390,7 @@ async function saveData(){
 
 function utilised(card){ return card.entries.reduce((sum,e)=> sum + (e.type==='txn' ? e.amount : -e.amount), 0); }
 
-function setTab(t){ activeTab = t; render(); }
+function setTab(t){ activeTab = t; render(); if(t==='entry') refreshRecoveryStatus(); }
 
 function render(){
   document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
@@ -1843,6 +1851,7 @@ function buildInsights(rows, p){
   await loadDues();
   render();
   refreshChatCardOptions();
+  refreshRecoveryStatus();
   if(merged) showToast('New encrypted entries synced from chat');
 })();
 
@@ -2747,7 +2756,35 @@ async function setOpenedDate(id){
   showToast('Opening date saved');
 }
 async function hasRecoveryPackage(){
-  try{ return !!(await rawGet(RAW_KEY)) && !!(await rawGet('card-ledger-chat-aes-key-v1')); }catch(e){ return false; }
+  try{
+    const res = await window.storage.get(RECOVERY_STATUS_KEY);
+    if(!res || !res.value) return false;
+    const status = JSON.parse(res.value);
+    return status && status.exported === true;
+  }catch(e){ return false; }
+}
+async function refreshRecoveryStatus(){
+  const el=document.getElementById('recoveryStatus');
+  if(!el) return;
+  try{
+    const res=await window.storage.get(RECOVERY_STATUS_KEY);
+    if(res && res.value){
+      const status=JSON.parse(res.value);
+      if(status && status.exported){
+        const stamp=status.exportedAt || status.importedAt;
+        const when=stamp ? new Date(stamp).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        el.textContent='✓ Recovery package saved'+(when ? ' · '+when : '');
+        el.style.color='var(--ok)';
+        el.style.background='var(--ok-soft)';
+        return;
+      }
+    }
+    el.textContent='⚠ Recovery package not exported yet — create one before clearing PWA data';
+    el.style.color='var(--danger)';
+    el.style.background='var(--danger-soft)';
+  }catch(e){
+    el.textContent='Recovery status unavailable';
+  }
 }
 
 async function downloadBackup(){
