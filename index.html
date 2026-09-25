@@ -43,29 +43,40 @@
   }
 
 
-  @media (prefers-color-scheme: light){:root{--paper:#F5F8FF;--paper-card:#FFFFFF;--line:#B9C9DE;--line-soft:#DCE5F2;--margin:#007CFF;--ink:#101828;--ink-soft:#52637A;--brass:#008CFF;--gold:#B6F500;--gold-bright:#D8FF63;--neon-pink:#E51BBE;--neon-purple:#7440E8;--danger:#D92D52;--danger-soft:#FCE7EC;--ok:#079669;--ok-soft:#E5FAF3;}body{background:radial-gradient(850px 520px at 8% -10%,rgba(0,140,255,.13),transparent 62%),radial-gradient(800px 500px at 100% 4%,rgba(229,27,190,.10),transparent 58%),radial-gradient(700px 500px at 50% 100%,rgba(116,64,232,.07),transparent 60%),var(--paper)}.chat-section,.chat-steps>div,.chat-form input,.chat-form select,.field input,.field select{background:#fff;color:var(--ink)}.chat-choice{background:#fff}.chat-choice:has(input:checked){background:#F0FAFF}}
+  [data-theme="light"]{
+    --paper:#F5F8FF;--paper-card:#FFFFFF;--line:#B9C9DE;--line-soft:#DCE5F2;
+    --margin:#007CFF;--ink:#101828;--ink-soft:#52637A;--brass:#008CFF;
+    --gold:#B6F500;--gold-bright:#D8FF63;--neon-pink:#E51BBE;--neon-purple:#7440E8;
+    --danger:#D92D52;--danger-soft:#FCE7EC;--ok:#079669;--ok-soft:#E5FAF3;
+  }
+  [data-theme="light"] body{
+    background:radial-gradient(850px 520px at 8% -10%,rgba(0,140,255,.13),transparent 62%),
+      radial-gradient(800px 500px at 100% 4%,rgba(229,27,190,.10),transparent 58%),
+      radial-gradient(700px 500px at 50% 100%,rgba(116,64,232,.07),transparent 60%),var(--paper);
+  }
+
   /* ---- Secure update panel ---- */
   .chat-panel{margin-top:14px;}
   .chat-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px;}
   .chat-kicker{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:var(--brass);margin-bottom:3px;}
   .secure-badge{white-space:nowrap;padding:6px 10px;border-radius:999px;background:var(--ok-soft);color:var(--ok);font:600 10px 'IBM Plex Mono',monospace;}
   .chat-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px;}
-  .chat-steps>div{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line-soft);border-radius:10px;background:#fffaf0;font-size:11px;color:var(--ink-soft);}
+  .chat-steps>div{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line-soft);border-radius:10px;background:var(--paper-card);font-size:11px;color:var(--ink-soft);}
   .chat-steps b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#5C3D06;font-family:'IBM Plex Mono',monospace;flex-shrink:0;}
-  .chat-section{padding:14px;border:1px solid var(--line-soft);border-radius:13px;background:#fffdf7;}
+  .chat-section{padding:14px;border:1px solid var(--line-soft);border-radius:13px;background:var(--paper-card);}
   .chat-section-title{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
   .chat-section-title strong{display:block;font-family:'Fraunces',serif;font-size:16px;}
   .chat-section-title small,.chat-output-head small{display:block;color:var(--ink-soft);font-size:10.5px;margin-top:2px;}
   .chat-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(120deg,var(--gold-bright),var(--gold));font-weight:700;color:#5C3D06;}
   .chat-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
-  .chat-choice{display:flex;gap:9px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;}
-  .chat-choice:has(input:checked){border-color:var(--brass);box-shadow:0 0 0 2px rgba(224,149,42,.12);background:#fff9e8;}
+  .chat-choice{display:flex;gap:9px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--paper-card);cursor:pointer;}
+  .chat-choice:has(input:checked){border-color:var(--brass);box-shadow:0 0 0 2px rgba(224,149,42,.12);background:var(--paper-card);}
   .chat-choice input{accent-color:var(--brass);}
   .chat-choice b{display:block;font-size:12px;}.chat-choice small{display:block;color:var(--ink-soft);font-size:9.5px;margin-top:2px;}
   .chat-form{display:grid;grid-template-columns:1.25fr .9fr .9fr 1fr 1fr;gap:9px;align-items:end;}
   .chat-form .field{min-width:0;}.chat-form .field label{display:block;margin:0 0 4px 2px;font:600 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
   .chat-form .field label em{font-style:normal;text-transform:none;letter-spacing:0;opacity:.7;}
-  .chat-form input,.chat-form select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:12px Inter,sans-serif;color:var(--ink);}
+  .chat-form input,.chat-form select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font:12px Inter,sans-serif;color:var(--ink);}
   .chat-form input:focus,.chat-form select:focus{outline:2px solid var(--gold);outline-offset:1px;}
   .chat-wide{grid-column:span 1;}
   .chat-primary,.chat-secondary{margin-top:11px;border:0;border-radius:8px;padding:10px 14px;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;}
@@ -126,7 +137,7 @@
 
   /* ---- Toolbar ---- */
   .toolbar{ display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
-  .toolbar input[type="text"]{ flex:1; min-width:160px; padding:9px 12px; border:1px solid var(--line); border-radius:8px; font-family:'Inter'; font-size:13px; background:#fff; color:var(--ink); }
+  .toolbar input[type="text"]{ flex:1; min-width:160px; padding:9px 12px; border:1px solid var(--line); border-radius:8px; font-family:'Inter'; font-size:13px; background:var(--paper-card); color:var(--ink); }
   .toolbar input[type="text"]:focus{ outline:2px solid var(--gold); outline-offset:1px; }
   .sort-btn{ padding:9px 14px; border:1px solid var(--line); border-radius:8px; background:var(--paper-card); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.03em; cursor:pointer; color:var(--ink-soft); transition:box-shadow .15s ease, background .15s ease, color .15s ease; }
   .sort-btn:hover{ box-shadow:0 4px 14px -6px rgba(224,149,42,.5); }
@@ -136,7 +147,7 @@
   .section-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); margin:26px 0 10px; }
   .ledger{ display:flex; flex-direction:column; gap:10px; }
   .row{ border:1px solid var(--line-soft); border-radius:14px; background:var(--paper-card); overflow:hidden; transition:background .15s ease, box-shadow .2s ease, border-color .2s ease, transform .15s ease; }
-  .row:hover{ background:#fff; box-shadow:0 10px 26px -16px rgba(224,149,42,.55); border-color:var(--gold); transform:translateY(-1px); }
+  .row:hover{ background:var(--paper-card); box-shadow:0 10px 26px -16px rgba(224,149,42,.55); border-color:var(--gold); transform:translateY(-1px); }
   .row.debit-row{ border-style:dashed; }
   .row-main{ display:grid; grid-template-columns: 1fr auto; align-items:center; padding:16px 18px; gap:12px; cursor:pointer; }
   .row-name{ font-family:'Fraunces', serif; font-size:18px; font-weight:600; }
@@ -160,13 +171,13 @@
   .detail-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; padding:14px 0 18px; border-bottom:1px dashed var(--line); margin-bottom:16px; }
   @media (max-width:520px){ .detail-grid{ grid-template-columns:1fr; } }
   .field label{ display:block; font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:4px; font-family:'IBM Plex Mono',monospace; }
-  .field input, .field select{ width:100%; padding:8px 10px; border:1px solid var(--line); background:#fff; border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink); }
+  .field input, .field select{ width:100%; padding:8px 10px; border:1px solid var(--line); background:var(--paper-card); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink); }
   .field input:focus, .field select:focus{ outline:2px solid var(--gold); outline-offset:1px; }
   .share-note{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--brass); margin-top:4px; }
 
   .entry-form{ display:grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr auto; gap:8px; align-items:end; margin-bottom:16px; }
   @media (max-width:760px){ .entry-form{ grid-template-columns:1fr 1fr; } }
-  .entry-form select, .entry-form input{ padding:8px 8px; border:1px solid var(--line); border-radius:6px; font-family:'Inter'; font-size:12.5px; background:#fff; }
+  .entry-form select, .entry-form input{ padding:8px 8px; border:1px solid var(--line); border-radius:6px; font-family:'Inter'; font-size:12.5px; background:var(--paper-card); }
   .entry-form button{ background:linear-gradient(120deg, var(--brass), var(--gold)); color:#3A2705; border:none; border-radius:6px; padding:9px 16px; font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.04em; cursor:pointer; transition:box-shadow .15s ease, transform .1s ease; box-shadow:0 6px 16px -8px rgba(224,149,42,.7); }
   .entry-form button:hover{ box-shadow:0 8px 20px -6px rgba(224,149,42,.85); }
   .entry-form button:active{ transform:scale(.96); }
@@ -185,7 +196,7 @@
   .del{ color:var(--ink-soft); cursor:pointer; font-size:11px; background:none; border:none; font-family:inherit; }
   .del:hover{ color:var(--danger); }
   .empty-stmt{ font-size:12.5px; color:var(--ink-soft); padding:10px 0; font-family:'IBM Plex Mono',monospace; }
-  .cat-chip{ font-size:10px; background:#F1E6C9; color:#7A5C10; padding:1px 6px; border-radius:4px; }
+  .cat-chip{ font-size:10px; background:var(--ok-soft); color:var(--ok); padding:1px 6px; border-radius:4px; }
   .plat-chip{ font-size:10px; color:var(--ink-soft); }
 
   .footnote{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); margin-top:18px; text-align:center; opacity:.8; }
@@ -252,7 +263,7 @@
   .due-stat .v{ font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; margin-top:4px; }
   .due-stat.alert .v{ color:var(--danger); }
   .due-toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
-  .due-toolbar select,.due-toolbar input,.due-form input,.due-form select{ padding:8px 9px; border:1px solid var(--line); border-radius:7px; background:#fff; font-family:'Inter',sans-serif; font-size:12px; color:var(--ink); }
+  .due-toolbar select,.due-toolbar input,.due-form input,.due-form select{ padding:8px 9px; border:1px solid var(--line); border-radius:7px; background:var(--paper-card); font-family:'Inter',sans-serif; font-size:12px; color:var(--ink); }
   .due-toolbar select{ font-family:'IBM Plex Mono',monospace; }
   .due-toolbar button,.due-form button{ padding:8px 12px; border:0; border-radius:7px; background:linear-gradient(120deg,var(--brass),var(--gold)); color:#3A2705; font-family:'IBM Plex Mono',monospace; font-size:11px; cursor:pointer; }
   .due-form{ display:grid; grid-template-columns:1.3fr .9fr .9fr .9fr .9fr .9fr auto; gap:8px; align-items:end; }
@@ -299,6 +310,12 @@
   .chat-choice:has(input:checked){background:var(--paper-card)!important;border-color:var(--brass);}
   .chat-secondary{background:var(--paper-card)!important;color:var(--ink)!important;}
   .chat-form .field label{color:var(--ink-soft)!important;}
+  input,select,textarea{background:var(--paper-card)!important;color:var(--ink)!important;border-color:var(--line)!important;}
+  input::placeholder,textarea::placeholder{color:var(--ink-soft)!important;opacity:.9;}
+  .chat-section,.chat-steps>div,.chat-choice,.chat-form input,.chat-form select,.field input,.field select,.toolbar input[type="text"],.entry-form input,.entry-form select,.panel{background:var(--paper-card)!important;color:var(--ink)!important;}
+  .chat-choice:has(input:checked){background:var(--paper-card)!important;border-color:var(--brass);}
+  .chat-secondary{background:var(--paper-card)!important;color:var(--ink)!important;}
+  .chat-form .field label{color:var(--ink-soft)!important;}
 </style>
 </head>
 <body>
@@ -308,6 +325,7 @@
   <h1>Utilisation &amp; Repayments</h1>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
+    <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Entry</button>
     <button class="tab-btn" id="tab-analysis" onclick="setTab('analysis')">Spend Analysis</button>
     <button class="tab-btn" id="tab-fees" onclick="setTab('fees')">Card Fees</button>
     <button class="tab-btn" id="tab-dues" onclick="setTab('dues')">Upcoming Dues</button>
@@ -317,6 +335,7 @@
     <button class="tab-btn" id="tab-accounts" onclick="setTab('accounts')">Account Ages</button>
   </div>
   <div class="pwa-tools" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 0;">
+  <button class="tab-btn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
   <button class="tab-btn" onclick="downloadBackup()">Backup Now</button>
   <button class="tab-btn" onclick="document.getElementById('restoreFile').click()">Restore Backup</button>
   <button class="tab-btn" id="installBtn" onclick="installPWA()" style="display:none">Install App</button>
@@ -324,7 +343,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Use the unified entry form in Ledger for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -1321,6 +1340,25 @@ async function saveData(){
 
 function utilised(card){ return card.entries.reduce((sum,e)=> sum + (e.type==='txn' ? e.amount : -e.amount), 0); }
 
+function applyTheme(theme){
+  const chosen=theme==='light'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',chosen);
+  try{localStorage.setItem('card-ledger-theme-v1',chosen);}catch(e){}
+  const b=document.getElementById('themeToggleBtn');
+  if(b) b.textContent=chosen==='dark'?'☀️ Light':'🌙 Dark';
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content=chosen==='dark'?'#080B12':'#F5F8FF';
+}
+function toggleTheme(){
+  const current=document.documentElement.getAttribute('data-theme')||'dark';
+  applyTheme(current==='dark'?'light':'dark');
+}
+function initTheme(){
+  let saved='dark';
+  try{saved=localStorage.getItem('card-ledger-theme-v1')||'dark';}catch(e){}
+  applyTheme(saved);
+}
+
 function setTab(t){ activeTab = t; render(); }
 
 function render(){
@@ -1335,6 +1373,7 @@ function render(){
   document.getElementById('tab-rewards').classList.toggle('active', activeTab==='rewards');
   document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
   if(activeTab === 'ledger') renderLedger();
+  else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); refreshRecoveryStatus(); }
   else if(activeTab === 'analysis') renderAnalysis();
   else if(activeTab === 'fees') renderFees();
   else if(activeTab === 'dues') renderDues();
@@ -1343,7 +1382,7 @@ function render(){
   else if(activeTab === 'rewards') renderRewards();
   else if(activeTab === 'accounts') renderAccounts();
   refreshChatCardOptions();
-  if(activeTab === 'ledger') { updateChatEntryFields(); refreshRecoveryStatus(); }
+  if(activeTab === 'entry') { updateChatEntryFields(); refreshRecoveryStatus(); }
 }
 
 function renderQuickEntryPanel(){
@@ -1394,8 +1433,6 @@ function renderLedger(){
     </div>
     <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
   </div>`;
-
-  html += renderQuickEntryPanel();
 
   html += `<div class="toolbar">
     <input type="text" id="search" placeholder="Find a card…" value="${filterText}" oninput="onSearch(this.value)">
@@ -2746,6 +2783,7 @@ let deferredInstallPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredInstallPrompt=e; const b=document.getElementById('installBtn'); if(b)b.style.display='inline-flex';});
 async function installPWA(){ if(!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt=null; document.getElementById('installBtn').style.display='none'; }
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{})); }
+initTheme();
 </script>
 <datalist id="cat-list">
   <option value="Grocery"><option value="Food & Dining"><option value="Shopping">
