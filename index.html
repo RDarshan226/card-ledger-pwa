@@ -326,6 +326,8 @@
   .entry-subform{margin-top:2px;}
   .entry-encrypt-btn{width:100%;margin-top:10px;}
   .entry-section .chat-icon{font-size:15px;}
+  .chat-head h2,.chat-head .chat-kicker,.chat-head .sub,.chat-head strong,.chat-head small{color:#fff!important;}
+  .chat-head{color:#fff!important;}
 </style>
 </head>
 <body>
@@ -1048,7 +1050,26 @@ async function loadChatUpdates(){
   }catch(e){}
   return chatUpdates;
 }
-async function mergeChatEntries(){
+async async function mergeChatEntries(){{
+  for(const item of chatUpdates.entries||[]){
+    if(!item.payload) continue;
+    try{
+      const p=await decryptChatPayload(item.payload);
+      if(p.kind!=='transaction') continue;
+      if(!p.id || !p.card) continue;
+      const c=cards.find(x=>x.name===p.card);
+      if(!c || (c.transactions||[]).some(t=>t.id===p.id)) continue;
+      c.transactions=c.transactions||[];
+      c.transactions.push({id:p.id,type:p.mainType==='repayment'?'repay':'txn',date:p.date,amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0});
+      if((Number(p.cashback)||0)>0){
+        cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:p.date,amount:Number(p.cashback),category:'Cashback',platform:p.platform||'',note:p.note||''});
+      }
+      if((Number(p.charge)||0)>0){
+        cashbackLog.push({id:p.id+'-charge',card:p.card,type:'charge',date:p.date,amount:Number(p.charge),category:'Charge paid',platform:p.platform||'',note:p.note||''});
+      }
+    }catch(e){}
+  }
+
   let changed=false, failed=0;
   for(const seed of (chatUpdates.entries||[])){
     try{
@@ -1079,13 +1100,12 @@ async function syncEncryptedChatUpdates(showResult){
   return added;
 }
 function refreshChatCardOptions(){
+  const sel=document.getElementById('entry-card');
+  if(!sel) return;
+  const current=sel.value;
   const usable=cards.filter(c=>!c.isInsurance);
-  const selects=[...document.querySelectorAll('.entry-card')];
-  selects.forEach(sel=>{
-    const current=sel.value;
-    sel.innerHTML=usable.map(c=>'<option value="'+String(c.name).replace(/"/g,'&quot;')+'">'+c.name+'</option>').join('');
-    if(current && usable.some(c=>c.name===current)) sel.value=current;
-  });
+  sel.innerHTML=usable.map(c=>'<option value="'+String(c.name).replace(/"/g,'&quot;')+'">'+c.name+'</option>').join('');
+  if(current && usable.some(c=>c.name===current)) sel.value=current;
 }
 async function loadData(){
   await loadChatUpdates();
@@ -1386,79 +1406,70 @@ function render(){
   else if(activeTab === 'rewards') renderRewards();
   else if(activeTab === 'accounts') renderAccounts();
   refreshChatCardOptions();
-  if(activeTab === 'entry') { refreshRecoveryStatus(); }
+  if(activeTab === 'entry') { refreshChatCardOptions(); refreshRecoveryStatus(); updateTransactionEntryFields(); }
 }
 
 function renderQuickEntryPanel(){
   return `
     <div class="panel chat-panel" id="chatSyncPanel">
-      <div class="chat-head"><div><div class="chat-kicker">SECURE ENTRY</div><h2>🔐 Add entry</h2><div class="sub">Separate entry spaces for expenses, card repayments, cashback and charges paid.</div></div><div class="secure-badge">AES-256-GCM</div></div>
+      <div class="chat-head"><div><div class="chat-kicker">SECURE ENTRY</div><h2>🔐 Add transaction</h2><div class="sub">One transaction can be an Expense or Card repayment, with Cashback and Charge paid recorded as additional fields.</div></div><div class="secure-badge">AES-256-GCM</div></div>
 
       <div class="chat-section entry-section">
-        <div class="chat-section-title"><span class="chat-icon">🛒</span><div><strong>Expense</strong><small>Record a purchase or other card expense</small></div></div>
-        ${renderEntryFields('expense','Regular expense')}
+        <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details below belong to the same transaction</small></div></div>
+        <div class="chat-form chat-form-stacked">
+          <div class="field"><label>Main type</label><select id="entry-main-type" onchange="updateTransactionEntryFields()"><option value="expense">Expense</option><option value="repayment">Card repayment</option></select></div>
+          <div class="field"><label>Card</label><select id="entry-card" class="entry-card"></select></div>
+          <div class="field"><label>Date</label><input id="entry-date" type="date" value="${todayStr()}"></div>
+          <div class="field"><label>Amount ₹</label><input id="entry-amount" type="number" inputmode="decimal" placeholder="2500"></div>
+          <div class="field"><label>Category</label><input id="entry-category" type="text" list="cat-list" placeholder="Shopping / Bills"></div>
+          <div class="field"><label>Platform / Merchant</label><input id="entry-platform" type="text" placeholder="Amazon / merchant"></div>
+          <div class="field"><label>Cashback earned ₹ <em>optional</em></label><input id="entry-cashback" type="number" inputmode="decimal" min="0" placeholder="0"></div>
+          <div class="field"><label>Charge paid ₹ <em>optional</em></label><input id="entry-charge" type="number" inputmode="decimal" min="0" placeholder="0"></div>
+          <div class="field"><label>Note <em>optional</em></label><input id="entry-note" type="text" placeholder="Optional note"></div>
+        </div>
+        <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry()">🔒 Encrypt transaction</button>
       </div>
 
-      <div class="chat-section entry-section">
-        <div class="chat-section-title"><span class="chat-icon">↗</span><div><strong>Card repayment</strong><small>Record a payment made towards a card</small></div></div>
-        ${renderEntryFields('repayment','Regular repayment')}
-      </div>
-
-      <div class="chat-section entry-section">
-        <div class="chat-section-title"><span class="chat-icon">₹</span><div><strong>Cashback earned</strong><small>Record cashback or reward credited for a card</small></div></div>
-        ${renderEntryFields('cashback','Cashback earned')}
-      </div>
-
-      <div class="chat-section entry-section">
-        <div class="chat-section-title"><span class="chat-icon">⌁</span><div><strong>Charge paid</strong><small>Record fees, charges or other card-related payments</small></div></div>
-        ${renderEntryFields('charge','Charge paid')}
-      </div>
-
-      <div class="chat-output"><div class="chat-output-head"><div><strong>Encrypted code</strong><small>Paste this code into ChatGPT to upload the update</small></div><span>CL1</span></div><textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea><button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button></div>
+      <div class="chat-output"><div class="chat-output-head"><div><strong>Encrypted code</strong><small>Paste this code into ChatGPT to upload the complete transaction</small></div><span>CL1</span></div><textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea><button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button></div>
       <div class="chat-actions"><button class="tab-btn" onclick="syncEncryptedChatUpdates(true)">↻ Sync now</button><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button></div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
       <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub/ChatGPT receive ciphertext only. Keep the recovery package and password private.</div>
     </div>`;
 }
 
-function renderEntryFields(kind,label){
-  const isLedger=kind==='expense'||kind==='repayment';
-  const entryType=kind==='expense'?'txn':kind==='repayment'?'repay':kind;
-  return `
-    <div class="chat-form chat-form-stacked entry-subform">
-      <div class="field"><label>Card</label><select id="entry-${kind}-card" class="entry-card"></select></div>
-      <div class="field"><label>Date</label><input id="entry-${kind}-date" type="date" value="${todayStr()}"></div>
-      <div class="field"><label>Amount ₹</label><input id="entry-${kind}-amount" type="number" inputmode="decimal" placeholder="2500"></div>
-      <div class="field"><label>Category</label><input id="entry-${kind}-category" type="text" list="cat-list" placeholder="${kind==='cashback'?'Cashback / Reward':kind==='charge'?'Fee / Charge':'Shopping / Bills'}"></div>
-      ${isLedger ? '<div class="field"><label>Platform / Merchant</label><input id="entry-'+kind+'-platform" type="text" placeholder="Amazon / merchant"></div>' : ''}
-      <div class="field"><label>Note <em>optional</em></label><input id="entry-${kind}-note" type="text" placeholder="Optional note"></div>
-    </div>
-    <button class="chat-primary entry-encrypt-btn" onclick="encryptSeparateEntry('${kind}')">🔒 Encrypt ${label}</button>`;
+function updateTransactionEntryFields(){
+  const type=document.getElementById('entry-main-type')?.value;
+  const category=document.getElementById('entry-category');
+  if(!category) return;
+  category.placeholder=type==='repayment'?'Card bill payment':'Shopping / Bills';
 }
 
-async function encryptSeparateEntry(kind){
+async function encryptTransactionEntry(){
   try{
-    const entryType=kind==='expense'?'txn':kind==='repayment'?'repay':kind;
-    const card=document.getElementById('entry-'+kind+'-card').value;
-    const date=document.getElementById('entry-'+kind+'-date').value || todayStr();
-    const amount=Number(document.getElementById('entry-'+kind+'-amount').value);
-    const category=document.getElementById('entry-'+kind+'-category').value.trim();
-    const note=document.getElementById('entry-'+kind+'-note').value.trim();
-    const platformEl=document.getElementById('entry-'+kind+'-platform');
-    const platform=platformEl?platformEl.value.trim():'';
+    const mainType=document.getElementById('entry-main-type').value;
+    const card=document.getElementById('entry-card').value;
+    const date=document.getElementById('entry-date').value || todayStr();
+    const amount=Number(document.getElementById('entry-amount').value);
+    const category=document.getElementById('entry-category').value.trim();
+    const platform=document.getElementById('entry-platform').value.trim();
+    const cashback=Number(document.getElementById('entry-cashback').value)||0;
+    const charge=Number(document.getElementById('entry-charge').value)||0;
+    const note=document.getElementById('entry-note').value.trim();
     if(!card){showToast('Choose a card');return;}
-    if(!amount || amount<=0){showToast('Enter a valid amount');return;}
-    const payload={v:2,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:(entryType==='cashback'||entryType==='charge')?'cashback':'ledger',card,type:entryType,date,amount,category,platform,note};
+    if(!amount || amount<=0){showToast('Enter a valid transaction amount');return;}
+    if(cashback<0 || charge<0){showToast('Cashback and charge cannot be negative');return;}
+    const payload={
+      v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'transaction',
+      mainType,card,date,amount,category,platform,note,
+      cashback,charge
+    };
     const iv=crypto.getRandomValues(new Uint8Array(12));
     const key=await getChatCryptoKey();
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
     const token='CL1.'+bytesToB64(iv)+'.'+bytesToB64(new Uint8Array(ct));
     document.getElementById('chat-encrypted').value=token;
-    try{await navigator.clipboard.writeText(token);showToast(labelForEntry(kind)+' copied');}catch(e){showToast('Encrypted entry created — tap Copy');}
-  }catch(e){showToast('Could not encrypt entry');}
-}
-function labelForEntry(kind){
-  return kind==='expense'?'Encrypted expense':kind==='repayment'?'Encrypted repayment':kind==='cashback'?'Encrypted cashback':'Encrypted charge';
+    try{await navigator.clipboard.writeText(token);showToast('Encrypted transaction copied');}catch(e){showToast('Encrypted transaction created — tap Copy');}
+  }catch(e){showToast('Could not encrypt transaction');}
 }
 
 function renderLedger(){
