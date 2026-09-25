@@ -50,6 +50,43 @@
     -webkit-background-clip:text; background-clip:text; color:transparent; width:fit-content;
   }
 
+
+  /* ---- Secure update panel ---- */
+  .chat-panel{margin-top:14px;}
+  .chat-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px;}
+  .chat-kicker{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:var(--brass);margin-bottom:3px;}
+  .secure-badge{white-space:nowrap;padding:6px 10px;border-radius:999px;background:var(--ok-soft);color:var(--ok);font:600 10px 'IBM Plex Mono',monospace;}
+  .chat-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 16px;}
+  .chat-steps>div{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--line-soft);border-radius:10px;background:#fffaf0;font-size:11px;color:var(--ink-soft);}
+  .chat-steps b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#5C3D06;font-family:'IBM Plex Mono',monospace;flex-shrink:0;}
+  .chat-section{padding:14px;border:1px solid var(--line-soft);border-radius:13px;background:#fffdf7;}
+  .chat-section-title{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
+  .chat-section-title strong{display:block;font-family:'Fraunces',serif;font-size:16px;}
+  .chat-section-title small,.chat-output-head small{display:block;color:var(--ink-soft);font-size:10.5px;margin-top:2px;}
+  .chat-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(120deg,var(--gold-bright),var(--gold));font-weight:700;color:#5C3D06;}
+  .chat-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+  .chat-choice{display:flex;gap:9px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;}
+  .chat-choice:has(input:checked){border-color:var(--brass);box-shadow:0 0 0 2px rgba(224,149,42,.12);background:#fff9e8;}
+  .chat-choice input{accent-color:var(--brass);}
+  .chat-choice b{display:block;font-size:12px;}.chat-choice small{display:block;color:var(--ink-soft);font-size:9.5px;margin-top:2px;}
+  .chat-form{display:grid;grid-template-columns:1.25fr .9fr .9fr 1fr 1fr;gap:9px;align-items:end;}
+  .chat-form .field{min-width:0;}.chat-form .field label{display:block;margin:0 0 4px 2px;font:600 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .chat-form .field label em{font-style:normal;text-transform:none;letter-spacing:0;opacity:.7;}
+  .chat-form input,.chat-form select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:12px Inter,sans-serif;color:var(--ink);}
+  .chat-form input:focus,.chat-form select:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .chat-wide{grid-column:span 1;}
+  .chat-primary,.chat-secondary{margin-top:11px;border:0;border-radius:8px;padding:10px 14px;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;}
+  .chat-primary{background:linear-gradient(120deg,var(--brass),var(--gold));color:#3A2705;box-shadow:0 6px 16px -8px rgba(224,149,42,.7);}
+  .chat-secondary{background:#FFF3D2;color:#6B480A;border:1px solid var(--line);}
+  .chat-divider{display:flex;align-items:center;gap:10px;margin:13px 0;color:var(--ink-soft);font:10px 'IBM Plex Mono',monospace;}.chat-divider:before,.chat-divider:after{content:'';height:1px;background:var(--line-soft);flex:1;}
+  .chat-output{margin-top:13px;padding:13px;border-radius:12px;background:#241d12;color:#FFF3D2;}
+  .chat-output-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:7px;}.chat-output-head strong{font-size:12px;}.chat-output-head span{font:600 9px 'IBM Plex Mono',monospace;padding:3px 6px;border:1px solid #725c38;border-radius:5px;}
+  #chat-encrypted{width:100%;min-height:70px;padding:9px;border:1px solid #725c38;border-radius:7px;background:#17120c;color:#FFE9B8;font:10px 'IBM Plex Mono',monospace;word-break:break-all;resize:vertical;}
+  .chat-copy{margin-top:7px;width:100%;padding:9px;border:1px solid #8A6B35;border-radius:7px;background:#3A2D1A;color:#FFE9B8;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;}
+  .chat-help{margin-top:11px;border:1px solid var(--line-soft);border-radius:9px;padding:9px 11px;font-size:11px;color:var(--ink-soft);}.chat-help summary{cursor:pointer;color:var(--ink);font-weight:600;}.chat-help ol{margin:8px 0 2px;padding-left:20px;line-height:1.6;}
+  .chat-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  @media(max-width:700px){.chat-head{flex-direction:column;}.chat-steps{grid-template-columns:1fr;gap:6px;}.chat-form{grid-template-columns:1fr 1fr;}.chat-form .chat-wide{grid-column:span 2;}.chat-type-grid{grid-template-columns:1fr;}.chat-primary,.chat-secondary{width:100%;}.chat-actions .tab-btn{flex:1 1 100%;}}
+
   /* ---- Tabs ---- */
   .tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
   .tabs .tab-btn{ flex:1 1 calc(25% - 6px); text-align:center; }
@@ -279,40 +316,71 @@
   <input id="restoreFile" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
-<div id="chatSyncPanel" class="panel" style="margin-top:14px;">
-  <h2>🔐 Encrypted Chat Sync</h2>
-  <div class="sub">Create an encrypted transaction here, paste only the encrypted code into ChatGPT, and I can upload it to GitHub. The PWA decrypts it locally.</div>
-  <div class="due-form" style="grid-template-columns:1.4fr .8fr .9fr 1fr 1fr 1fr auto;">
-    <div><label>Card</label><select id="chat-card"></select></div>
-    <div><label>Ledger type</label><select id="chat-type"><option value="txn">Expense</option><option value="repay">Card repayment</option></select></div>
-    <div><label>Date</label><input id="chat-date" type="date" value="${todayStr()}"></div>
-    <div><label>Amount ₹</label><input id="chat-amount" type="number" inputmode="decimal" placeholder="2500"></div>
-    <div><label>Category</label><input id="chat-category" type="text" placeholder="Shopping"></div>
-    <div><label>Platform</label><input id="chat-platform" type="text" placeholder="Amazon"></div>
-    <button onclick="encryptChatTransaction()">Encrypt</button>
-  </div>
-  <div style="margin-top:8px;">
-    <input id="chat-note" type="text" placeholder="Note (optional)" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:Inter,sans-serif;font-size:12px;">
-  </div>  <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);">
-    <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin-bottom:3px;">Cashback / Charges</div>
-    <div class="sub">Add cashback earned or charges paid. These will appear in the Cashback &amp; Charges tab.</div>
-    <div class="due-form" style="grid-template-columns:1.1fr .9fr .9fr 1.2fr 1.4fr auto;">
-      <div><label>Entry type</label><select id="chat-cb-type"><option value="cashback">Cashback earned</option><option value="charge">Charge paid</option></select></div>
-      <div><label>Date</label><input id="chat-cb-date" type="date" value="${todayStr()}"></div>
-      <div><label>Amount ₹</label><input id="chat-cb-amount" type="number" inputmode="decimal" placeholder="100"></div>
-      <div><label>Category</label><input id="chat-cb-category" type="text" placeholder="Cashback / Fee"></div>
-      <div><label>Note</label><input id="chat-cb-note" type="text" placeholder="Optional"></div>
-      <button onclick="encryptChatCashback()">Encrypt</button>
+<div id="chatSyncPanel" class="panel chat-panel">
+  <div class="chat-head">
+    <div>
+      <div class="chat-kicker">QUICK ENTRY</div>
+      <h2>🔐 Secure update</h2>
+      <div class="sub">Create an encrypted update on this device, then paste the code into ChatGPT. Your transaction details stay inside the PWA.</div>
     </div>
+    <div class="secure-badge">● Encrypted</div>
   </div>
-  <textarea id="chat-encrypted" readonly placeholder="Encrypted code will appear here — this is what you paste into ChatGPT." style="width:100%;min-height:76px;margin-top:8px;padding:9px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:'IBM Plex Mono',monospace;font-size:10px;word-break:break-all;resize:vertical;"></textarea>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-    <button class="tab-btn" onclick="copyEncryptedChat()">Copy encrypted code</button>
-    <button class="tab-btn" onclick="syncEncryptedChatUpdates(true)">Sync now</button>
+
+  <div class="chat-steps">
+    <div><b>1</b><span>Choose what happened</span></div>
+    <div><b>2</b><span>Enter the details</span></div>
+    <div><b>3</b><span>Encrypt &amp; paste into ChatGPT</span></div>
+  </div>
+
+  <div class="chat-section">
+    <div class="chat-section-title"><span class="chat-icon">₹</span><div><strong>Card activity</strong><small>Record a new expense or a card repayment</small></div></div>
+    <div class="chat-type-grid">
+      <label class="chat-choice"><input type="radio" name="chat-ledger-kind" value="txn" checked onchange="document.getElementById('chat-type').value='txn'"><span><b>Expense</b><small>Purchase / spend on the card</small></span></label>
+      <label class="chat-choice"><input type="radio" name="chat-ledger-kind" value="repay" onchange="document.getElementById('chat-type').value='repay'"><span><b>Card repayment</b><small>Payment made towards the card</small></span></label>
+    </div>
+    <select id="chat-type" hidden><option value="txn">Expense</option><option value="repay">Card repayment</option></select>
+    <div class="chat-form">
+      <div class="field"><label>Card</label><select id="chat-card"></select></div>
+      <div class="field"><label>Date</label><input id="chat-date" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>Amount ₹</label><input id="chat-amount" type="number" inputmode="decimal" placeholder="2500"></div>
+      <div class="field chat-wide"><label>Category</label><input id="chat-category" type="text" list="cat-list" placeholder="Shopping"></div>
+      <div class="field chat-wide"><label>Platform / merchant</label><input id="chat-platform" type="text" placeholder="Amazon"></div>
+      <div class="field chat-wide"><label>Note <em>optional</em></label><input id="chat-note" type="text" placeholder="e.g. groceries, bill payment"></div>
+    </div>
+    <button class="chat-primary" onclick="encryptChatTransaction()">🔒 Encrypt card activity</button>
+  </div>
+
+  <div class="chat-divider"><span>OR</span></div>
+
+  <div class="chat-section">
+    <div class="chat-section-title"><span class="chat-icon">↗</span><div><strong>Cashback &amp; charges</strong><small>Log money earned back or a fee/charge you paid</small></div></div>
+    <div class="chat-form chat-cb-form">
+      <div class="field"><label>Type</label><select id="chat-cb-type"><option value="cashback">Cashback earned</option><option value="charge">Charge paid</option></select></div>
+      <div class="field"><label>Date</label><input id="chat-cb-date" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>Amount ₹</label><input id="chat-cb-amount" type="number" inputmode="decimal" placeholder="100"></div>
+      <div class="field chat-wide"><label>Category</label><input id="chat-cb-category" type="text" placeholder="Cashback / Convenience fee"></div>
+      <div class="field chat-wide"><label>Note <em>optional</em></label><input id="chat-cb-note" type="text" placeholder="e.g. bank fee, cashback received"></div>
+    </div>
+    <button class="chat-secondary" onclick="encryptChatCashback()">🔒 Encrypt cashback / charge</button>
+  </div>
+
+  <div class="chat-output">
+    <div class="chat-output-head"><div><strong>Encrypted code</strong><small>Paste this code into ChatGPT to upload the update</small></div><span>CL1</span></div>
+    <textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea>
+    <button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button>
+  </div>
+
+  <details class="chat-help">
+    <summary>How do I use this?</summary>
+    <ol><li>Fill in the entry above.</li><li>Tap the relevant <b>Encrypt</b> button.</li><li>Tap <b>Copy code</b> and paste it here in ChatGPT with “Upload this”.</li><li>Later, tap <b>Sync now</b> to bring uploaded updates into the PWA.</li></ol>
+  </details>
+
+  <div class="chat-actions">
+    <button class="tab-btn" onclick="syncEncryptedChatUpdates(true)">↻ Sync now</button>
     <button class="tab-btn" onclick="exportChatRecoveryKey()">Export recovery key</button>
     <button class="tab-btn" onclick="importChatRecoveryKey()">Import recovery key</button>
   </div>
-  <div class="disclaimer">AES-256-GCM is used for both the Chat Sync feed and the local IndexedDB ledger. The local encryption key is generated on this device and never uploaded to GitHub. ChatGPT and GitHub receive only ciphertext. The existing local ledger is migrated to encrypted storage when it is next read. Keep the recovery key offline and private. Clearing browser/PWA data can make encrypted Chat Sync updates unreadable.</div>
+  <div class="disclaimer">AES-256-GCM protects the Chat Sync payload and local ledger storage. GitHub/ChatGPT receive ciphertext only. Keep recovery information private. Clearing browser/PWA data can make locally encrypted data unreadable.</div>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
   <div class="footnote">Tap a card to log a spend or repayment, edit its limit / billing date, or view its statement. Use Bills & Dues to record actual statement totals, minimum dues and payments. Changes auto-save and refresh the rolling backup.</div>
