@@ -11,27 +11,19 @@
 <title>Card Ledger</title>
 <style>
   :root{
-    --paper:#FFF9EC;
-    --paper-card:#FFFDF6;
-    --line:#F0D999;
-    --line-soft:#F6E7C0;
-    --margin:#E8546B;
-    --ink:#2B2416;
-    --ink-soft:#8A7A55;
-    --brass:#E0952A;
-    --gold:#FFC94A;
-    --gold-bright:#FFE08A;
-    --danger:#E85B4F;
-    --danger-soft:#FCE3DE;
-    --ok:#2FA36B;
-    --ok-soft:#DCF3E5;
+    --paper:#080B12; --paper-card:#101622; --line:#26344A; --line-soft:#1B2739;
+    --margin:#00F5FF; --ink:#F2F7FF; --ink-soft:#93A4BD;
+    --brass:#00E5FF; --gold:#B8FF00; --gold-bright:#D7FF66;
+    --neon-pink:#FF2BD6; --neon-purple:#9B5CFF;
+    --danger:#FF4D6D; --danger-soft:#351523; --ok:#39FFB6; --ok-soft:#102F2A;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     background:
-      radial-gradient(1100px 600px at 12% -10%, #FFF3CE 0%, transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, #FFE9C2 0%, transparent 55%),
+      radial-gradient(850px 520px at 8% -10%, rgba(0,245,255,.14), transparent 62%),
+      radial-gradient(800px 500px at 100% 4%, rgba(255,43,214,.12), transparent 58%),
+      radial-gradient(700px 500px at 50% 100%, rgba(155,92,255,.08), transparent 60%),
       var(--paper);
     background-attachment:fixed;
     font-family:'Inter',sans-serif;
@@ -79,10 +71,10 @@
   .chat-primary{background:linear-gradient(120deg,var(--brass),var(--gold));color:#3A2705;box-shadow:0 6px 16px -8px rgba(224,149,42,.7);}
   .chat-secondary{background:#FFF3D2;color:#6B480A;border:1px solid var(--line);}
   .chat-divider{display:flex;align-items:center;gap:10px;margin:13px 0;color:var(--ink-soft);font:10px 'IBM Plex Mono',monospace;}.chat-divider:before,.chat-divider:after{content:'';height:1px;background:var(--line-soft);flex:1;}
-  .chat-output{margin-top:13px;padding:13px;border-radius:12px;background:#241d12;color:#FFF3D2;}
+  .chat-output{margin-top:13px;padding:13px;border-radius:12px;background:#070B12;color:#DFFBFF;box-shadow:0 0 24px rgba(0,229,255,.08) inset;}
   .chat-output-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:7px;}.chat-output-head strong{font-size:12px;}.chat-output-head span{font:600 9px 'IBM Plex Mono',monospace;padding:3px 6px;border:1px solid #725c38;border-radius:5px;}
-  #chat-encrypted{width:100%;min-height:70px;padding:9px;border:1px solid #725c38;border-radius:7px;background:#17120c;color:#FFE9B8;font:10px 'IBM Plex Mono',monospace;word-break:break-all;resize:vertical;}
-  .chat-copy{margin-top:7px;width:100%;padding:9px;border:1px solid #8A6B35;border-radius:7px;background:#3A2D1A;color:#FFE9B8;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;}
+  #chat-encrypted{width:100%;min-height:70px;padding:9px;border:1px solid #725c38;border-radius:7px;background:#05080D;color:#CFFFF8;font:10px 'IBM Plex Mono',monospace;word-break:break-all;resize:vertical;}
+  .chat-copy{margin-top:7px;width:100%;padding:9px;border:1px solid #8A6B35;border-radius:7px;background:#111C2B;color:#CFFFF8;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;}
   .chat-help{margin-top:11px;border:1px solid var(--line-soft);border-radius:9px;padding:9px 11px;font-size:11px;color:var(--ink-soft);}.chat-help summary{cursor:pointer;color:var(--ink);font-weight:600;}.chat-help ol{margin:8px 0 2px;padding-left:20px;line-height:1.6;}
   .chat-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
   @media(max-width:700px){.chat-head{flex-direction:column;}.chat-steps{grid-template-columns:1fr;gap:6px;}.chat-form{grid-template-columns:1fr 1fr;}.chat-form .chat-wide{grid-column:span 2;}.chat-type-grid{grid-template-columns:1fr;}.chat-primary,.chat-secondary{width:100%;}.chat-actions .tab-btn{flex:1 1 100%;}}
@@ -99,14 +91,14 @@
     transition:box-shadow .15s ease, background .15s ease, color .15s ease;
   }
   .tab-btn:hover{ box-shadow:0 4px 14px -6px rgba(224,149,42,.5); }
-  .tab-btn.active{ background:linear-gradient(120deg, var(--brass), var(--gold)); color:#3A2705; border-color:transparent; }
+  .tab-btn.active{ background:linear-gradient(120deg, var(--brass), var(--gold)); color:#06100B; border-color:transparent; }
 
   /* ---- Hero / cover ---- */
   .cover{
     display:flex; align-items:center; justify-content:space-between; gap:24px; padding:26px 28px;
     border-radius:18px; margin-bottom:22px; flex-wrap:wrap; position:relative; overflow:hidden;
-    background:linear-gradient(135deg, #FFFCF3 0%, #FFF3D2 100%);
-    box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 14px 34px -18px rgba(224,149,42,.55), 0 0 0 1px var(--line-soft);
+    background:linear-gradient(135deg,#111A28 0%,#0B111C 100%);
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 14px 34px -18px rgba(0,229,255,.45),0 0 0 1px rgba(0,229,255,.18);
   }
   .cover::after{ content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(420px 220px at 90% -20%, rgba(255,201,74,.45), transparent 70%); }
   .cover-figures{ font-family:'IBM Plex Mono', monospace; position:relative; z-index:1; }
@@ -119,7 +111,7 @@
     display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center;
     font-family:'IBM Plex Mono',monospace; color:#7A4E12;
     background:conic-gradient(from -20deg, var(--gold-bright), var(--gold) 25%, var(--brass) 50%, var(--gold) 75%, var(--gold-bright) 100%);
-    box-shadow:0 0 0 4px #FFFDF6, 0 0 26px 4px rgba(255,201,74,.65), 0 10px 22px -10px rgba(224,149,42,.7);
+    box-shadow:0 0 0 4px #101622,0 0 28px 5px rgba(0,229,255,.32),0 10px 22px -10px rgba(184,255,0,.5);
     transition:transform .3s ease, box-shadow .3s ease;
   }
   .stamp::before{ content:''; position:absolute; inset:9px; border-radius:50%; background:#FFFDF6; box-shadow:0 1px 3px rgba(0,0,0,.08) inset; }
@@ -137,7 +129,7 @@
   .toolbar input[type="text"]:focus{ outline:2px solid var(--gold); outline-offset:1px; }
   .sort-btn{ padding:9px 14px; border:1px solid var(--line); border-radius:8px; background:var(--paper-card); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.03em; cursor:pointer; color:var(--ink-soft); transition:box-shadow .15s ease, background .15s ease, color .15s ease; }
   .sort-btn:hover{ box-shadow:0 4px 14px -6px rgba(224,149,42,.5); }
-  .sort-btn.active{ background:linear-gradient(120deg, var(--brass), var(--gold)); color:#3A2705; border-color:transparent; }
+  .sort-btn.active{ background:linear-gradient(120deg, var(--brass), var(--gold)); color:#06100B; border-color:transparent; }
 
   /* ---- Ledger rows ---- */
   .section-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); margin:26px 0 10px; }
@@ -2776,6 +2768,8 @@ async function refreshRecoveryStatus(){
         el.textContent='✓ Recovery package saved'+(when ? ' · '+when : '');
         el.style.color='var(--ok)';
         el.style.background='var(--ok-soft)';
+        el.style.borderColor='rgba(57,255,182,.45)';
+        el.style.boxShadow='0 0 14px rgba(57,255,182,.12)';
         return;
       }
     }
