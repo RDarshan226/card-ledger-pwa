@@ -2478,7 +2478,7 @@ function renderDues(){
   if(!projected.length) html+=`<div class="due-empty">No current ledger outstanding with a saved billing date.</div>`;
   else projected.forEach(x=>{const d=new Date(x.billDate+"T00:00:00");html+=`<div class="due-item"><div class="due-day">${x.billDate.slice(8)}</div><div><div class="due-card">${x.card.name}</div><div class="due-meta">Projected ledger outstanding · next bill date ${d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</div></div><div class="due-amt">${inr(x.amount)}</div><div class="due-min hide-sm">—</div><div class="due-paid hide-sm">—</div><div class="due-status"><span class="status-badge soon">Projected</span></div><div class="due-actions"></div></div>`;});
   html+=`</div></div>`;
-  <div class="panel">
+  html+=`  <div class="panel">
     <h2>Add statement</h2>
     <div class="sub">Enter the figures exactly as shown on the card statement. You can add multiple statements for the same card across months.</div>
     <div class="due-form">
@@ -2492,6 +2492,7 @@ function renderDues(){
     </div>
     <div class="due-help">Tip: current outstanding in your bank app may be higher than the statement total because it can include transactions made after the statement date. Record only the statement total as <b>Total due</b>; those newer transactions remain in the Ledger tab.</div>
   </div>`;
+`;
   app.innerHTML=html;
 }
 function setDueMonth(v){ window._dueMonth=v; render(); }
