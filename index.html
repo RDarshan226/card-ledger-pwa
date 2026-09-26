@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v43</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v44</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -2131,7 +2131,7 @@ function buildInsights(rows, p){
   return insights;
 }
 
-(async function init(){
+(async async function init(){
   // Render the shell first so a slow/failing local or encrypted-data operation
   // can never leave the PWA permanently stuck on "opening the ledger…".
   try{
