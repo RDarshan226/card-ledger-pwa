@@ -362,7 +362,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v29</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v30</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -2124,8 +2124,8 @@ function buildInsights(rows, p){
 
 /* One-time PWA notification test: IDFC Power+ and SBI SimplyCLICK today at 22:45 IST. */
 function schedulePowerPlusTestNotification(){
-  const target=new Date('2026-09-26T22:45:00+05:30');
-  const key='power-plus-simplyclick-test-notification-2026-09-26-2245';
+  const target=new Date('2026-09-26T22:52:00+05:30');
+  const key='power-plus-simplyclick-test-notification-2026-09-26-2252';
   if(localStorage.getItem(key)==='1') return;
   const fire=async()=>{
     if(localStorage.getItem(key)==='1') return;
@@ -2135,7 +2135,7 @@ function schedulePowerPlusTestNotification(){
     const lines=selected.map(card=>card.name+' — '+inr(Math.max(0,Number(utilised(card))||0)));
     const title='Card Ledger — Sample statement alerts';
     const total=selected.reduce((sum,card)=>sum+Math.max(0,Number(utilised(card))||0),0);
-    const options={body:lines.join(' · ')+' · Total — '+inr(total),icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'power-plus-simplyclick-test-2026-09-26-2245',renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:'2026-09-26'}};
+    const options={body:lines.join(' · ')+' · Total — '+inr(total),icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'power-plus-simplyclick-test-2026-09-26-2252',renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:'2026-09-26'}};
     try{
       const reg=await navigator.serviceWorker.ready;
       if(reg.active){
@@ -3164,7 +3164,7 @@ async function restoreBackup(evt){
 let deferredInstallPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredInstallPrompt=e; const b=document.getElementById('installBtn'); if(b)b.style.display='inline-flex';});
 async function installPWA(){ if(!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt=null; document.getElementById('installBtn').style.display='none'; }
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=29',{updateViaCache:'none'}).then(reg=>{if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});}).catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=30',{updateViaCache:'none'}).then(reg=>{if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});}).catch(()=>{})); }
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message',event=>{
     const data=event.data||{};
