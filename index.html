@@ -362,7 +362,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v38</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v39</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1172,7 +1172,7 @@ function clearEncryptedEntryFields(){
   if(typeEl) typeEl.value='expense';
   if(subtypeEl) subtypeEl.value='txn';
 }
-async function encryptChatEntry(){
+async async function encryptChatEntry(){
   try{
     const mainType=document.getElementById('chat-entry-type').value;
     const subtype=document.getElementById('chat-entry-subtype').value;
