@@ -190,6 +190,15 @@
   .entry-form button{ background:linear-gradient(120deg, var(--brass), var(--gold)); color:#3A2705; border:none; border-radius:6px; padding:9px 16px; font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.04em; cursor:pointer; transition:box-shadow .15s ease, transform .1s ease; box-shadow:0 6px 16px -8px rgba(224,149,42,.7); }
   .entry-form button:hover{ box-shadow:0 8px 20px -6px rgba(224,149,42,.85); }
   .entry-form button:active{ transform:scale(.96); }
+  .card-entry-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;align-items:end;padding:14px 0 16px;border-bottom:1px dashed var(--line);margin-bottom:14px;}
+  .card-entry-form .field{min-width:0;}.card-entry-form .field label{display:block;margin:0 0 4px 2px;font:600 9px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .card-entry-form input,.card-entry-form select{width:100%;min-width:0;min-height:40px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font:12px Inter,sans-serif;color:var(--ink);}
+  .card-entry-form button{min-height:40px;border:0;border-radius:8px;padding:9px 14px;background:linear-gradient(120deg,var(--brass),var(--gold));color:#06100B;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;}
+  .entry-encrypt-btn{background:linear-gradient(135deg,#00CFFF,#007BFF)!important;color:#FFFFFF!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 0 16px rgba(0,191,255,.28),0 6px 18px -8px rgba(0,123,255,.8)!important;}.entry-encrypt-btn:hover{background:linear-gradient(135deg,#19D8FF,#0088FF)!important;}
+  .chat-panel,.chat-section,.detail,.detail-inner{overflow:visible;max-width:100%;}
+  @media(max-width:760px){.card-entry-form{grid-template-columns:1fr;}.card-entry-form button{width:100%;}.detail{padding-left:12px;padding-right:12px;}.table-scroll{max-width:100%;}}
+  @media(max-width:520px){.wrap{padding-left:12px;padding-right:12px;}.chat-form-stacked{gap:9px;}.chat-form-stacked .field{min-width:0;}.chat-form-stacked input,.chat-form-stacked select{width:100%;max-width:100%;}.chat-panel{margin-left:0;margin-right:0;}}
+
 
   table.statement{ width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:12px; }
   table.statement th{ text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); padding:6px 8px; border-bottom:1px solid var(--ink); }
@@ -507,6 +516,8 @@ const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
 const BACKUP_KEY = 'card-ledger-auto-backup-v1';
 const RECOVERY_STATUS_KEY = 'card-ledger-recovery-package-status-v1';
+const DELETED_ENTRIES_KEY = 'card-ledger-deleted-entries-v1';
+let deletedEntryIds = new Set();
 let dueBills = [];
 let backupSeq = 0;
 let cashbackLog = [];
@@ -1195,13 +1206,15 @@ async function loadChatUpdates(){
   }catch(e){}
   return chatUpdates;
 }
+async function loadDeletedEntries(){try{const res=await window.storage.get(DELETED_ENTRIES_KEY,false);const ids=res&&res.value?JSON.parse(res.value):[];deletedEntryIds=new Set(Array.isArray(ids)?ids:[]);}catch(e){deletedEntryIds=new Set();}}
+async function saveDeletedEntries(){try{await window.storage.set(DELETED_ENTRIES_KEY,JSON.stringify([...deletedEntryIds]),false);return true;}catch(e){return false;}}
 async function mergeChatEntries(){
   for(const item of chatUpdates.entries||[]){
     if(!item.payload) continue;
     try{
       const p=await decryptChatPayload(item.payload);
       if(p.kind!=='transaction') continue;
-      if(!p.id || !p.card) continue;
+      if(!p.id || !p.card || deletedEntryIds.has(p.id)) continue;
       const c=cards.find(x=>x.name===p.card);
       if(!c || (c.entries||[]).some(t=>t.id===p.id)) continue;
       c.entries=c.entries||[];
@@ -1219,7 +1232,7 @@ async function mergeChatEntries(){
   for(const seed of (chatUpdates.entries||[])){
     try{
       const item=await decryptChatPayload(seed.payload);
-      if(!item.id) continue;
+      if(!item.id || deletedEntryIds.has(item.id)) continue;
       if(item.kind==='cashback'){
         if(!cashbackLog.some(e=>e.id===item.id)){
           cashbackLog.push({id:item.id,type:item.type==='charge'?'charge':'cashback',date:item.date||todayStr(),amount:Number(item.amount)||0,category:item.category||'',note:item.note||'',_fresh:true});
@@ -1253,6 +1266,7 @@ function refreshChatCardOptions(){
   if(current && usable.some(c=>c.name===current)) sel.value=current;
 }
 async function loadData(){
+  await loadDeletedEntries();
   await loadChatUpdates();
   try{
     if(window.storage && typeof window.storage.get === 'function'){
@@ -1424,7 +1438,7 @@ async function loadData(){
   let addedAny = await mergeChatEntries();
   SEED_ENTRIES.forEach(seed => {
     const card = cards.find(c => c.name === seed.card);
-    if(!card) return;
+    if(!card || deletedEntryIds.has(seed.id)) return;
     const existing = card.entries.find(e => e.id === seed.id);
     if(!existing){
       card.entries.push({ id: seed.id, type: seed.type, date: seed.date, amount: seed.amount, note: seed.note || '', category: seed.category || '', platform: seed.platform || '', rewardRatePct: seed.rewardRatePct!=null ? seed.rewardRatePct : null, rewardAmountOverride: seed.rewardAmountOverride!=null ? seed.rewardAmountOverride : null, surchargeAmount: seed.surchargeAmount!=null ? seed.surchargeAmount : null });
@@ -1747,10 +1761,19 @@ function renderDetail(card){
 
   return `
     ${limitFields}
-    ${entries.length ? `<table class="statement">
+    <div class="card-entry-form">
+      <div class="field"><label>Type</label><select id="type-${card.id}"><option value="txn">Expense</option><option value="repay">Card repayment</option></select></div>
+      <div class="field"><label>Date</label><input id="date-${card.id}" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>Amount ₹</label><input id="amt-${card.id}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Amount"></div>
+      <div class="field"><label>Category</label><input id="cat-${card.id}" type="text" list="cat-list" placeholder="Shopping / Bills"></div>
+      <div class="field"><label>Platform / Merchant</label><input id="plat-${card.id}" type="text" placeholder="Amazon / merchant"></div>
+      <div class="field"><label>Note</label><input id="note-${card.id}" type="text" placeholder="Optional note"></div>
+      <button class="card-entry-add" onclick="addEntry('${card.id}',event)">Add entry</button>
+    </div>
+    ${entries.length ? `<div class="table-scroll"><table class="statement">
       <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category / Platform</th><th>Note</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>` : '<div class="empty-stmt">No entries logged yet for this card.</div>'}
+    </table></div>` : '<div class="empty-stmt">No entries logged yet for this card.</div>'}
   `;
 }
 
@@ -1788,8 +1811,10 @@ async function addEntry(id, evt){
 }
 async function deleteEntry(cardId, entryId, evt){
   evt.stopPropagation();
-  const c = findCard(cardId);
+  const c = findCard(cardId); if(!c) return;
   c.entries = c.entries.filter(e=>e.id!==entryId);
+  deletedEntryIds.add(entryId);
+  await saveDeletedEntries();
   await saveData();
   render();
   showToast('Entry removed');
@@ -2396,6 +2421,8 @@ async function saveDues(){
   try{ await window.storage.set(DUES_KEY,JSON.stringify(dueBills),false); try{ await writeAutoBackup(); }catch(_e){} return true; }catch(e){ showToast('Could not save dues'); return false; }
 }
 function billFor(cardId, dueDate){ return dueBills.find(b=>b.cardId===cardId && b.dueDate===dueDate); }
+function nextBillingDateFor(card){const day=parseDay(card.billingDate);if(!day)return null;const now=new Date();let y=now.getFullYear(),m=now.getMonth();let candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));if(candidate<new Date(now.getFullYear(),now.getMonth(),now.getDate())){m++;if(m>11){m=0;y++;}candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));}return candidate.toISOString().slice(0,10);}
+function projectedLedgerDues(){return cards.filter(c=>!c.isDebit&&!c.feeOnly).map(c=>({card:c,amount:Math.max(0,utilised(c)),billDate:nextBillingDateFor(c)})).filter(x=>x.amount>0&&x.billDate).sort((a,b)=>a.billDate.localeCompare(b.billDate));}
 function renderDues(){
   const app=document.getElementById('app');
   const now=new Date();
@@ -2446,6 +2473,11 @@ function renderDues(){
     });
   }
   html+=`</div></div>
+  html+=`<div class="panel"><h2>Ledger-based upcoming dues</h2><div class="sub">Projected from current outstanding and the saved billing date. The actual payment due date remains the one shown on the bank statement.</div><div class="due-list">`;
+  const projected=projectedLedgerDues();
+  if(!projected.length) html+=`<div class="due-empty">No current ledger outstanding with a saved billing date.</div>`;
+  else projected.forEach(x=>{const d=new Date(x.billDate+"T00:00:00");html+=`<div class="due-item"><div class="due-day">${x.billDate.slice(8)}</div><div><div class="due-card">${x.card.name}</div><div class="due-meta">Projected ledger outstanding · next bill date ${d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</div></div><div class="due-amt">${inr(x.amount)}</div><div class="due-min hide-sm">—</div><div class="due-paid hide-sm">—</div><div class="due-status"><span class="status-badge soon">Projected</span></div><div class="due-actions"></div></div>`;});
+  html+=`</div></div>`;
   <div class="panel">
     <h2>Add statement</h2>
     <div class="sub">Enter the figures exactly as shown on the card statement. You can add multiple statements for the same card across months.</div>
@@ -3019,7 +3051,7 @@ async function restoreBackup(evt){
 let deferredInstallPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredInstallPrompt=e; const b=document.getElementById('installBtn'); if(b)b.style.display='inline-flex';});
 async function installPWA(){ if(!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt=null; document.getElementById('installBtn').style.display='none'; }
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(()=>{})); }
 initTheme();
 </script>
 <datalist id="cat-list">
