@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v49</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v50</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1338,6 +1338,27 @@ async function importRecoveryPackageUI(){
     setTimeout(()=>location.reload(),700);
   }catch(e){ showToast(e.message||'Recovery package could not be verified'); }
 }
+async function resetChatEncryptionUI(){
+  const ok=confirm('Start a fresh Chat encryption setup? This will replace only the local Chat encryption key. Your card data, ledger data and recovery package files will not be deleted. The old GitHub encrypted transaction feed has been archived in Git history and will no longer be used by this fresh setup.');
+  if(!ok) return;
+  try{
+    await window.storage.remove(CHAT_KEY_STORAGE_KEY);
+    const freshKey=await getChatCryptoKey();
+    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:false, resetAt:new Date().toISOString()}));
+    const jwk=await crypto.subtle.exportKey('jwk',freshKey);
+    const fingerprint=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(jwk)));
+    const hex=Array.from(new Uint8Array(fingerprint)).map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,12).toUpperCase();
+    const out=document.getElementById('chatKeyDiagnostic');
+    if(out){
+      out.style.color='var(--ok)';
+      out.textContent='✓ Fresh Chat encryption key created · ID '+hex+' · Old key was not retained or exported';
+    }
+    refreshRecoveryStatus();
+    showToast('Fresh Chat encryption key created — export a new recovery package now');
+  }catch(e){
+    showToast(e.message||'Could not reset Chat encryption');
+  }
+}
 function clearEncryptedEntryFields(){
   const dateEl=document.getElementById('chat-date');
   const amountEl=document.getElementById('chat-amount');
@@ -1823,7 +1844,7 @@ function renderQuickEntryPanel(){
         <div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div>
       </div>
 
-      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="resetChatEncryptionUI()">♻ Reset Chat Encryption</button></div>
       <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
       <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
