@@ -1,4 +1,4 @@
-const CACHE='card-ledger-pwa-v17';
+const CACHE='card-ledger-pwa-v18';
 const APP=['./','./index.html','./manifest.json','./sw.js','./chat-updates.json','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
@@ -13,12 +13,45 @@ self.addEventListener('activate',event=>{
   );
 });
 
+self.addEventListener('message',event=>{
+  const data=event.data||{};
+  if(data.type==='SHOW_STATEMENT_NOTIFICATION'){
+    const title=String(data.title||'Credit Card Statement');
+    const options=Object.assign({},data.options||{});
+    event.waitUntil(self.registration.showNotification(title,options));
+  }
+});
+
+self.addEventListener('periodicsync',event=>{
+  if(event.tag==='card-ledger-statement-check'){
+    event.waitUntil(
+      self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>{
+        clients.forEach(client=>client.postMessage({type:'CHECK_STATEMENT_NOTIFICATIONS'}));
+      })
+    );
+  }
+});
+
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  const target=(event.notification.data&&event.notification.data.url)||'./';
+  event.waitUntil(
+    clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+      for(const client of list){
+        if('focus' in client){
+          try{client.postMessage({type:'OPEN_STATEMENT_CARD',cardId:event.notification.data&&event.notification.data.cardId});}catch(e){}
+          return client.focus();
+        }
+      }
+      if(clients.openWindow) return clients.openWindow(target);
+    })
+  );
+});
+
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET') return;
   const url=new URL(event.request.url);
 
-  // The encrypted feed must prefer the network so newly uploaded ciphertext is
-  // picked up promptly; cached ciphertext is only the offline fallback.
   if(url.pathname.endsWith('/chat-updates.json')){
     event.respondWith(
       fetch(event.request,{cache:'no-store'})
