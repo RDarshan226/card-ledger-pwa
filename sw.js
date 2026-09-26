@@ -1,4 +1,4 @@
-const CACHE='card-ledger-pwa-v34';
+const CACHE='card-ledger-pwa-v35';
 const APP=['./','./index.html','./manifest.json','./sw.js','./chat-updates.json','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
@@ -62,6 +62,20 @@ self.addEventListener('fetch',event=>{
           return response;
         })
         .catch(()=>caches.match('./chat-updates.json'))
+    );
+    return;
+  }
+
+  const isNavigation = event.request.mode === 'navigate' || (event.request.headers.get('accept')||'').includes('text/html');
+  if(isNavigation){
+    event.respondWith(
+      fetch(event.request,{cache:'no-store'})
+        .then(response=>{
+          const copy=response.clone();
+          caches.open(CACHE).then(c=>c.put('./index.html',copy));
+          return response;
+        })
+        .catch(()=>caches.match('./index.html'))
     );
     return;
   }
