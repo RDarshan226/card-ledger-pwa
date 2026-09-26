@@ -1117,17 +1117,32 @@ function b64ToBytes(str){
 }
 async function getChatCryptoKey(){
   if(!window.crypto || !window.crypto.subtle) throw new Error('Web Crypto is unavailable. Open the PWA over HTTPS.');
-  try{
-    const saved = await window.storage.get(CHAT_KEY_STORAGE_KEY, false);
-    if(saved && saved.value){
-      const jwk = JSON.parse(saved.value);
-      return await crypto.subtle.importKey('jwk', jwk, {name:'AES-GCM'}, true, ['encrypt','decrypt']);
+  let saved=null;
+  try{ saved=await window.storage.get(CHAT_KEY_STORAGE_KEY, false); }catch(e){
+    throw new Error('The saved Chat encryption key could not be opened with the current recovery key. Import the recovery package that was exported after Chat/GitHub encryption was enabled.');
+  }
+  if(saved && saved.value){
+    try{
+      const jwk=JSON.parse(saved.value);
+      return await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    }catch(e){
+      throw new Error('The saved Chat encryption key is invalid. Import a current Card Ledger recovery package.');
     }
-  }catch(e){}
-  const key = await crypto.subtle.generateKey({name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
-  const jwk = await crypto.subtle.exportKey('jwk', key);
-  await window.storage.set(CHAT_KEY_STORAGE_KEY, JSON.stringify(jwk));
+  }
+  const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+  const jwk=await crypto.subtle.exportKey('jwk',key);
+  await window.storage.set(CHAT_KEY_STORAGE_KEY,JSON.stringify(jwk));
   return key;
+}
+async function verifyChatEncryptionKey(){
+  try{
+    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+    if(!feed.length) return {ok:true,reason:'empty'};
+    await decryptChatPayload(feed[0].payload);
+    return {ok:true,reason:'match'};
+  }catch(e){
+    return {ok:false,reason:e&&e.message?e.message:'decrypt failed'};
+  }
 }
 async function exportRecoveryPackageUI(){
   try{
@@ -1289,7 +1304,7 @@ async function syncEncryptedChatUpdates(showResult){
       if(showResult) showToast(result.added+' new transaction'+(result.added===1?'':'s')+' synced');
     }else if(showResult){
       if(result.feedCount===0) showToast('Encrypted feed is empty');
-      else if(result.failed===result.feedCount) showToast('Encrypted data found, but the recovery key does not match');
+      else if(result.failed===result.feedCount) showToast('Encrypted data found, but this device does not have the matching Chat encryption key. Import the recovery package that includes the Chat key.');
       else if(result.failed>0) showToast(result.decrypted+' encrypted entries read; '+result.failed+' could not be decrypted');
       else if(result.skipped===result.feedCount) showToast('Encrypted entries already synced');
       else showToast('No new encrypted transactions');
