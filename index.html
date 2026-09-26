@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v50</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v51</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -505,6 +505,46 @@
     await rawSet(CHAT_KEY_STORAGE_KEY,await encryptValue(JSON.stringify(payload.chatJwk)));
     return true;
   }
+  async function verifyRecoveryPackage(token,password){
+    if(!password || password.length < 8) throw new Error('Recovery password required');
+    const parts=String(token||'').trim().split('.');
+    if(parts.length!==4 || parts[0]!=='CLREC1') throw new Error('Invalid recovery package');
+    const salt=unb64(parts[1]), iv=unb64(parts[2]), ct=unb64(parts[3]);
+    const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+    const wrap=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+    let payload;
+    try{ payload=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv},wrap,ct))); }catch(e){ throw new Error('Wrong password or damaged recovery package'); }
+    if(!payload || payload.v!==1 || !payload.localJwk || !payload.chatJwk) throw new Error('Recovery package is incomplete');
+    let candidateLocal,candidateChat;
+    try{
+      candidateLocal=await crypto.subtle.importKey('jwk',payload.localJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+      candidateChat=await crypto.subtle.importKey('jwk',payload.chatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    }catch(e){ throw new Error('Recovery package contains an invalid encryption key'); }
+
+    const currentLocal=await localKey();
+    const currentChatJwk=await (async()=>{
+      const rec=await rawGet(CHAT_KEY_STORAGE_KEY);
+      if(!rec) throw new Error('No current Chat encryption key is stored on this device');
+      const plain=await decryptValue(rec);
+      return JSON.parse(plain);
+    })();
+    const currentChat=await crypto.subtle.importKey('jwk',currentChatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+
+    const probe=crypto.getRandomValues(new Uint8Array(32));
+    const iv1=crypto.getRandomValues(new Uint8Array(12));
+    const ctLocal=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv1},currentLocal,probe);
+    try{ await crypto.subtle.decrypt({name:'AES-GCM',iv:iv1},candidateLocal,ctLocal); }catch(e){ throw new Error('Recovery package local key does not match this device. Nothing was changed.'); }
+    const iv2=crypto.getRandomValues(new Uint8Array(12));
+    const ctChat=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv2},currentChat,probe);
+    try{ await crypto.subtle.decrypt({name:'AES-GCM',iv:iv2},candidateChat,ctChat); }catch(e){ throw new Error('Recovery package Chat key does not match the current Chat key. Nothing was changed.'); }
+
+    const fingerprint=async keyJwk=>{
+      const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(keyJwk)));
+      return Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,12).toUpperCase();
+    };
+    return {chatKeyId:await fingerprint(currentChatJwk),localKeyId:await fingerprint(payload.localJwk)};
+  }
+
   window.storage={
     async exportEncryptedText(value){ return await encryptValue(value); },
     async importEncryptedText(record){
@@ -512,6 +552,7 @@
       return await decryptValue(record);
     },
     async exportRecoveryPackage(password,chatJwk){ return await exportRecoveryPackage(password,chatJwk); },
+    async verifyRecoveryPackage(token,password){ return await verifyRecoveryPackage(token,password); },
     async importRecoveryPackage(token,password){ return await importRecoveryPackage(token,password); },
     async get(key){
       const record=await rawGet(key);
@@ -1325,6 +1366,33 @@ async function exportRecoveryPackageUI(){
     showToast('Password-protected recovery package copied');
   }catch(e){ showToast(e.message||'Could not create recovery package'); }
 }
+async function verifyRecoveryPackageUI(){
+  const token=prompt('Paste the recovery package you saved (CLREC1....)');
+  if(!token) return;
+  const password=prompt('Enter the recovery password');
+  if(!password) return;
+  const out=document.getElementById('chatKeyDiagnostic');
+  try{
+    if(out){ out.style.color='var(--ink-soft)'; out.textContent='Recovery package test: verifying password, key integrity and current-key match…'; }
+    const result=await window.storage.verifyRecoveryPackage(token,password);
+    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({
+      exported:true,
+      verified:true,
+      verifiedAt:new Date().toISOString(),
+      chatKeyId:result.chatKeyId,
+      localKeyId:result.localKeyId
+    }));
+    if(out){
+      out.style.color='var(--ok)';
+      out.textContent='✓ Recovery package VERIFIED · Chat Key ID '+result.chatKeyId+' · Local Key ID '+result.localKeyId+' · No key or data was changed';
+    }
+    refreshRecoveryStatus();
+    showToast('Recovery package verified — safe to proceed');
+  }catch(e){
+    if(out){ out.style.color='var(--danger)'; out.textContent='⚠ Recovery package test failed · '+(e.message||'Unknown error')+' · No key or data was changed'; }
+    showToast(e.message||'Recovery package could not be verified');
+  }
+}
 async function importRecoveryPackageUI(){
   const token=prompt('Paste your Card Ledger recovery package (CLREC1....)');
   if(!token) return;
@@ -1332,14 +1400,20 @@ async function importRecoveryPackageUI(){
   if(!password) return;
   try{
     await window.storage.importRecoveryPackage(token,password);
-    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:true, importedAt:new Date().toISOString()}));
+    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:true, importedAt:new Date().toISOString(),verified:true,verifiedAt:new Date().toISOString()}));
     refreshRecoveryStatus();
-    showToast('Recovery package verified against GitHub encrypted data — reload the PWA');
+    showToast('Recovery package verified — reload the PWA');
     setTimeout(()=>location.reload(),700);
   }catch(e){ showToast(e.message||'Recovery package could not be verified'); }
 }
 async function resetChatEncryptionUI(){
-  const ok=confirm('Start a fresh Chat encryption setup? This will replace only the local Chat encryption key. Your card data, ledger data and recovery package files will not be deleted. The old GitHub encrypted transaction feed has been archived in Git history and will no longer be used by this fresh setup.');
+  let warning='Start a fresh Chat encryption setup? This will replace the current local Chat encryption key. Any recovery package for the current key will no longer recover the new key. Your card data, ledger data and existing recovery package files will not be deleted. Only do this if you deliberately want a completely new encryption key.';
+  try{
+    const statusRes=await window.storage.get(RECOVERY_STATUS_KEY);
+    const status=statusRes&&statusRes.value?JSON.parse(statusRes.value):null;
+    if(status&&status.verified) warning+=' Your current recovery package is marked VERIFIED, so resetting now would deliberately invalidate that backup.';
+  }catch(e){}
+  const ok=confirm(warning);
   if(!ok) return;
   try{
     await window.storage.remove(CHAT_KEY_STORAGE_KEY);
@@ -1844,7 +1918,7 @@ function renderQuickEntryPanel(){
         <div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div>
       </div>
 
-      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="resetChatEncryptionUI()">♻ Reset Chat Encryption</button></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="resetChatEncryptionUI()">♻ Reset Chat Encryption</button></div>
       <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
       <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
@@ -3390,7 +3464,7 @@ async function refreshRecoveryStatus(){
       if(status && status.exported){
         const stamp=status.exportedAt || status.importedAt;
         const when=stamp ? new Date(stamp).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-        el.textContent='✓ Recovery package saved'+(when ? ' · '+when : '');
+        el.textContent=(status.verified?'✓ Recovery package VERIFIED':'✓ Recovery package saved')+(when ? ' · '+when : '');
         el.style.color='var(--ok)';
         el.style.background='var(--ok-soft)';
         el.style.borderColor='rgba(57,255,182,.45)';
