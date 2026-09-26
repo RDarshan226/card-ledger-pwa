@@ -2969,27 +2969,29 @@ function renderRewards(){
 function schedulePowerPlusTestNotification(){
   const now=new Date();
   const targets=[
-    {h:23,m:27,key:'2327',label:'11:27 PM'},
-    {h:23,m:30,key:'2330',label:'11:30 PM'}
+    {h:23,m:40,key:'2340',label:'11:40 PM'},
+    {h:23,m:45,key:'2345',label:'11:45 PM'},
+    {h:23,m:50,key:'2350',label:'11:50 PM'}
   ];
   targets.forEach(t=>{
     const target=new Date(now);
     target.setHours(t.h,t.m,0,0);
     if(target<=now) return;
-    const delay=target-now;
+    const delay=target.getTime()-Date.now();
     setTimeout(async()=>{
       try{
         if(!notificationSupported()) return;
         let permission=Notification.permission;
         if(permission!=='granted') permission=await Notification.requestPermission();
         if(permission!=='granted') return;
+        const selected=['IDFC Power+','SBI SimplyClick'].map(name=>cards.find(c=>c.name===name)).filter(Boolean);
+        const lines=selected.map(card=>card.name+' — '+inr(Math.max(0,Number(utilised(card))||0)));
         const title='Card Ledger — Sample notification';
-        const options={body:'Sample alert scheduled for '+t.label+' · IDFC Power+ · SBI SimplyClick',icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'card-ledger-sample-'+t.key,renotify:true,data:{url:'./'}};
-        if(navigator.serviceWorker&&navigator.serviceWorker.controller){
-          navigator.serviceWorker.controller.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
-        }else if(Notification.permission==='granted'){
-          new Notification(title,options);
-        }
+        const total=selected.reduce((sum,card)=>sum+Math.max(0,Number(utilised(card))||0),0);
+        const options={body:lines.join(' · ')+' · Total — '+inr(total)+' · Test '+t.label,icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'card-ledger-sample-'+t.key,renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:todayStr()}};
+        const reg=await navigator.serviceWorker.ready;
+        if(reg.active) reg.active.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
+        else if(Notification.permission==='granted') new Notification(title,options);
       }catch(e){}
     },delay);
   });
