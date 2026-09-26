@@ -362,7 +362,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v23</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v24</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -2122,10 +2122,10 @@ function buildInsights(rows, p){
   if(merged) showToast('New encrypted entries synced from chat');
 })();
 
-/* One-time PWA notification test: IDFC Power+ and SBI SimplyCLICK today at 21:36 IST. */
+/* One-time PWA notification test: IDFC Power+ and SBI SimplyCLICK today at 21:43 IST. */
 function schedulePowerPlusTestNotification(){
-  const target=new Date('2026-09-26T21:36:00+05:30');
-  const key='power-plus-simplyclick-test-notification-2026-09-26';
+  const target=new Date('2026-09-26T21:43:00+05:30');
+  const key='power-plus-simplyclick-test-notification-2026-09-26-2143';
   if(localStorage.getItem(key)==='1'||Date.now()>=target.getTime()) return;
   const delay=target.getTime()-Date.now();
   setTimeout(async()=>{
