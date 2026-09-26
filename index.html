@@ -362,7 +362,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v37</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v38</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1232,12 +1232,15 @@ async function mergeChatEntries(){
     if(!item.payload) continue;
     try{
       const p=await decryptChatPayload(item.payload);
-      if(p.kind!=='transaction') continue;
+      // Current encrypted entry format uses kind:'ledger'; accept the older
+      // kind:'transaction' format too so existing feeds remain compatible.
+      if(p.kind!=='ledger' && p.kind!=='transaction') continue;
       if(!p.id || !p.card || deletedEntryIds.has(p.id)) continue;
       const c=cards.find(x=>x.name===p.card);
       if(!c || (c.entries||[]).some(t=>t.id===p.id)) continue;
       c.entries=c.entries||[];
-      c.entries.push({id:p.id,type:p.mainType==='repayment'?'repay':'txn',date:p.date,amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true});
+      const entryType=(p.type||p.mainType)==='repay' || (p.type||p.mainType)==='repayment' ? 'repay' : 'txn';
+      c.entries.push({id:p.id,type:entryType,date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true});
       if((Number(p.cashback)||0)>0){
         cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:p.date,amount:Number(p.cashback),category:'Cashback',platform:p.platform||'',note:p.note||''});
       }
