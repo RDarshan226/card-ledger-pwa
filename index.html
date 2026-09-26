@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v40</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v41</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -2130,18 +2130,34 @@ function buildInsights(rows, p){
 }
 
 (async function init(){
-  const merged = await loadData();
-  await loadCashback();
-  await loadDues();
-  render();
-  refreshChatCardOptions();
-  refreshRecoveryStatus();
-  refreshGitHubStatus();
-  registerNotificationBackgroundCheck();
-  setTimeout(checkStatementNotifications,1200);
-  setInterval(checkStatementNotifications,15*60*1000);
-  schedulePowerPlusTestNotification();
-  if(merged) showToast('New encrypted entries synced from chat');
+  // Render the shell first so a slow/failing local or encrypted-data operation
+  // can never leave the PWA permanently stuck on "opening the ledger…".
+  try{
+    initTheme();
+    render();
+  }catch(e){}
+  try{
+    const merged = await loadData();
+    await loadCashback();
+    await loadDues();
+    render();
+    refreshChatCardOptions();
+    refreshRecoveryStatus();
+    refreshGitHubStatus();
+    registerNotificationBackgroundCheck();
+    setTimeout(checkStatementNotifications,1200);
+    setInterval(checkStatementNotifications,15*60*1000);
+    schedulePowerPlusTestNotification();
+    if(merged) showToast('New encrypted entries synced from chat');
+  }catch(e){
+    // Keep the already-rendered interface usable even if one startup data source fails.
+    try{
+      render();
+      refreshChatCardOptions();
+      refreshRecoveryStatus();
+    }catch(_e){}
+    try{ showToast('Ledger opened · some background data could not be loaded'); }catch(_e){}
+  }
 })();
 
 /* One-time PWA notification test: IDFC Power+ and SBI SimplyCLICK today at 22:45 IST. */
