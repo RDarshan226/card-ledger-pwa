@@ -364,7 +364,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v53</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v54</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -377,7 +377,6 @@
     <button class="tab-btn" id="tab-cashback" onclick="setTab('cashback')">Cashback &amp; Charges</button>
     <button class="tab-btn" id="tab-rewards" onclick="setTab('rewards')">Rewards</button>
     <button class="tab-btn" id="tab-accounts" onclick="setTab('accounts')">Account Ages</button>
-    <button class="tab-btn" id="tab-alerts" onclick="setTab('alerts')">🔔 Alerts</button>
   </div>
   <div class="pwa-tools" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 0;">
   <button class="tab-btn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
@@ -2445,10 +2444,13 @@ async function init(){
 }
 init();
 
-/* One-time PWA notification test: IDFC Power+ and SBI SimplyCLICK today at 22:45 IST. */
+/* One-time PWA notification test: IDFC Power+ and SBI SimplyClick at the next 01:33 local time. */
 function schedulePowerPlusTestNotification(){
-  const target=new Date('2026-09-26T23:04:00+05:30');
-  const key='power-plus-simplyclick-test-notification-2026-09-26-2304';
+  const target=new Date();
+  target.setHours(1,33,0,0);
+  if(target.getTime()<=Date.now()) target.setDate(target.getDate()+1);
+  const y=target.getFullYear(), m=String(target.getMonth()+1).padStart(2,'0'), d=String(target.getDate()).padStart(2,'0');
+  const key='power-plus-simplyclick-test-notification-'+y+m+d+'-0133';
   if(localStorage.getItem(key)==='1') return;
   const fire=async()=>{
     if(localStorage.getItem(key)==='1') return;
@@ -2458,7 +2460,7 @@ function schedulePowerPlusTestNotification(){
     const lines=selected.map(card=>card.name+' — '+inr(Math.max(0,Number(utilised(card))||0)));
     const title='Card Ledger — Sample statement alerts';
     const total=selected.reduce((sum,card)=>sum+Math.max(0,Number(utilised(card))||0),0);
-    const options={body:lines.join(' · ')+' · Total — '+inr(total),icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'power-plus-simplyclick-test-2026-09-26-2304',renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:'2026-09-26'}};
+    const options={body:lines.join(' · ')+' · Total — '+inr(total),icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'power-plus-simplyclick-test-'+y+m+d+'-0133',renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:y+'-'+m+'-'+d}};
     try{
       const reg=await navigator.serviceWorker.ready;
       if(reg.active){
