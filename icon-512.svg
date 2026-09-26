@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#020617"/><stop offset=".55" stop-color="#08132d"/><stop offset="1" stop-color="#020617"/></linearGradient>
+ <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00f5ff"/><stop offset=".5" stop-color="#7b5cff"/><stop offset="1" stop-color="#ff2bd6"/></linearGradient>
+ <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#16346e"/><stop offset=".55" stop-color="#07152f"/><stop offset="1" stop-color="#32105f"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff59b"/><stop offset=".35" stop-color="#ffd43b"/><stop offset="1" stop-color="#d88700"/></linearGradient>
+ <linearGradient id="whiteGloss" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".38" stop-color="#fff"/><stop offset=".52" stop-color="#aeb8c7"/><stop offset=".7" stop-color="#fff"/><stop offset="1" stop-color="#dfe7f2"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-opacity=".55"/></filter>
+</defs>
+<rect width="512" height="512" rx="76" fill="url(#bg)"/>
+<rect x="5" y="5" width="502" height="502" rx="72" fill="none" stroke="#243d91" stroke-width="5"/>
+<circle cx="256" cy="225" r="150" fill="none" stroke="url(#ring)" stroke-width="13" filter="url(#glow)"/>
+<g filter="url(#shadow)">
+ <rect x="88" y="208" width="205" height="118" rx="19" transform="rotate(-17 88 208)" fill="#061226" stroke="#00eaff" stroke-width="5"/>
+ <rect x="99" y="193" width="205" height="118" rx="19" transform="rotate(-17 99 193)" fill="url(#card)" stroke="#a82cff" stroke-width="4"/>
+ <rect x="126" y="214" width="48" height="35" rx="7" fill="url(#gold)" stroke="#fff2a1" stroke-width="2"/>
+ <path d="M194 226c8 7 8 18 0 25m8-31c13 12 13 30 0 42m10-48c18 16 18 39 0 55" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+</g>
+<g filter="url(#shadow)">
+ <rect x="293" y="112" width="110" height="132" rx="18" fill="#0a2250" stroke="#00eaff" stroke-width="5"/>
+ <rect x="306" y="101" width="84" height="28" rx="12" fill="#128cff" stroke="#00eaff" stroke-width="4"/>
+ <circle cx="327" cy="168" r="8" fill="#2e9dff"/><circle cx="351" cy="168" r="8" fill="#2e9dff"/><circle cx="375" cy="168" r="8" fill="#2e9dff"/>
+ <circle cx="327" cy="194" r="8" fill="#2e9dff"/><circle cx="351" cy="194" r="8" fill="#2e9dff"/><circle cx="375" cy="194" r="8" fill="#70ffae"/>
+ <path d="M362 192l7 7 14-16" fill="none" stroke="#0a2" stroke-width="4" stroke-linecap="round"/>
+</g>
+<g filter="url(#shadow)">
+ <circle cx="353" cy="292" r="42" fill="url(#gold)" stroke="#fff0a0" stroke-width="5"/>
+ <text x="353" y="309" text-anchor="middle" font-family="Arial,sans-serif" font-size="49" font-weight="900" fill="#4d3000">₹</text>
+ <ellipse cx="319" cy="322" rx="31" ry="12" fill="#d98b00"/><ellipse cx="319" cy="313" rx="31" ry="12" fill="#ffd94a" stroke="#fff0a0" stroke-width="3"/><ellipse cx="319" cy="304" rx="31" ry="12" fill="#f0ad18"/>
+</g>
+<text x="256" y="397" text-anchor="middle" font-family="Arial,sans-serif" font-size="45" font-weight="900" fill="url(#whiteGloss)" stroke="#fff" stroke-width=".7" filter="url(#glow)">Card Due</text>
+<text x="256" y="440" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" font-weight="900" fill="url(#ring)">Tracker</text>
+</svg>
