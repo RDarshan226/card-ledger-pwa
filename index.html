@@ -2906,6 +2906,29 @@ async function showStatementNotification(card,date,amount){
   try{ if(Notification.permission==='granted'){new Notification(title,options);return true;} }catch(e){}
   return false;
 }
+async function sendTestNotification(){
+  if(!notificationSupported()){showToast('Notifications are not supported in this browser');return;}
+  try{
+    let permission=Notification.permission;
+    if(permission!=='granted') permission=await Notification.requestPermission();
+    if(permission!=='granted'){
+      showToast('Notification permission was not granted');
+      renderAlerts();
+      return;
+    }
+    const title='Card Ledger — Test notification';
+    const options={body:'This is a sample notification from your PWA. Statement alerts are working.',icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'card-ledger-test-notification',renotify:true,data:{url:'./'}};
+    let shown=false;
+    try{
+      if(navigator.serviceWorker&&navigator.serviceWorker.controller){
+        navigator.serviceWorker.controller.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
+        shown=true;
+      }
+    }catch(e){}
+    if(!shown&&Notification.permission==='granted'){new Notification(title,options);shown=true;}
+    showToast(shown?'Test notification sent':'Could not send test notification');
+  }catch(e){showToast('Could not send test notification');}
+}
 async function checkStatementNotifications(){
   if(!notificationSettings.enabled||!notificationSupported()||Notification.permission!=='granted') return;
   const today=todayStr(); const eligible=cards.filter(c=>!c.isDebit&&!c.feeOnly&&parseDay(c.billingDate)&&notificationCardEnabled(c));
@@ -2933,7 +2956,7 @@ function renderAlerts(){
   let html='<div class="panel"><h2>Statement notifications</h2><div class="sub">Get a notification on each saved statement date with the card name and statement amount.</div>';
   html+='<div class="notify-card"><div class="notify-head"><div class="notify-title">🔔 Statement-date alerts</div><span class="notify-status '+(enabled?'on':'off')+'">'+(enabled?'Enabled':'Disabled')+'</span></div>';
   html+='<div class="notify-info">'+(supported?(granted?'Notifications are permitted on this device. The PWA checks statement dates when it is opened or active, and uses the service worker to display the alert.':'Android/browser notification permission is not granted yet. Tap Enable to request it.'):'This browser does not expose the Notification API.')+'<br><br><b>Amount:</b> an exact statement total is used when that statement has been recorded in Upcoming Dues; otherwise the ledger outstanding observed on the statement date.</div>';
-  html+='<div class="notify-actions">'+(enabled?'<button onclick="disableStatementNotifications()">Disable notifications</button>':'<button class="primary" onclick="enableStatementNotifications()">Enable statement notifications</button>')+'<button onclick="checkStatementNotifications()">Check today now</button></div></div></div>';
+  html+='<div class="notify-actions">'+(enabled?'<button onclick="disableStatementNotifications()">Disable notifications</button>':'<button class="primary" onclick="enableStatementNotifications()">Enable statement notifications</button>')+'<button onclick="checkStatementNotifications()">Check today now</button><button onclick="sendTestNotification()">🔔 Send test notification</button></div></div></div>';
   html+='<div class="panel"><h2>Cards with statement alerts</h2><div class="sub">Cards without a saved billing/statement date cannot be scheduled.</div><div class="notify-list">';
   if(!creditCards.length) html+='<div class="empty-analysis">No cards currently have a billing date.</div>';
   creditCards.forEach(c=>{const day=parseDay(c.billingDate);const on=notificationCardEnabled(c);const suffix=day===1?'st':day===2?'nd':day===3?'rd':'th';html+='<div class="notify-row"><div><div class="notify-card-name">'+c.name+'</div><div class="notify-card-sub">Statement date · '+day+suffix+'</div></div><input class="notify-toggle" type="checkbox" '+(on?'checked':'')+' onchange="toggleNotificationCard(\''+c.id+'\',this.checked)" aria-label="Enable '+c.name+' notifications"></div>';});
