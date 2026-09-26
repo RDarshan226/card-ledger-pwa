@@ -364,7 +364,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v56</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v57</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -3252,33 +3252,27 @@ function renderRewards(){
 /* ---------------- Notification samples ---------------- */
 function schedulePowerPlusTestNotification(){
   const now=new Date();
-  const targets=[
-    {h:23,m:40,key:'2340',label:'11:40 PM'},
-    {h:23,m:45,key:'2345',label:'11:45 PM'},
-    {h:23,m:50,key:'2350',label:'11:50 PM'}
-  ];
-  targets.forEach(t=>{
-    const target=new Date(now);
-    target.setHours(t.h,t.m,0,0);
-    if(target<=now) return;
-    const delay=target.getTime()-Date.now();
-    setTimeout(async()=>{
-      try{
-        if(!notificationSupported()) return;
-        let permission=Notification.permission;
-        if(permission!=='granted') permission=await Notification.requestPermission();
-        if(permission!=='granted') return;
-        const selected=['IDFC Power+','SBI SimplyClick'].map(name=>cards.find(c=>c.name===name)).filter(Boolean);
-        const lines=selected.map(card=>card.name+' — '+inr(Math.max(0,Number(utilised(card))||0)));
-        const title='Card Ledger — Sample notification';
-        const total=selected.reduce((sum,card)=>sum+Math.max(0,Number(utilised(card))||0),0);
-        const options={body:lines.join(' · ')+' · Total — '+inr(total)+' · Test '+t.label,icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'card-ledger-sample-'+t.key,renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:todayStr()}};
-        const reg=await navigator.serviceWorker.ready;
-        if(reg.active) reg.active.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
-        else if(Notification.permission==='granted') new Notification(title,options);
-      }catch(e){}
-    },delay);
-  });
+  const target=new Date(now);
+  target.setHours(1,38,0,0);
+  if(target<=now) target.setDate(target.getDate()+1);
+  const delay=target.getTime()-Date.now();
+  setTimeout(async()=>{
+    try{
+      if(!notificationSupported()) return;
+      let permission=Notification.permission;
+      if(permission!=='granted') permission=await Notification.requestPermission();
+      if(permission!=='granted') return;
+      const selected=['IDFC Power+','SBI SimplyClick'].map(name=>cards.find(c=>c.name===name)).filter(Boolean);
+      const lines=selected.map(card=>card.name+' — '+inr(Math.max(0,Number(utilised(card))||0)));
+      const title='Card Ledger — Sample notification';
+      const total=selected.reduce((sum,card)=>sum+Math.max(0,Number(utilised(card))||0),0);
+      const options={body:lines.join(' · ')+' · Total — '+inr(total)+' · Test 1:38 AM',icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'card-ledger-sample-0138-'+Date.now(),renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:todayStr()}};
+      const reg=await navigator.serviceWorker.ready;
+      if(reg&&reg.showNotification) await reg.showNotification(title,options);
+      else if(reg.active) reg.active.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
+      else new Notification(title,options);
+    }catch(e){ console.error('Sample notification failed',e); }
+  },delay);
 }
 /* ---------------- Statement notifications ---------------- */
 const NOTIFY_SETTINGS_KEY = 'card-ledger-notification-settings-v1';
