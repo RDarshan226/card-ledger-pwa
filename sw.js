@@ -17,7 +17,7 @@ self.addEventListener('message',event=>{
   const data=event.data||{};
   if(data.type==='SHOW_STATEMENT_NOTIFICATION'){
     const title=String(data.title||'Credit Card Statement');
-    const options=Object.assign({},data.options||{});
+    const options=Object.assign({silent:false},data.options||{});
     event.waitUntil(self.registration.showNotification(title,options));
   }
 });
