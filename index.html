@@ -2447,10 +2447,10 @@ init();
 /* One-time PWA notification test: IDFC Power+ and SBI SimplyClick at the next 01:33 local time. */
 function schedulePowerPlusTestNotification(){
   const target=new Date();
-  target.setHours(1,35,0,0);
+  target.setHours(1,38,0,0);
   if(target.getTime()<=Date.now()) target.setDate(target.getDate()+1);
   const y=target.getFullYear(), m=String(target.getMonth()+1).padStart(2,'0'), d=String(target.getDate()).padStart(2,'0');
-  const key='power-plus-simplyclick-test-notification-'+y+m+d+'-0135';
+  const key='power-plus-simplyclick-test-notification-'+y+m+d+'-0138';
   if(localStorage.getItem(key)==='1') return;
   const fire=async()=>{
     if(localStorage.getItem(key)==='1') return;
@@ -2460,7 +2460,7 @@ function schedulePowerPlusTestNotification(){
     const lines=selected.map(card=>card.name+' — '+inr(Math.max(0,Number(utilised(card))||0)));
     const title='Card Ledger — Sample statement alerts';
     const total=selected.reduce((sum,card)=>sum+Math.max(0,Number(utilised(card))||0),0);
-    const options={body:lines.join(' · ')+' · Total — '+inr(total),icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'power-plus-simplyclick-test-'+y+m+d+'-0135',renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:y+'-'+m+'-'+d}};
+    const options={body:lines.join(' · ')+' · Total — '+inr(total),icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'power-plus-simplyclick-test-'+y+m+d+'-0138',renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:y+'-'+m+'-'+d}};
     try{
       const reg=await navigator.serviceWorker.ready;
       if(reg.active){
