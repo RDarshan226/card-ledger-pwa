@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v46</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v47</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1165,6 +1165,36 @@ async function verifyChatEncryptionKey(){
     return {ok:false,reason:e&&e.message?e.message:'decrypt failed'};
   }
 }
+async function diagnoseChatKey(){
+  const out=document.getElementById('chatKeyDiagnostic');
+  if(out) out.textContent='Chat key check: checking…';
+  try{
+    const saved=await window.storage.get(CHAT_KEY_STORAGE_KEY,false);
+    if(!saved || !saved.value){
+      if(out) out.textContent='⚠ No saved Chat encryption key was found on this device. No new key was created. If encrypted GitHub transactions were created on another device/browser, use the recovery package from that original device or locate the original browser data.';
+      return;
+    }
+    let jwk;
+    try{ jwk=JSON.parse(saved.value); }catch(e){ throw new Error('The saved Chat key record is invalid.'); }
+    let key;
+    try{
+      key=await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    }catch(e){ throw new Error('The saved Chat key could not be imported.'); }
+    await loadChatUpdates();
+    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+    if(!feed.length){
+      if(out) out.textContent='✓ A Chat encryption key was found on this device, but GitHub has no encrypted transaction entries to verify against.';
+      return;
+    }
+    const token=String(feed[0].payload||'');
+    const parts=token.split('.');
+    if(parts.length!==3 || parts[0]!=='CL1') throw new Error('GitHub transaction format is invalid.');
+    await crypto.subtle.decrypt({name:'AES-GCM',iv:b64ToBytes(parts[1])},key,b64ToBytes(parts[2]));
+    if(out) out.textContent='✓ Chat encryption key found on this device and it MATCHES the encrypted GitHub transaction data. This device has the key needed to decrypt the feed.';
+  }catch(e){
+    if(out) out.textContent='⚠ A saved Chat encryption key exists, but it does NOT match the encrypted GitHub transaction data (or the saved key cannot be opened). No key was changed or created. Keep this device/browser data intact.';
+  }
+}
 async function exportRecoveryPackageUI(){
   try{
     const p1=prompt('Create a recovery password (minimum 8 characters). You will need this after clearing PWA data.');
@@ -1678,7 +1708,8 @@ function renderQuickEntryPanel(){
         <div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div>
       </div>
 
-      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button></div>
+      <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
       <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
     </div>`;
