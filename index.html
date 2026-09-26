@@ -374,6 +374,7 @@
     <button class="tab-btn" id="tab-cashback" onclick="setTab('cashback')">Cashback &amp; Charges</button>
     <button class="tab-btn" id="tab-rewards" onclick="setTab('rewards')">Rewards</button>
     <button class="tab-btn" id="tab-accounts" onclick="setTab('accounts')">Account Ages</button>
+    <button class="tab-btn" id="tab-alerts" onclick="setTab('alerts')">🔔 Alerts</button>
   </div>
   <div class="pwa-tools" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 0;">
   <button class="tab-btn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
@@ -1573,6 +1574,7 @@ function render(){
   document.getElementById('tab-cashback').classList.toggle('active', activeTab==='cashback');
   document.getElementById('tab-rewards').classList.toggle('active', activeTab==='rewards');
   document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
+  document.getElementById('tab-alerts').classList.toggle('active', activeTab==='alerts');
   if(activeTab === 'ledger') renderLedger();
   else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); refreshRecoveryStatus(); }
   else if(activeTab === 'analysis') renderAnalysis();
@@ -1582,6 +1584,7 @@ function render(){
   else if(activeTab === 'cashback') renderCashback();
   else if(activeTab === 'rewards') renderRewards();
   else if(activeTab === 'accounts') renderAccounts();
+  else if(activeTab === 'alerts') renderAlerts();
   refreshChatCardOptions();
   if(activeTab === 'entry') { refreshChatCardOptions(); refreshRecoveryStatus(); updateTransactionEntryFields(); refreshGitHubStatus(); }
 }
@@ -1626,6 +1629,13 @@ function updateTransactionEntryFields(){
   const category=document.getElementById('entry-category');
   if(!category) return;
   category.placeholder=type==='repayment'?'Card bill payment':'Shopping / Bills';
+}
+
+function clearTransactionEntryFields(){
+  ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const type=document.getElementById('entry-main-type');if(type)type.value='expense';
+  const date=document.getElementById('entry-date');if(date)date.value=todayStr();
+  updateTransactionEntryFields();
 }
 
 async function encryptTransactionEntry(uploadAfter=false){
@@ -1673,6 +1683,7 @@ async function encryptTransactionEntry(uploadAfter=false){
     }else{
       showToast('Encrypted transaction created');
     }
+    clearTransactionEntryFields();
     return token;
   }catch(e){showToast('Could not encrypt transaction');return null;}
 }
@@ -2104,6 +2115,9 @@ function buildInsights(rows, p){
   refreshChatCardOptions();
   refreshRecoveryStatus();
   refreshGitHubStatus();
+  registerNotificationBackgroundCheck();
+  setTimeout(checkStatementNotifications,1200);
+  setInterval(checkStatementNotifications,15*60*1000);
   if(merged) showToast('New encrypted entries synced from chat');
 })();
 
@@ -2875,6 +2889,59 @@ function renderRewards(){
   app.innerHTML = html;
 }
 
+/* ---------------- Statement notifications ---------------- */
+const NOTIFY_SETTINGS_KEY = 'card-ledger-notification-settings-v1';
+let notificationSettings = { enabled:false, cards:{} };
+function loadNotificationSettings(){ try{ const raw=localStorage.getItem(NOTIFY_SETTINGS_KEY); if(raw){ const p=JSON.parse(raw); notificationSettings={enabled:!!p.enabled,cards:(p.cards&&typeof p.cards==='object')?p.cards:{}}; } }catch(e){} }
+function saveNotificationSettings(){ try{localStorage.setItem(NOTIFY_SETTINGS_KEY,JSON.stringify(notificationSettings));}catch(e){} }
+function notificationSupported(){ return 'Notification' in window; }
+function notificationCardEnabled(card){ return notificationSettings.cards[card.id] !== false; }
+function statementNotificationKey(card,date){ return 'statement|'+card.id+'|'+date; }
+function getStatementAmountForDate(card,date){ const exact=dueBills.find(b=>b.cardId===card.id&&b.statementDate===date); return exact ? (Number(exact.totalDue)||0) : Math.max(0,Number(utilised(card))||0); }
+async function showStatementNotification(card,date,amount){
+  const title='Statement generated — '+card.name;
+  const body='Amount '+inr(amount)+' · Statement date '+new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const options={body,icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'statement-'+card.id+'-'+date,renotify:false,data:{url:'./',cardId:card.id,date}};
+  try{ if(navigator.serviceWorker&&navigator.serviceWorker.controller){ navigator.serviceWorker.controller.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options}); return true; } }catch(e){}
+  try{ if(Notification.permission==='granted'){new Notification(title,options);return true;} }catch(e){}
+  return false;
+}
+async function checkStatementNotifications(){
+  if(!notificationSettings.enabled||!notificationSupported()||Notification.permission!=='granted') return;
+  const today=todayStr(); const eligible=cards.filter(c=>!c.isDebit&&!c.feeOnly&&parseDay(c.billingDate)&&notificationCardEnabled(c));
+  for(const card of eligible){
+    const key=statementNotificationKey(card,today); if(localStorage.getItem(key)==='1') continue;
+    if(parseDay(card.billingDate)!==Number(today.slice(8))) continue;
+    const amount=getStatementAmountForDate(card,today); const shown=await showStatementNotification(card,today,amount);
+    if(shown) localStorage.setItem(key,'1');
+  }
+}
+async function enableStatementNotifications(){
+  if(!notificationSupported()){showToast('Notifications are not supported in this browser');return;}
+  try{ const permission=await Notification.requestPermission();
+    if(permission!=='granted'){notificationSettings.enabled=false;saveNotificationSettings();showToast('Notification permission was not granted');renderAlerts();return;}
+    notificationSettings.enabled=true; cards.forEach(c=>{if(notificationSettings.cards[c.id]===undefined)notificationSettings.cards[c.id]=true;}); saveNotificationSettings();
+    await registerNotificationBackgroundCheck(); await checkStatementNotifications(); renderAlerts(); showToast('Statement notifications enabled');
+  }catch(e){showToast('Could not enable notifications');}
+}
+function disableStatementNotifications(){notificationSettings.enabled=false;saveNotificationSettings();renderAlerts();showToast('Statement notifications disabled');}
+function toggleNotificationCard(id,enabled){notificationSettings.cards[id]=!!enabled;saveNotificationSettings();checkStatementNotifications();}
+async function registerNotificationBackgroundCheck(){try{const reg=await navigator.serviceWorker.ready;if('periodicSync' in reg){try{await reg.periodicSync.register('card-ledger-statement-check',{minInterval:24*60*60*1000});}catch(e){}}}catch(e){}}
+function renderAlerts(){
+  const app=document.getElementById('app'),supported=notificationSupported(),granted=supported&&Notification.permission==='granted',enabled=!!notificationSettings.enabled&&granted;
+  const creditCards=cards.filter(c=>!c.isDebit&&!c.feeOnly&&parseDay(c.billingDate));
+  let html='<div class="panel"><h2>Statement notifications</h2><div class="sub">Get a notification on each saved statement date with the card name and statement amount.</div>';
+  html+='<div class="notify-card"><div class="notify-head"><div class="notify-title">🔔 Statement-date alerts</div><span class="notify-status '+(enabled?'on':'off')+'">'+(enabled?'Enabled':'Disabled')+'</span></div>';
+  html+='<div class="notify-info">'+(supported?(granted?'Notifications are permitted on this device. The PWA checks statement dates when it is opened or active, and uses the service worker to display the alert.':'Android/browser notification permission is not granted yet. Tap Enable to request it.'):'This browser does not expose the Notification API.')+'<br><br><b>Amount:</b> an exact statement total is used when that statement has been recorded in Upcoming Dues; otherwise the ledger outstanding observed on the statement date.</div>';
+  html+='<div class="notify-actions">'+(enabled?'<button onclick="disableStatementNotifications()">Disable notifications</button>':'<button class="primary" onclick="enableStatementNotifications()">Enable statement notifications</button>')+'<button onclick="checkStatementNotifications()">Check today now</button></div></div></div>';
+  html+='<div class="panel"><h2>Cards with statement alerts</h2><div class="sub">Cards without a saved billing/statement date cannot be scheduled.</div><div class="notify-list">';
+  if(!creditCards.length) html+='<div class="empty-analysis">No cards currently have a billing date.</div>';
+  creditCards.forEach(c=>{const day=parseDay(c.billingDate);const on=notificationCardEnabled(c);const suffix=day===1?'st':day===2?'nd':day===3?'rd':'th';html+='<div class="notify-row"><div><div class="notify-card-name">'+c.name+'</div><div class="notify-card-sub">Statement date · '+day+suffix+'</div></div><input class="notify-toggle" type="checkbox" '+(on?'checked':'')+' onchange="toggleNotificationCard(\''+c.id+'\',this.checked)" aria-label="Enable '+c.name+' notifications"></div>';});
+  html+='</div></div>';
+  html+='<div class="panel"><h2>Important timing note</h2><div class="sub">A normal web PWA cannot guarantee a monthly notification while the app is completely stopped on every Android/browser combination. This version uses the browser notification API plus the service worker, checks while the app is active/open, and requests periodic background checks where the browser supports them. No card data or encryption key is sent to a notification server.</div></div>';
+  app.innerHTML=html;
+}
+loadNotificationSettings();
 /* ---------------- Account Ages ---------------- */
 let openAccountMonth = null;
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
