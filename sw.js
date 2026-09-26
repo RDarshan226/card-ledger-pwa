@@ -1,4 +1,4 @@
-const CACHE='card-ledger-pwa-v22';
+const CACHE='card-ledger-pwa-v28';
 const APP=['./','./index.html','./manifest.json','./sw.js','./chat-updates.json','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
@@ -15,6 +15,7 @@ self.addEventListener('activate',event=>{
 
 self.addEventListener('message',event=>{
   const data=event.data||{};
+  if(data.type==='SKIP_WAITING') self.skipWaiting();
   if(data.type==='SHOW_STATEMENT_NOTIFICATION'){
     const title=String(data.title||'Credit Card Statement');
     const options=Object.assign({silent:false},data.options||{});
