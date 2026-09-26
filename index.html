@@ -89,7 +89,16 @@
   .chat-copy{margin-top:7px;width:100%;padding:9px;border:1px solid #8A6B35;border-radius:7px;background:#111C2B;color:#CFFFF8;font:600 11px 'IBM Plex Mono',monospace;cursor:pointer;}
   .chat-help{margin-top:11px;border:1px solid var(--line-soft);border-radius:9px;padding:9px 11px;font-size:11px;color:var(--ink-soft);}.chat-help summary{cursor:pointer;color:var(--ink);font-weight:600;}.chat-help ol{margin:8px 0 2px;padding-left:20px;line-height:1.6;}
   .chat-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-  @media(max-width:700px){.chat-head{flex-direction:column;}.chat-steps{grid-template-columns:1fr;gap:6px;}.chat-form{grid-template-columns:1fr 1fr;}.chat-form .chat-wide{grid-column:span 2;}.chat-type-grid{grid-template-columns:1fr;}.chat-primary,.chat-secondary{width:100%;}.chat-actions .tab-btn{flex:1 1 100%;}}
+  .github-sync-box{margin-top:12px;padding:12px;border:1px solid var(--line-soft);border-radius:11px;background:linear-gradient(135deg,rgba(0,245,255,.055),rgba(155,92,255,.045));}
+  .github-sync-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .github-sync-head strong{display:block;font-size:12px;}
+  .github-sync-head small{display:block;color:var(--ink-soft);font-size:10.5px;margin-top:3px;line-height:1.45;}
+  .github-status{margin-top:9px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);}
+  .github-status.connected{color:var(--ok);border-color:rgba(57,255,182,.4);background:var(--ok-soft);}
+  .github-status.error{color:var(--danger);border-color:rgba(255,77,109,.4);background:var(--danger-soft);}
+  .github-actions{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .github-actions .tab-btn{flex:1 1 150px;}
+  @media(max-width:700px){.chat-head{flex-direction:column;}.chat-steps{grid-template-columns:1fr;gap:6px;}.chat-form{grid-template-columns:1fr 1fr;}.chat-form .chat-wide{grid-column:span 2;}.chat-type-grid{grid-template-columns:1fr;}.chat-primary,.chat-secondary{width:100%;}.chat-actions .tab-btn{flex:1 1 100%;}.github-actions .tab-btn{flex:1 1 100%;}}
 
   /* ---- Tabs ---- */
   .tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
@@ -953,7 +962,133 @@ function showToast(msg){
 
 const CHAT_UPDATES_URL = './chat-updates.json';
 const CHAT_KEY_STORAGE_KEY = 'card-ledger-chat-aes-key-v1';
+const GITHUB_TOKEN_STORAGE_KEY = 'card-ledger-github-token-v1';
+const GITHUB_REPO = 'RDarshan226/card-ledger-pwa';
+const GITHUB_PATH = 'chat-updates.json';
+const GITHUB_API_BASE = 'https://api.github.com';
 let chatUpdates = { version: 2, entries: [], cashback: [] };
+
+function bytesToUtf8B64(text){
+  return bytesToB64(new TextEncoder().encode(text));
+}
+function b64ToUtf8(str){
+  return new TextDecoder().decode(b64ToBytes(str.replace(/\s/g,'')));
+}
+async function getGitHubToken(){
+  try{
+    const saved=await window.storage.get(GITHUB_TOKEN_STORAGE_KEY,false);
+    return saved&&saved.value ? saved.value : '';
+  }catch(e){ return ''; }
+}
+async function setGitHubToken(token){
+  await window.storage.set(GITHUB_TOKEN_STORAGE_KEY,token);
+}
+async function clearGitHubToken(){
+  try{ await window.storage.remove(GITHUB_TOKEN_STORAGE_KEY); }catch(e){}
+}
+async function githubApi(path, options={}){
+  const token=options.token||await getGitHubToken();
+  if(!token) throw new Error('GitHub is not connected');
+  const headers={
+    'Accept':'application/vnd.github+json',
+    'Authorization':'Bearer '+token,
+    'X-GitHub-Api-Version':'2022-11-28',
+    ...(options.headers||{})
+  };
+  const res=await fetch(GITHUB_API_BASE+path,{...options,headers});
+  if(!res.ok){
+    let detail='';
+    try{ const body=await res.json(); detail=body.message||''; }catch(e){}
+    const err=new Error(detail||('GitHub request failed ('+res.status+')'));
+    err.status=res.status;
+    throw err;
+  }
+  return res;
+}
+async function getGitHubChatFile(token){
+  const res=await githubApi('/repos/'+GITHUB_REPO+'/contents/'+GITHUB_PATH+'?ref=main',{token});
+  const data=await res.json();
+  if(!data.content || !data.sha) throw new Error('GitHub returned an invalid chat feed');
+  return {sha:data.sha, data:JSON.parse(b64ToUtf8(data.content))};
+}
+function normaliseChatFeed(data){
+  return {
+    version:2,
+    entries:Array.isArray(data&&data.entries)?data.entries:[],
+    cashback:Array.isArray(data&&data.cashback)?data.cashback:[]
+  };
+}
+async function refreshGitHubStatus(message){
+  const el=document.getElementById('githubStatus');
+  if(!el) return;
+  const token=await getGitHubToken();
+  if(!token){
+    el.className='github-status';
+    el.textContent=message||'○ Not connected · encrypted transactions will stay local until you connect GitHub';
+    return;
+  }
+  el.className='github-status connected';
+  el.textContent=message||'✓ GitHub connected · upload target: '+GITHUB_REPO+'/'+GITHUB_PATH;
+}
+async function connectGitHub(){
+  const existing=await getGitHubToken();
+  const promptText='Paste a GitHub fine-grained Personal Access Token with access ONLY to this repository and Contents: Read and write.\n\nDo not use a broad/classic token. The token is stored encrypted in this PWA and is not uploaded to ChatGPT.';
+  const token=prompt(promptText,existing?'':'');
+  if(token===null) return;
+  const clean=token.trim();
+  if(!clean){ showToast('No GitHub token entered'); return; }
+  try{
+    await getGitHubChatFile(clean);
+    await setGitHubToken(clean);
+    await refreshGitHubStatus();
+    showToast('GitHub connected');
+  }catch(e){
+    await refreshGitHubStatus();
+    showToast(e.message||'Could not connect GitHub');
+  }
+}
+async function disconnectGitHub(){
+  if(!confirm('Disconnect GitHub from this device? Your encrypted ledger data will remain on the device and in GitHub.')) return;
+  await clearGitHubToken();
+  await refreshGitHubStatus();
+  showToast('GitHub disconnected');
+}
+async function uploadEncryptedPayload(token){
+  const clean=String(token||'').trim();
+  if(!clean) throw new Error('Nothing encrypted to upload');
+  let lastError=null;
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      const current=await getGitHubChatFile(await getGitHubToken());
+      const feed=normaliseChatFeed(current.data);
+      if(feed.entries.some(x=>x&&x.payload===clean)){
+        await refreshGitHubStatus('✓ Already uploaded · GitHub feed already contains this transaction');
+        return {already:true};
+      }
+      feed.entries.push({payload:clean});
+      const content=JSON.stringify(feed,null,2)+'\n';
+      const body={
+        message:'Add encrypted Card Ledger transaction',
+        content:bytesToUtf8B64(content),
+        sha:current.sha,
+        branch:'main'
+      };
+      const res=await githubApi('/repos/'+GITHUB_REPO+'/contents/'+GITHUB_PATH,{
+        method:'PUT',
+        body:JSON.stringify(body),
+        headers:{'Content-Type':'application/json'}
+      });
+      if(!res.ok) throw new Error('GitHub upload failed');
+      await refreshGitHubStatus('✓ Uploaded · encrypted transaction is now in GitHub');
+      return {already:false};
+    }catch(e){
+      lastError=e;
+      if(e.status===409 && attempt===0) continue;
+      break;
+    }
+  }
+  throw lastError||new Error('GitHub upload failed');
+}
 
 function bytesToB64(bytes){
   let s='';
@@ -1416,7 +1551,7 @@ function render(){
   else if(activeTab === 'rewards') renderRewards();
   else if(activeTab === 'accounts') renderAccounts();
   refreshChatCardOptions();
-  if(activeTab === 'entry') { refreshChatCardOptions(); refreshRecoveryStatus(); updateTransactionEntryFields(); }
+  if(activeTab === 'entry') { refreshChatCardOptions(); refreshRecoveryStatus(); updateTransactionEntryFields(); refreshGitHubStatus(); }
 }
 
 function renderQuickEntryPanel(){
@@ -1437,13 +1572,20 @@ function renderQuickEntryPanel(){
           <div class="field"><label>Charge paid ₹ <em>optional</em></label><input id="entry-charge" type="number" inputmode="decimal" min="0" placeholder="0"></div>
           <div class="field"><label>Note <em>optional</em></label><input id="entry-note" type="text" placeholder="Optional note"></div>
         </div>
-        <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry()">🔒 Encrypt transaction</button>
+        <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry(true)">🔒 Encrypt &amp; upload to GitHub</button>
       </div>
 
-      <div class="chat-output"><div class="chat-output-head"><div><strong>Encrypted code</strong><small>Paste this code into ChatGPT to upload the complete transaction</small></div><span>CL1</span></div><textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea><button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button></div>
+      <div class="chat-output"><div class="chat-output-head"><div><strong>Encrypted code</strong><small>Generated locally. Copy is available as a fallback; upload sends ciphertext directly to GitHub.</small></div><span>CL1</span></div><textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea><button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button></div>
+
+      <div class="github-sync-box">
+        <div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only the AES-256-GCM ciphertext is uploaded to <b>chat-updates.json</b>. Your encryption key and transaction plaintext stay on this device.</small></div></div>
+        <div id="githubStatus" class="github-status">Checking GitHub connection…</div>
+        <div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div>
+      </div>
+
       <div class="chat-actions"><button class="tab-btn" onclick="syncEncryptedChatUpdates(true)">↻ Sync now</button><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button></div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
-      <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub/ChatGPT receive ciphertext only. Keep the recovery package and password private.</div>
+      <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
     </div>`;
 }
 
@@ -1454,7 +1596,7 @@ function updateTransactionEntryFields(){
   category.placeholder=type==='repayment'?'Card bill payment':'Shopping / Bills';
 }
 
-async function encryptTransactionEntry(){
+async function encryptTransactionEntry(uploadAfter=false){
   try{
     const mainType=document.getElementById('entry-main-type').value;
     const card=document.getElementById('entry-card').value;
@@ -1465,9 +1607,9 @@ async function encryptTransactionEntry(){
     const cashback=Number(document.getElementById('entry-cashback').value)||0;
     const charge=Number(document.getElementById('entry-charge').value)||0;
     const note=document.getElementById('entry-note').value.trim();
-    if(!card){showToast('Choose a card');return;}
-    if(!amount || amount<=0){showToast('Enter a valid transaction amount');return;}
-    if(cashback<0 || charge<0){showToast('Cashback and charge cannot be negative');return;}
+    if(!card){showToast('Choose a card');return null;}
+    if(!amount || amount<=0){showToast('Enter a valid transaction amount');return null;}
+    if(cashback<0 || charge<0){showToast('Cashback and charge cannot be negative');return null;}
     const payload={
       v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'transaction',
       mainType,card,date,amount,category,platform,note,
@@ -1478,8 +1620,29 @@ async function encryptTransactionEntry(){
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
     const token='CL1.'+bytesToB64(iv)+'.'+bytesToB64(new Uint8Array(ct));
     document.getElementById('chat-encrypted').value=token;
-    try{await navigator.clipboard.writeText(token);showToast('Encrypted transaction copied');}catch(e){showToast('Encrypted transaction created — tap Copy');}
-  }catch(e){showToast('Could not encrypt transaction');}
+    try{await navigator.clipboard.writeText(token);}catch(e){}
+    if(uploadAfter){
+      const githubToken=await getGitHubToken();
+      if(!githubToken){
+        showToast('Connect GitHub first — encrypted code is ready');
+        await refreshGitHubStatus();
+        return token;
+      }
+      try{
+        await uploadEncryptedPayload(token);
+        showToast('Encrypted transaction uploaded to GitHub');
+      }catch(e){
+        if(e.status===401 || e.status===403){
+          await clearGitHubToken();
+          await refreshGitHubStatus('⚠ GitHub authorization failed · reconnect GitHub');
+        }
+        showToast(e.message||'Upload failed — encrypted code is still available to copy');
+      }
+    }else{
+      showToast('Encrypted transaction created');
+    }
+    return token;
+  }catch(e){showToast('Could not encrypt transaction');return null;}
 }
 
 function renderLedger(){
@@ -1897,6 +2060,7 @@ function buildInsights(rows, p){
   render();
   refreshChatCardOptions();
   refreshRecoveryStatus();
+  refreshGitHubStatus();
   if(merged) showToast('New encrypted entries synced from chat');
 })();
 
