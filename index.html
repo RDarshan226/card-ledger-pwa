@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v45</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v46</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -477,39 +477,32 @@
     let payload;
     try{ payload=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv},wrap,ct))); }catch(e){ throw new Error('Wrong password or damaged recovery package'); }
     if(!payload || payload.v!==1 || !payload.localJwk) throw new Error('Invalid recovery package');
-    await crypto.subtle.importKey('jwk',payload.localJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
-    if(payload.chatJwk) await crypto.subtle.importKey('jwk',payload.chatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    let chatTest;
+    try{ await crypto.subtle.importKey('jwk',payload.localJwk,{name:'AES-GCM'},true,['encrypt','decrypt']); }catch(e){ throw new Error('Recovery package contains an invalid local encryption key'); }
+    if(!payload.chatJwk) throw new Error('This recovery package does not contain the Chat encryption key. GitHub encrypted transactions cannot be recovered from this package.');
+    try{ chatTest=await crypto.subtle.importKey('jwk',payload.chatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']); }catch(e){ throw new Error('Recovery package contains an invalid Chat encryption key'); }
 
-    // Restore the local key first, then reset the cached key and restore the Chat key
-    // under that local key. Never silently generate/replace a Chat key during recovery.
-    await rawSet(RAW_KEY,{v:1,jwk:payload.localJwk});
-    keyPromise=null;
-    if(payload.chatJwk){
-      await rawSet('card-ledger-chat-aes-key-v1',await encryptValue(JSON.stringify(payload.chatJwk)));
-    }else{
-      throw new Error('This recovery package does not contain the Chat encryption key. Your GitHub encrypted transactions cannot be verified with this package.');
-    }
-
-    // Verify the restored Chat key against the current encrypted GitHub feed before
-    // reporting recovery as successful. This prevents a valid package with an old/
-    // different Chat key from looking like a successful recovery.
+    // Verify the candidate Chat key BEFORE changing anything in IndexedDB.
     try{
       const res=await fetch(CHAT_UPDATES_URL+'?v='+Date.now(),{cache:'no-store'});
       if(res.ok){
         const data=await res.json();
         const entries=Array.isArray(data.entries)?data.entries:[];
         if(entries.length){
-          const jwk=payload.chatJwk;
-          const key=await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
           const first=entries[0].payload;
           if(typeof first!=='string'||!first.startsWith('CL1.')) throw new Error('Unsupported encrypted payload');
           const parts2=first.split('.');
-          await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(parts2[1])},key,unb64(parts2[2]));
+          if(parts2.length!==3) throw new Error('Invalid encrypted payload');
+          await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(parts2[1])},chatTest,unb64(parts2[2]));
         }
       }
     }catch(e){
-      throw new Error('Recovery package was accepted, but its Chat encryption key does not match the encrypted GitHub transaction data. Do not create a new key or recovery package yet.');
+      throw new Error('Recovery package Chat key does not match the encrypted GitHub transaction data. Nothing was changed on this device. Do not create a new recovery package.');
     }
+
+    await rawSet(RAW_KEY,{v:1,jwk:payload.localJwk});
+    keyPromise=null;
+    await rawSet(CHAT_KEY_STORAGE_KEY,await encryptValue(JSON.stringify(payload.chatJwk)));
     return true;
   }
   window.storage={
