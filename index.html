@@ -173,9 +173,10 @@
   .chevron.open{ transform:rotate(180deg); }
 
   /* ---- Expanded detail ---- */
-  .detail-wrap{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .28s ease; }
-  .detail-wrap.open{ grid-template-rows:1fr; }
-  .detail-inner{ overflow:hidden; min-height:0; min-width:0; }
+  /* Reliable card-detail toggle: hidden until the card header is tapped. */
+  .detail-wrap{ display:none; }
+  .detail-wrap.open{ display:block; }
+  .detail-inner{ min-width:0; }
   .detail{ padding:0 18px 22px; }
   .detail-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; padding:14px 0 18px; border-bottom:1px dashed var(--line); margin-bottom:16px; }
   @media (max-width:520px){ .detail-grid{ grid-template-columns:1fr; } .row-main{grid-template-columns:minmax(0,1fr) auto;padding:14px 12px;gap:8px}.row-name{font-size:16px;overflow-wrap:anywhere}.row-amts{min-width:96px}.row-used{font-size:15px}.row-limit{font-size:10px}.detail{padding-left:12px;padding-right:12px} }
@@ -362,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v39</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v40</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
