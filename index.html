@@ -2421,78 +2421,34 @@ async function saveDues(){
   try{ await window.storage.set(DUES_KEY,JSON.stringify(dueBills),false); try{ await writeAutoBackup(); }catch(_e){} return true; }catch(e){ showToast('Could not save dues'); return false; }
 }
 function billFor(cardId, dueDate){ return dueBills.find(b=>b.cardId===cardId && b.dueDate===dueDate); }
-function nextBillingDateFor(card){const day=parseDay(card.billingDate);if(!day)return null;const now=new Date();let y=now.getFullYear(),m=now.getMonth();let candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));if(candidate<new Date(now.getFullYear(),now.getMonth(),now.getDate())){m++;if(m>11){m=0;y++;}candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));}return candidate.toISOString().slice(0,10);}
+function nextBillingDateFor(card){
+  const day=parseDay(card.billingDate); if(!day) return null;
+  const now=new Date(); let y=now.getFullYear(),m=now.getMonth();
+  let candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));
+  if(candidate<new Date(now.getFullYear(),now.getMonth(),now.getDate())){m++;if(m>11){m=0;y++;}candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));}
+  return candidate.toISOString().slice(0,10);
+}
 function projectedLedgerDues(){return cards.filter(c=>!c.isDebit&&!c.feeOnly).map(c=>({card:c,amount:Math.max(0,utilised(c)),billDate:nextBillingDateFor(c)})).filter(x=>x.amount>0&&x.billDate).sort((a,b)=>a.billDate.localeCompare(b.billDate));}
 function renderDues(){
-  const app=document.getElementById('app');
-  const now=new Date();
-  const monthVal = window._dueMonth || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const app=document.getElementById('app'),now=new Date();
+  const monthVal=window._dueMonth||now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const [y,m]=monthVal.split('-').map(Number);
-  const monthStart=`${y}-${String(m).padStart(2,'0')}-01`, monthEnd=`${y}-${String(m).padStart(2,'0')}-${String(daysInMonth(y,m-1)).padStart(2,'0')}`;
-  const cardsForDues=cards.filter(c=>!c.isDebit && !c.feeOnly);
-  const monthBills=dueBills.filter(b=>b.dueDate>=monthStart && b.dueDate<=monthEnd).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-  const outstanding=monthBills.reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0);
-  const total=monthBills.reduce((s,b)=>s+b.totalDue,0);
-  const paid=monthBills.reduce((s,b)=>s+Math.min(b.totalDue,b.paidAmount),0);
+  const monthStart=y+'-'+String(m).padStart(2,'0')+'-01',monthEnd=y+'-'+String(m).padStart(2,'0')+'-'+String(daysInMonth(y,m-1)).padStart(2,'0');
+  const cardsForDues=cards.filter(c=>!c.isDebit&&!c.feeOnly);
+  const monthBills=dueBills.filter(b=>b.dueDate>=monthStart&&b.dueDate<=monthEnd).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const outstanding=monthBills.reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0),total=monthBills.reduce((s,b)=>s+b.totalDue,0),paid=monthBills.reduce((s,b)=>s+Math.min(b.totalDue,b.paidAmount),0);
   const overdue=monthBills.filter(b=>dueStatus(b).cls==='overdue').reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0);
   const upcoming=monthBills.filter(b=>['soon','today'].includes(dueStatus(b).cls)).reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0);
-
-  let html=`<div class="panel">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
-      <div><h2>Credit Card Bills &amp; Dues</h2><div class="sub">Track each statement separately — total due, minimum due, payments and payment date. Nothing is assumed paid just because the due date passed.</div></div>
-      <div class="auto-save"><span class="auto-dot"></span>Auto-save enabled</div>
-    </div>
-    <div class="due-summary">
-      <div class="due-stat"><div class="k">Statemented</div><div class="v">${inr(total)}</div></div>
-      <div class="due-stat"><div class="k">Paid</div><div class="v">${inr(paid)}</div></div>
-      <div class="due-stat alert"><div class="k">Still payable</div><div class="v">${inr(outstanding)}</div></div>
-      <div class="due-stat"><div class="k">Due / upcoming</div><div class="v">${inr(upcoming)}</div></div>
-    </div>
-    ${overdue>0?`<div class="breakeven-box"><b>Overdue outstanding:</b> ${inr(overdue)}. Record the actual payment against the bill below to clear it.</div>`:''}
-    <div class="due-toolbar">
-      <button onclick="changeDueMonth(-1)">‹</button>
-      <input type="month" id="due-month" value="${monthVal}" onchange="setDueMonth(this.value)">
-      <button onclick="changeDueMonth(1)">›</button>
-      <button onclick="setDueMonth('${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}')">This month</button>
-    </div>
-    <div class="due-list">`;
-  if(!monthBills.length) html+=`<div class="due-empty">No bill statements recorded for ${new Date(y,m-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'})}.</div>`;
-  else {
-    html+=`<div class="due-month-head">${new Date(y,m-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'})} · ${monthBills.length} statement${monthBills.length===1?'':'s'}</div>`;
-    monthBills.forEach(b=>{
-      const st=dueStatus(b), remaining=Math.max(0,b.totalDue-b.paidAmount);
-      html+=`<div class="due-item ${st.cls}">
-        <div class="due-day">${b.dueDate.slice(8)}</div>
-        <div><div class="due-card">${b.cardName}</div><div class="due-meta">Statement ${b.statementDate||'—'} · ${b.note||'credit-card bill'}</div></div>
-        <div class="due-amt">${inr(b.totalDue)}</div>
-        <div class="due-min hide-sm">Min ${inr(b.minimumDue)}</div>
-        <div class="due-paid hide-sm">Paid ${inr(b.paidAmount)}</div>
-        <div class="due-status"><span class="status-badge ${st.cls==='paid'?'paid':st.cls==='today'?'due':st.cls==='overdue'?'due':'soon'}">${st.label}</span><div class="due-meta" style="text-align:right">${remaining?inr(remaining)+' left':''}</div></div>
-        <div class="due-actions"><button onclick="openBillPayment('${b.id}',event)">pay/edit</button></div>
-      </div>`;
-    });
-  }
-  html+=`</div></div>
-  html+=`<div class="panel"><h2>Ledger-based upcoming dues</h2><div class="sub">Projected from current outstanding and the saved billing date. The actual payment due date remains the one shown on the bank statement.</div><div class="due-list">`;
+  let html='<div class="panel"><h2>Credit Card Bills &amp; Dues</h2><div class="sub">Track statements, payments and outstanding amounts.</div><div class="due-summary"><div class="due-stat"><div class="k">Statemented</div><div class="v">'+inr(total)+'</div></div><div class="due-stat"><div class="k">Paid</div><div class="v">'+inr(paid)+'</div></div><div class="due-stat alert"><div class="k">Still payable</div><div class="v">'+inr(outstanding)+'</div></div><div class="due-stat"><div class="k">Due / upcoming</div><div class="v">'+inr(upcoming)+'</div></div></div>'+(overdue>0?'<div class="breakeven-box"><b>Overdue outstanding:</b> '+inr(overdue)+'</div>':'')+'<div class="due-toolbar"><button onclick="changeDueMonth(-1)">‹</button><input type="month" id="due-month" value="'+monthVal+'" onchange="setDueMonth(this.value)"><button onclick="changeDueMonth(1)">›</button><button onclick="setDueMonth(\''+now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'\')">This month</button></div><div class="due-list">';
+  if(!monthBills.length) html+='<div class="due-empty">No bill statements recorded for '+new Date(y,m-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'})+'.</div>';
+  else{html+='<div class="due-month-head">'+new Date(y,m-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'})+' · '+monthBills.length+' statement'+(monthBills.length===1?'':'s')+'</div>';monthBills.forEach(b=>{const st=dueStatus(b),remaining=Math.max(0,b.totalDue-b.paidAmount);html+='<div class="due-item '+st.cls+'"><div class="due-day">'+b.dueDate.slice(8)+'</div><div><div class="due-card">'+b.cardName+'</div><div class="due-meta">Statement '+(b.statementDate||'—')+' · '+(b.note||'credit-card bill')+'</div></div><div class="due-amt">'+inr(b.totalDue)+'</div><div class="due-min hide-sm">Min '+inr(b.minimumDue)+'</div><div class="due-paid hide-sm">Paid '+inr(b.paidAmount)+'</div><div class="due-status"><span class="status-badge '+(st.cls==='paid'?'paid':st.cls==='today'||st.cls==='overdue'?'due':'soon')+'">'+st.label+'</span><div class="due-meta">'+(remaining?inr(remaining)+' left':'')+'</div></div><div class="due-actions"><button onclick="openBillPayment(\''+b.id+'\',event)">pay/edit</button></div></div>';});}
+  html+='</div></div>';
   const projected=projectedLedgerDues();
-  if(!projected.length) html+=`<div class="due-empty">No current ledger outstanding with a saved billing date.</div>`;
-  else projected.forEach(x=>{const d=new Date(x.billDate+"T00:00:00");html+=`<div class="due-item"><div class="due-day">${x.billDate.slice(8)}</div><div><div class="due-card">${x.card.name}</div><div class="due-meta">Projected ledger outstanding · next bill date ${d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</div></div><div class="due-amt">${inr(x.amount)}</div><div class="due-min hide-sm">—</div><div class="due-paid hide-sm">—</div><div class="due-status"><span class="status-badge soon">Projected</span></div><div class="due-actions"></div></div>`;});
-  html+=`</div></div>`;
-  html+=`  <div class="panel">
-    <h2>Add statement</h2>
-    <div class="sub">Enter the figures exactly as shown on the card statement. You can add multiple statements for the same card across months.</div>
-    <div class="due-form">
-      <div><label>Card</label><select id="new-bill-card">${cardsForDues.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
-      <div><label>Statement date</label><input type="date" id="new-bill-stmt"></div>
-      <div><label>Due date</label><input type="date" id="new-bill-due"></div>
-      <div><label>Total due ₹</label><input type="number" id="new-bill-total" min="0" step="0.01"></div>
-      <div><label>Minimum due ₹</label><input type="number" id="new-bill-min" min="0" step="0.01"></div>
-      <div><label>Note</label><input type="text" id="new-bill-note" placeholder="optional"></div>
-      <button onclick="addBill(event)">Add bill</button>
-    </div>
-    <div class="due-help">Tip: current outstanding in your bank app may be higher than the statement total because it can include transactions made after the statement date. Record only the statement total as <b>Total due</b>; those newer transactions remain in the Ledger tab.</div>
-  </div>`;
-`;
+  html+='<div class="panel"><h2>Ledger-based upcoming dues</h2><div class="sub">Projected from current outstanding and saved billing dates. The actual payment due date remains the one shown on the bank statement.</div><div class="due-list">';
+  if(!projected.length) html+='<div class="due-empty">No current ledger outstanding with a saved billing date.</div>';
+  else projected.forEach(x=>{const d=new Date(x.billDate+'T00:00:00');html+='<div class="due-item"><div class="due-day">'+x.billDate.slice(8)+'</div><div><div class="due-card">'+x.card.name+'</div><div class="due-meta">Projected ledger outstanding · next bill date '+d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'</div></div><div class="due-amt">'+inr(x.amount)+'</div><div class="due-min hide-sm">—</div><div class="due-paid hide-sm">—</div><div class="due-status"><span class="status-badge soon">Projected</span></div><div class="due-actions"></div></div>';});
+  html+='</div></div>';
+  html+='<div class="panel"><h2>Add statement</h2><div class="sub">Enter statement figures exactly as shown by the card issuer.</div><div class="due-form"><div><label>Card</label><select id="new-bill-card">'+cardsForDues.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('')+'</select></div><div><label>Statement date</label><input type="date" id="new-bill-stmt"></div><div><label>Due date</label><input type="date" id="new-bill-due"></div><div><label>Total due ₹</label><input type="number" id="new-bill-total" min="0" step="0.01"></div><div><label>Minimum due ₹</label><input type="number" id="new-bill-min" min="0" step="0.01"></div><div><label>Note</label><input type="text" id="new-bill-note" placeholder="optional"></div><button onclick="addBill(event)">Add bill</button></div></div>';
   app.innerHTML=html;
 }
 function setDueMonth(v){ window._dueMonth=v; render(); }
