@@ -362,7 +362,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v36</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v37</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1271,10 +1271,28 @@ async function mergeChatEntries(){
   return changed;
 }
 async function syncEncryptedChatUpdates(showResult){
-  const added=await mergeChatEntries();
-  if(added){ await saveData(); await saveCashback(); render(); refreshChatCardOptions(); }
-  else if(showResult){ showToast('No new encrypted transactions'); }
-  return added;
+  try{
+    // Always refresh the public encrypted feed before merging. The old sync path
+    // only re-ran the merge against the feed already held in memory.
+    await loadChatUpdates();
+    const before = cards.reduce((n,c)=>n+(Array.isArray(c.entries)?c.entries.length:0),0);
+    const added=await mergeChatEntries();
+    const after = cards.reduce((n,c)=>n+(Array.isArray(c.entries)?c.entries.length:0),0);
+    const addedCount=Math.max(0,after-before);
+    if(added || addedCount>0){
+      await saveData();
+      await saveCashback();
+      render();
+      refreshChatCardOptions();
+      if(showResult) showToast(addedCount+' new transaction'+(addedCount===1?'':'s')+' synced');
+    }else if(showResult){
+      showToast('No new encrypted transactions');
+    }
+    return added;
+  }catch(e){
+    if(showResult) showToast('Could not refresh encrypted transactions');
+    return false;
+  }
 }
 function refreshChatCardOptions(){
   const sel=document.getElementById('entry-card');
