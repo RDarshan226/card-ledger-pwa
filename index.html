@@ -357,17 +357,19 @@
   filter:drop-shadow(0 1px 1px rgba(255,255,255,.35));
   letter-spacing:.01em;
 }
+.main-title-actions{display:flex;align-items:center;gap:8px;margin-left:auto}.heading-lock{width:40px;height:34px;border:1px solid var(--line-soft);border-radius:10px;background:var(--paper-card);color:var(--ink);font-size:17px;cursor:pointer;box-shadow:0 0 10px rgba(0,220,255,.12)}.heading-lock:hover{border-color:var(--accent);transform:translateY(-1px)}.secure-update-panel .chat-actions{display:flex;gap:8px;flex-wrap:wrap}.secure-update-panel .github-actions{display:flex;gap:8px;flex-wrap:wrap}
 .main-title-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-right:92px}.main-title-row .glossy-title{margin:0}.main-sync{position:absolute;right:0;top:0;flex:0 0 auto}@media(max-width:520px){.main-title-row{padding-right:82px}.main-title-row .glossy-title{font-size:30px;line-height:1.1}.main-sync{top:2px}}.tab-heading-row h2{margin:0}.heading-sync{flex:0 0 auto;border:1px solid rgba(0,207,255,.55);background:linear-gradient(135deg,#00CFFF,#007BFF);color:#fff;border-radius:7px;padding:6px 10px;font:600 10px 'IBM Plex Mono',monospace;cursor:pointer;box-shadow:0 0 10px rgba(0,191,255,.2)}.heading-sync:hover{background:linear-gradient(135deg,#19D8FF,#0088FF)}@media(max-width:520px){.heading-sync{padding:6px 8px;font-size:9px}.main-sync{padding:6px 8px;font-size:9px}}
 </style>
 </head>
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v51</span></div>
-  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v52</span></div>
+  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery">🔒</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
     <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Entry</button>
+    <button class="tab-btn" id="tab-secure" onclick="setTab('secure')" style="display:none">🔒 Encryption &amp; Recovery</button>
     <button class="tab-btn" id="tab-analysis" onclick="setTab('analysis')">Spend Analysis</button>
     <button class="tab-btn" id="tab-fees" onclick="setTab('fees')">Card Fees</button>
     <button class="tab-btn" id="tab-dues" onclick="setTab('dues')">Upcoming Dues</button>
@@ -1876,7 +1878,7 @@ function render(){
   document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
   document.getElementById('tab-alerts').classList.toggle('active', activeTab==='alerts');
   if(activeTab === 'ledger') renderLedger();
-  else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); refreshRecoveryStatus(); }
+  else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); }
   else if(activeTab === 'analysis') renderAnalysis();
   else if(activeTab === 'fees') renderFees();
   else if(activeTab === 'dues') renderDues();
@@ -1885,8 +1887,21 @@ function render(){
   else if(activeTab === 'rewards') renderRewards();
   else if(activeTab === 'accounts') renderAccounts();
   else if(activeTab === 'alerts') renderAlerts();
+  else if(activeTab === 'secure') { document.getElementById('app').innerHTML = renderSecureUpdate(); refreshRecoveryStatus(); refreshGitHubStatus(); }
   refreshChatCardOptions();
-  if(activeTab === 'entry') { refreshChatCardOptions(); refreshRecoveryStatus(); updateTransactionEntryFields(); refreshGitHubStatus(); }
+  if(activeTab === 'entry') { refreshChatCardOptions(); updateTransactionEntryFields(); }
+}
+
+function renderSecureUpdate(){
+  return `
+    <div class="panel secure-update-panel">
+      <div class="chat-head"><div><div class="chat-kicker">SECURE UPDATE</div><div class="tab-heading-row"><h2>🔒 Encryption &amp; Recovery</h2></div><div class="sub">Encryption, recovery and GitHub controls are kept separate from transaction entry.</div></div><div class="secure-badge">AES-256-GCM</div></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="resetChatEncryptionUI()">♻ Reset Chat Encryption</button></div>
+      <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
+      <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
+      <div class="github-sync-box" style="margin-top:12px;"><div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only AES-256-GCM ciphertext is uploaded to <b>chat-updates.json</b>. Your encryption key and transaction plaintext stay on this device.</small></div></div><div id="githubStatus" class="github-status">Checking GitHub connection…</div><div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div></div>
+      <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
+    </div>`;
 }
 
 function renderQuickEntryPanel(){
@@ -1912,16 +1927,6 @@ function renderQuickEntryPanel(){
 
       <div class="chat-output"><div class="chat-output-head"><div><strong>Encrypted code</strong><small>Generated locally. Copy is available as a fallback; upload sends ciphertext directly to GitHub.</small></div><span>CL1</span></div><textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea><button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button></div>
 
-      <div class="github-sync-box">
-        <div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only the AES-256-GCM ciphertext is uploaded to <b>chat-updates.json</b>. Your encryption key and transaction plaintext stay on this device.</small></div></div>
-        <div id="githubStatus" class="github-status">Checking GitHub connection…</div>
-        <div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div>
-      </div>
-
-      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="resetChatEncryptionUI()">♻ Reset Chat Encryption</button></div>
-      <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
-      <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
-      <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
     </div>`;
 }
 
