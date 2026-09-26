@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v48</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v49</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1165,6 +1165,99 @@ async function verifyChatEncryptionKey(){
     return {ok:false,reason:e&&e.message?e.message:'decrypt failed'};
   }
 }
+async function inspectChatKeyHistory(){
+  const out=document.getElementById('chatKeyDiagnostic');
+  if(!out) return;
+  out.style.color='var(--ink-soft)';
+  out.textContent='Key history check: scanning old local storage records without changing anything…';
+  try{
+    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+    const payloads=feed.map(x=>x&&typeof x.payload==='string'?x.payload:'').filter(x=>x.startsWith('CL1.'));
+    if(!payloads.length){ out.textContent='Key history check: no CL1 GitHub entries found.'; return; }
+
+    const candidates=[],seen=new Set();
+    const addCandidate=(label,jwk)=>{
+      if(!jwk||typeof jwk!=='object'||jwk.kty!=='oct') return;
+      const sig=JSON.stringify(jwk);
+      if(seen.has(sig)) return;
+      seen.add(sig); candidates.push({label,jwk});
+    };
+    const parseValue=(label,value)=>{
+      if(typeof value!=='string') return;
+      const s=value.trim();
+      try{
+        if(s.startsWith('CLKEY1.')){
+          addCandidate(label+' · legacy CLKEY1',JSON.parse(new TextDecoder().decode(b64ToBytes(s.slice(7)))));
+          return;
+        }
+        const obj=JSON.parse(s);
+        if(obj&&obj.kty==='oct') addCandidate(label+' · JWK',obj);
+        if(obj&&obj.jwk&&obj.jwk.kty==='oct') addCandidate(label+' · nested JWK',obj.jwk);
+      }catch(e){}
+    };
+
+    // Early Chat recovery used CLKEY1. This scan is read-only and deliberately
+    // avoids window.storage.get(), which could migrate/rewrite old records.
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i); if(!k) continue;
+      const v=localStorage.getItem(k);
+      if(/chat|key|crypto|encrypt/i.test(k)||String(v||'').startsWith('CLKEY1.')) parseValue('browser localStorage: '+k,v);
+    }
+
+    // Inspect raw IndexedDB records without decrypting or rewriting them.
+    try{
+      const db=await new Promise((resolve,reject)=>{
+        const req=indexedDB.open('card-ledger-pwa-db');
+        req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+      });
+      if(db.objectStoreNames.contains('kv')){
+        const rows=await new Promise((resolve,reject)=>{
+          const req=db.transaction('kv','readonly').objectStore('kv').getAll();
+          req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error);
+        });
+        rows.forEach(row=>{
+          if(!row||!row.key) return;
+          if(typeof row.value==='string') parseValue('IndexedDB kv: '+row.key,row.value);
+          else if(row.value&&typeof row.value==='object'&&row.value.jwk) parseValue('IndexedDB kv: '+row.key,JSON.stringify(row.value.jwk));
+        });
+      }
+      db.close();
+    }catch(e){}
+
+    const results=[];
+    for(const cand of candidates){
+      try{
+        const key=await crypto.subtle.importKey('jwk',cand.jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+        let ok=0;
+        for(const p of payloads){
+          try{
+            const ps=p.split('.');
+            if(ps.length===3) await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(ps[1])},key,unb64(ps[2]));
+            ok++;
+          }catch(e){}
+        }
+        results.push({label:cand.label,ok,total:payloads.length});
+      }catch(e){}
+    }
+
+    if(results.length){
+      const hit=results.find(x=>x.ok===x.total);
+      if(hit){
+        out.style.color='var(--ok)';
+        out.textContent='✓ Legacy Chat key found: '+hit.label+' · decrypts '+hit.ok+'/'+hit.total+' GitHub entries. No key was changed. Do not generate a new key.';
+        return;
+      }
+      const best=results.reduce((a,b)=>b.ok>a.ok?b:a);
+      out.textContent='Key history check: found '+results.length+' candidate key record(s), but none match the GitHub feed. Best candidate decrypts '+best.ok+'/'+best.total+'. No key was changed.';
+      return;
+    }
+
+    out.textContent='Key history check: no legacy Chat key material was found in browser localStorage or raw IndexedDB. The current Chat key remains untouched. If you exported the older CLKEY1 recovery key before the mismatch occurred, it may still be the only recoverable copy.';
+  }catch(e){
+    out.textContent='Key history check could not complete: '+(e&&e.message?e.message:'unknown error')+'. No key was changed.';
+  }
+}
+
 async function diagnoseChatKey(){
   const out=document.getElementById('chatKeyDiagnostic');
   const set=(msg)=>{if(out) out.textContent=msg;};
@@ -1730,7 +1823,7 @@ function renderQuickEntryPanel(){
         <div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div>
       </div>
 
-      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button></div>
       <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
       <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
