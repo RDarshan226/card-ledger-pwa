@@ -37,7 +37,7 @@
   @media (max-width:640px){ .wrap{ padding:28px 16px 0; } }
 
   .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--brass); }
-  h1{ font-family:'Fraunces', serif; font-weight:600; font-size:38px; margin:4px 0 18px; letter-spacing:-0.01em;
+  .top-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px}.app-version{display:inline-flex;align-items:center;padding:5px 9px;border:1px solid rgba(0,229,255,.45);border-radius:999px;background:rgba(0,229,255,.08);color:var(--brass);font:600 10px "IBM Plex Mono",monospace;letter-spacing:.08em;white-space:nowrap;box-shadow:0 0 12px rgba(0,229,255,.10)}@media(max-width:520px){.app-version{font-size:9px;padding:4px 7px}}\n  h1{ font-family:'Fraunces', serif; font-weight:600; font-size:38px; margin:4px 0 18px; letter-spacing:-0.01em;
     background:linear-gradient(100deg, var(--ink) 30%, var(--brass) 65%, var(--gold) 90%);
     -webkit-background-clip:text; background-clip:text; color:transparent; width:fit-content;
   }
@@ -362,7 +362,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="eyebrow" id="dateline">Card Ledger</div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v19</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
