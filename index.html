@@ -363,7 +363,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v42</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v43</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1229,70 +1229,72 @@ async function loadChatUpdates(){
 async function loadDeletedEntries(){try{const res=await window.storage.get(DELETED_ENTRIES_KEY,false);const ids=res&&res.value?JSON.parse(res.value):[];deletedEntryIds=new Set(Array.isArray(ids)?ids:[]);}catch(e){deletedEntryIds=new Set();}}
 async function saveDeletedEntries(){try{await window.storage.set(DELETED_ENTRIES_KEY,JSON.stringify([...deletedEntryIds]),false);return true;}catch(e){return false;}}
 async function mergeChatEntries(){
-  for(const item of chatUpdates.entries||[]){
-    if(!item.payload) continue;
+  let changed=false, failed=0, decrypted=0, added=0, skipped=0;
+  const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+  const normalizeName = name => String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
+  const findLedgerCard = name => {
+    const exact=cards.find(c=>c.name===name);
+    if(exact) return exact;
+    const n=normalizeName(name);
+    return cards.find(c=>normalizeName(c.name)===n);
+  };
+
+  for(const item of feed){
+    if(!item || !item.payload) continue;
     try{
       const p=await decryptChatPayload(item.payload);
-      // Current encrypted entry format uses kind:'ledger'; accept the older
-      // kind:'transaction' format too so existing feeds remain compatible.
-      if(p.kind!=='ledger' && p.kind!=='transaction') continue;
-      if(!p.id || !p.card || deletedEntryIds.has(p.id)) continue;
-      const c=cards.find(x=>x.name===p.card);
-      if(!c || (c.entries||[]).some(t=>t.id===p.id)) continue;
-      c.entries=c.entries||[];
-      const entryType=(p.type||p.mainType)==='repay' || (p.type||p.mainType)==='repayment' ? 'repay' : 'txn';
-      c.entries.push({id:p.id,type:entryType,date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true});
-      if((Number(p.cashback)||0)>0){
-        cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:p.date,amount:Number(p.cashback),category:'Cashback',platform:p.platform||'',note:p.note||''});
-      }
-      if((Number(p.charge)||0)>0){
-        cashbackLog.push({id:p.id+'-charge',card:p.card,type:'charge',date:p.date,amount:Number(p.charge),category:'Charge paid',platform:p.platform||'',note:p.note||''});
-      }
-    }catch(e){}
-  }
+      decrypted++;
+      if(!p || (p.kind!=='ledger' && p.kind!=='transaction' && p.kind!=='cashback')){ skipped++; continue; }
+      if(!p.id || deletedEntryIds.has(p.id)){ skipped++; continue; }
 
-  let changed=false, failed=0;
-  for(const seed of (chatUpdates.entries||[])){
-    try{
-      const item=await decryptChatPayload(seed.payload);
-      if(!item.id || deletedEntryIds.has(item.id)) continue;
-      if(item.kind==='cashback'){
-        if(!cashbackLog.some(e=>e.id===item.id)){
-          cashbackLog.push({id:item.id,type:item.type==='charge'?'charge':'cashback',date:item.date||todayStr(),amount:Number(item.amount)||0,category:item.category||'',note:item.note||'',_fresh:true});
-          changed=true;
+      if(p.kind==='cashback'){
+        if(!cashbackLog.some(e=>e.id===p.id)){
+          cashbackLog.push({id:p.id,type:p.type==='charge'?'charge':'cashback',date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',_fresh:true});
+          changed=true; added++;
         }
         continue;
       }
-      const card=cards.find(c=>c.name===item.card);
-      if(!card) continue;
-      if(!card.entries.some(e=>e.id===item.id)){
-        card.entries.push({id:item.id,type:item.type==='repay'?'repay':'txn',date:item.date||todayStr(),amount:Number(item.amount)||0,note:item.note||'',category:item.category||'',platform:item.platform||'',_fresh:true});
-        changed=true;
-      }
+
+      const card=findLedgerCard(p.card);
+      if(!card){ skipped++; continue; }
+      card.entries=Array.isArray(card.entries)?card.entries:[];
+      if(card.entries.some(e=>e.id===p.id)){ skipped++; continue; }
+
+      const rawType=p.type||p.mainType;
+      const entryType=(rawType==='repay'||rawType==='repayment')?'repay':'txn';
+      const entry={
+        id:p.id,type:entryType,date:p.date||todayStr(),amount:Number(p.amount)||0,
+        category:p.category||'',platform:p.platform||'',note:p.note||'',
+        cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true
+      };
+      card.entries.push(entry);
+      if(entry.cashback>0) cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:entry.date,amount:entry.cashback,category:'Cashback',platform:entry.platform,note:entry.note});
+      if(entry.charge>0) cashbackLog.push({id:p.id+'-charge',card:p.card,type:'charge',date:entry.date,amount:entry.charge,category:'Charge paid',platform:entry.platform,note:entry.note});
+      changed=true; added++;
     }catch(e){ failed++; }
   }
-  if(failed && (chatUpdates.entries||[]).length) console.warn('Some encrypted chat updates could not be decrypted.');
-  return changed;
+  if(failed && feed.length) console.warn('Encrypted feed: '+decrypted+' decrypted, '+failed+' failed. The local recovery key must match the key used to create the feed.');
+  window.__chatSyncStatus={feedCount:feed.length,decrypted,failed,added,skipped};
+  return {changed,added,failed,decrypted,feedCount:feed.length};
 }
 async function syncEncryptedChatUpdates(showResult){
   try{
-    // Always refresh the public encrypted feed before merging. The old sync path
-    // only re-ran the merge against the feed already held in memory.
     await loadChatUpdates();
-    const before = cards.reduce((n,c)=>n+(Array.isArray(c.entries)?c.entries.length:0),0);
-    const added=await mergeChatEntries();
-    const after = cards.reduce((n,c)=>n+(Array.isArray(c.entries)?c.entries.length:0),0);
-    const addedCount=Math.max(0,after-before);
-    if(added || addedCount>0){
+    const result=await mergeChatEntries();
+    if(result.added>0){
       await saveData();
       await saveCashback();
       render();
       refreshChatCardOptions();
-      if(showResult) showToast(addedCount+' new transaction'+(addedCount===1?'':'s')+' synced');
+      if(showResult) showToast(result.added+' new transaction'+(result.added===1?'':'s')+' synced');
     }else if(showResult){
-      showToast('No new encrypted transactions');
+      if(result.feedCount===0) showToast('Encrypted feed is empty');
+      else if(result.failed===result.feedCount) showToast('Encrypted data found, but the recovery key does not match');
+      else if(result.failed>0) showToast(result.decrypted+' encrypted entries read; '+result.failed+' could not be decrypted');
+      else if(result.skipped===result.feedCount) showToast('Encrypted entries already synced');
+      else showToast('No new encrypted transactions');
     }
-    return added;
+    return result.added>0;
   }catch(e){
     if(showResult) showToast('Could not refresh encrypted transactions');
     return false;
