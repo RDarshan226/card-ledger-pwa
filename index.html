@@ -362,7 +362,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v35</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v36</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -2924,6 +2924,35 @@ function renderRewards(){
   app.innerHTML = html;
 }
 
+/* ---------------- Notification samples ---------------- */
+function schedulePowerPlusTestNotification(){
+  const now=new Date();
+  const targets=[
+    {h:23,m:27,key:'2327',label:'11:27 PM'},
+    {h:23,m:30,key:'2330',label:'11:30 PM'}
+  ];
+  targets.forEach(t=>{
+    const target=new Date(now);
+    target.setHours(t.h,t.m,0,0);
+    if(target<=now) return;
+    const delay=target-now;
+    setTimeout(async()=>{
+      try{
+        if(!notificationSupported()) return;
+        let permission=Notification.permission;
+        if(permission!=='granted') permission=await Notification.requestPermission();
+        if(permission!=='granted') return;
+        const title='Card Ledger — Sample notification';
+        const options={body:'Sample alert scheduled for '+t.label+' · IDFC Power+ · SBI SimplyClick',icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'card-ledger-sample-'+t.key,renotify:true,data:{url:'./'}};
+        if(navigator.serviceWorker&&navigator.serviceWorker.controller){
+          navigator.serviceWorker.controller.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
+        }else if(Notification.permission==='granted'){
+          new Notification(title,options);
+        }
+      }catch(e){}
+    },delay);
+  });
+}
 /* ---------------- Statement notifications ---------------- */
 const NOTIFY_SETTINGS_KEY = 'card-ledger-notification-settings-v1';
 let notificationSettings = { enabled:false, cards:{} };
