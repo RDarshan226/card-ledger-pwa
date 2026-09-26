@@ -101,7 +101,7 @@
   @media(max-width:700px){.chat-head{flex-direction:column;}.chat-steps{grid-template-columns:1fr;gap:6px;}.chat-form{grid-template-columns:1fr 1fr;}.chat-form .chat-wide{grid-column:span 2;}.chat-type-grid{grid-template-columns:1fr;}.chat-primary,.chat-secondary{width:100%;}.chat-actions .tab-btn{flex:1 1 100%;}.github-actions .tab-btn{flex:1 1 100%;}}
 
   /* ---- Tabs ---- */
-  .tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  .tabs{ display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 20px; }
   .tabs .tab-btn{ flex:1 1 calc(25% - 6px); text-align:center; }
   @media (max-width:520px){ .tabs .tab-btn{ flex:1 1 calc(50% - 6px); } }
   .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -4px; padding:0 4px; }
@@ -364,7 +364,7 @@
 <body>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v54</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v55</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1875,7 +1875,7 @@ function render(){
   document.getElementById('tab-cashback').classList.toggle('active', activeTab==='cashback');
   document.getElementById('tab-rewards').classList.toggle('active', activeTab==='rewards');
   document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
-  document.getElementById('tab-alerts').classList.toggle('active', activeTab==='alerts');
+  const alertTab=document.getElementById('tab-alerts'); if(alertTab) alertTab.classList.toggle('active', activeTab==='alerts');
   if(activeTab === 'ledger') renderLedger();
   else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); }
   else if(activeTab === 'analysis') renderAnalysis();
