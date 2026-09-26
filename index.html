@@ -1155,6 +1155,22 @@ async function importRecoveryPackageUI(){
     setTimeout(()=>location.reload(),700);
   }catch(e){ showToast(e.message||'Invalid recovery package'); }
 }
+function clearEncryptedEntryFields(){
+  const dateEl=document.getElementById('chat-date');
+  const amountEl=document.getElementById('chat-amount');
+  const categoryEl=document.getElementById('chat-category');
+  const platformEl=document.getElementById('chat-platform');
+  const noteEl=document.getElementById('chat-note');
+  const typeEl=document.getElementById('chat-entry-type');
+  const subtypeEl=document.getElementById('chat-entry-subtype');
+  if(dateEl) dateEl.value=todayStr();
+  if(amountEl) amountEl.value='';
+  if(categoryEl) categoryEl.value='';
+  if(platformEl) platformEl.value='';
+  if(noteEl) noteEl.value='';
+  if(typeEl) typeEl.value='expense';
+  if(subtypeEl) subtypeEl.value='txn';
+}
 async function encryptChatEntry(){
   try{
     const mainType=document.getElementById('chat-entry-type').value;
@@ -1178,6 +1194,7 @@ async function encryptChatEntry(){
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
     const token='CL1.'+bytesToB64(iv)+'.'+bytesToB64(new Uint8Array(ct));
     document.getElementById('chat-encrypted').value=token;
+    clearEncryptedEntryFields();
     try{ await navigator.clipboard.writeText(token); showToast('Encrypted entry copied'); }catch(e){ showToast('Encrypted entry created — tap Copy'); }
   }catch(e){ showToast('Could not encrypt entry'); }
 }
