@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v79';
+const APP_VERSION = 'v80';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -1984,13 +1984,25 @@ async function refreshKeyFileStatus(){
   const el=document.getElementById('keyFileStatus');
   if(!el) return;
   try{
-    const h=await window.cardLedgerKeyFile.getHandle();
-    if(!h){el.textContent='⚠ No key file selected';el.style.color='var(--danger)';el.style.background='var(--danger-soft)';return;}
-    const granted=await (typeof h.queryPermission==='function'?h.queryPermission({mode:'read'}):'granted');
-    el.textContent=(granted==='granted'?'✓ ':'⚠ ')+h.name+(granted==='granted'?' · ready for automatic encryption/decryption':' · permission needs to be granted');
-    el.style.color=granted==='granted'?'var(--ok)':'var(--danger)';
-    el.style.background=granted==='granted'?'var(--ok-soft)':'var(--danger-soft)';
-  }catch(e){el.textContent='⚠ Key file unavailable · select it again';el.style.color='var(--danger)';}
+    // Use a bounded status read so a browser/IndexedDB permission operation
+    // can never leave the UI stuck forever on "Key file: checking…".
+    const result=await Promise.race([
+      window.cardLedgerKeyFile.getStatus(),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Key file status timed out')),2500))
+    ]);
+    if(!result || !result.selected){
+      el.textContent='⚠ No key file selected';
+      el.style.color='var(--danger)';el.style.background='var(--danger-soft)';return;
+    }
+    const granted=result.permission==='granted';
+    el.textContent=(granted?'✓ ':'⚠ ')+result.name+
+      (granted?' · ready for automatic encryption/decryption':' · permission needs to be granted');
+    el.style.color=granted?'var(--ok)':'var(--danger)';
+    el.style.background=granted?'var(--ok-soft)':'var(--danger-soft)';
+  }catch(e){
+    el.textContent='⚠ Key file status unavailable · select it again';
+    el.style.color='var(--danger)';el.style.background='var(--danger-soft)';
+  }
 }
 async function selectChatKeyFileUI(){
   try{
