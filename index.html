@@ -538,7 +538,7 @@ function refreshChatCardOptions(){
   if(!sel) return;
   const current=sel.value;
   const usable=cards.filter(c=>!c.isInsurance);
-  sel.innerHTML=usable.map(c=>'<option value="'+String(c.name).replace(/"/g,'&quot;')+'">'+c.name+'</option>').join('');
+  sel.innerHTML=usable.map(c=>'<option value="'+String(c.name).replace(/"/g,"&quot;")+'">'+c.name+'</option>').join('');
   if(current && usable.some(c=>c.name===current)) sel.value=current;
 }
 async function loadRemovedCardNames(){
@@ -590,14 +590,14 @@ function cardEditorHTML(card, context){
   return `
     <div class="breakeven-box" style="margin-top:10px;">
       <div class="entry-form">
-        <div class="field"><label>Card name</label><input id="edit-card-name-${card.id}" value="${String(card.name||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Card name</label><input id="edit-card-name-${card.id}" value="${String(card.name||'').replace(/"/g,"&quot;")}"></div>
         <div class="field"><label>Type</label><select id="edit-card-debit-${card.id}"><option value="false" ${!card.isDebit?'selected':''}>Credit</option><option value="true" ${card.isDebit?'selected':''}>Debit</option></select></div>
         <div class="field"><label>Credit limit ₹</label><input id="edit-card-limit-${card.id}" type="number" value="${Number(card.limit)||0}"></div>
-        <div class="field"><label>Billing / statement date</label><input id="edit-card-billing-${card.id}" value="${String(card.billingDate||'').replace(/"/g,'&quot;')}" placeholder="e.g. 22nd"></div>
-        <div class="field"><label>Shared limit group</label><input id="edit-card-group-${card.id}" value="${String(card.limitGroup||'').replace(/"/g,'&quot;')}"></div>
-        <div class="field"><label>Network</label><input id="edit-card-network-${card.id}" value="${String(card.network||'').replace(/"/g,'&quot;')}" placeholder="Visa / RuPay / Mastercard"></div>
-        <div class="field"><label>Tier</label><input id="edit-card-tier-${card.id}" value="${String(card.tier||'').replace(/"/g,'&quot;')}"></div>
-        <div class="field"><label>BIN</label><input id="edit-card-bin-${card.id}" value="${String(card.bin||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Billing / statement date</label><input id="edit-card-billing-${card.id}" value="${String(card.billingDate||'').replace(/"/g,"&quot;")}" placeholder="e.g. 22nd"></div>
+        <div class="field"><label>Shared limit group</label><input id="edit-card-group-${card.id}" value="${String(card.limitGroup||'').replace(/"/g,"&quot;")}"></div>
+        <div class="field"><label>Network</label><input id="edit-card-network-${card.id}" value="${String(card.network||'').replace(/"/g,"&quot;")}" placeholder="Visa / RuPay / Mastercard"></div>
+        <div class="field"><label>Tier</label><input id="edit-card-tier-${card.id}" value="${String(card.tier||'').replace(/"/g,"&quot;")}"></div>
+        <div class="field"><label>BIN</label><input id="edit-card-bin-${card.id}" value="${String(card.bin||'').replace(/"/g,"&quot;")}"></div>
         <div class="field"><label>Opening month</label><select id="edit-card-month-${card.id}"><option value="">Not set</option>${months}</select></div>
         <div class="field"><label>Opening year</label><input id="edit-card-year-${card.id}" type="number" min="2000" max="2100" value="${card.openedYear||''}"></div>
       </div>
@@ -739,12 +739,12 @@ function recurringFormHTML(p){
   const prefix=edit?'edit-rec-':'new-rec-';
   return `
     <div class="entry-form">
-      <div class="field"><label>Name</label><input id="${prefix}name${edit?'-'+p.id:''}" value="${String(pre.name||'').replace(/"/g,'&quot;')}" placeholder="Netflix / SIP / insurance"></div>
+      <div class="field"><label>Name</label><input id="${prefix}name${edit?'-'+p.id:''}" value="${String(pre.name||'').replace(/"/g,"&quot;")}" placeholder="Netflix / SIP / insurance"></div>
       <div class="field"><label>Amount ₹</label><input id="${prefix}amount${edit?'-'+p.id:''}" type="number" value="${pre.amount||''}"></div>
       <div class="field"><label>Day of month</label><input id="${prefix}day${edit?'-'+p.id:''}" type="number" min="1" max="31" value="${pre.day||''}"></div>
       <div class="field"><label>Card / account</label><select id="${prefix}card${edit?'-'+p.id:''}"><option value="">Not linked</option>${cards.map(c=>'<option value="'+c.id+'" '+(c.id===pre.cardId?'selected':'')+'>'+c.name+'</option>').join('')}</select></div>
-      <div class="field"><label>Category</label><input id="${prefix}cat${edit?'-'+p.id:''}" value="${String(pre.category||'').replace(/"/g,'&quot;')}"></div>
-      <div class="field"><label>Platform / merchant</label><input id="${prefix}platform${edit?'-'+p.id:''}" value="${String(pre.platform||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field"><label>Category</label><input id="${prefix}cat${edit?'-'+p.id:''}" value="${String(pre.category||'').replace(/"/g,"&quot;")}"></div>
+      <div class="field"><label>Platform / merchant</label><input id="${prefix}platform${edit?'-'+p.id:''}" value="${String(pre.platform||'').replace(/"/g,"&quot;")}"></div>
     </div>
     <div class="chat-actions" style="margin-top:8px;"><button class="tab-btn" onclick="saveRecurringPaymentForm('${edit?p.id:''}')">Save</button><button class="tab-btn" onclick="editingRecurringId=null;render()">Cancel</button></div>`;
 }
@@ -1043,7 +1043,7 @@ function renderLedger(){
   if(!app)return;
   const visible=cards.filter(c=>!removedCardNames.has(c.name));
   let html='<div class="cover"><div class="cover-figures"><div class="cover-line"><span class="cover-label">Outstanding</span><span class="cover-amt total">'+inr(visible.reduce((s,c)=>s+Math.max(0,utilised(c)),0))+'</span></div><div class="cover-line"><span class="cover-label">Cards tracked</span><span class="cover-amt">'+visible.filter(c=>!c.isDebit&&!c.feeOnly).length+'</span></div></div><div class="stamp"><span class="pct">'+(visible.filter(c=>!c.isDebit&&!c.feeOnly).length)+'</span><span class="cap">cards</span></div></div>';
-  html+='<div class="toolbar"><input type="text" placeholder="Search cards..." value="'+String(filterText||'').replace(/"/g,'&quot;')+'" oninput="filterText=this.value;renderLedger()"><button class="sort-btn '+(sortByUtil?'active':'')+'" onclick="sortByUtil=!sortByUtil;renderLedger()">Sort by utilisation</button></div><div class="ledger">';
+  html+='<div class="toolbar"><input type="text" placeholder="Search cards..." value="'+String(filterText||'').replace(/"/g,"&quot;")+'" oninput="filterText=this.value;renderLedger()"><button class="sort-btn '+(sortByUtil?'active':'')+'" onclick="sortByUtil=!sortByUtil;renderLedger()">Sort by utilisation</button></div><div class="ledger">';
   let list=visible.filter(c=>!c.feeOnly);
   if(filterText)list=list.filter(c=>String(c.name).toLowerCase().includes(String(filterText).toLowerCase()));
   if(sortByUtil)list=list.slice().sort((a,b)=>utilised(b)-utilised(a));
@@ -2154,7 +2154,7 @@ function renderRewardTrackingManager(){
     const f=c.fee||blankFeeForCard(c.name);
     html+='<div class="recur-row"><div class="recur-head"><div><div class="recur-name">'+c.name+'<span class="share-tag">'+(f.rewardRateConfirmed?'Confirmed':'Unconfirmed')+'</span></div><div class="row-sub">General rate '+(Number(f.rewardRatePct)||0)+'% · '+(f.bestCategory||'No best category')+'</div></div><div class="chat-actions"><button class="tab-btn" onclick="editingRewardCardId=\''+c.id+'\';render()">Edit</button><button class="tab-btn" onclick="removeCardUI(\''+c.id+'\',event)">Remove</button></div></div>';
     if(editingRewardCardId===c.id){
-      html+='<div class="entry-form" style="margin-top:8px;"><div class="field"><label>Reward rate %</label><input id="reward-track-rate-'+c.id+'" type="number" step="0.01" value="'+(Number(f.rewardRatePct)||0)+'"></div><div class="field"><label>Best-return category</label><input id="reward-track-cat-'+c.id+'" value="'+String(f.bestCategory||'').replace(/"/g,'&quot;')+'"></div><div class="field"><label>Monthly cap ₹</label><input id="reward-track-cap-'+c.id+'" type="number" value="'+(Number(f.monthlyRewardCap)||0)+'"></div><div class="field"><label>Cap reset</label><select id="reward-track-reset-'+c.id+'"><option value="calendar" '+(f.capResetBasis==='calendar'?'selected':'')+'>Calendar month</option><option value="statement" '+(f.capResetBasis==='statement'?'selected':'')+'>Statement cycle</option></select></div><div class="field"><label>Confirmed</label><select id="reward-track-confirmed-'+c.id+'"><option value="true" '+(f.rewardRateConfirmed?'selected':'')+'>Yes</option><option value="false" '+(!f.rewardRateConfirmed?'selected':'')+'>No</option></select></div></div><div class="chat-actions" style="margin-top:8px;"><button class="tab-btn" onclick="saveRewardTracking(\''+c.id+'\')">Save</button><button class="tab-btn" onclick="editingRewardCardId=null;render()">Cancel</button></div>';
+      html+='<div class="entry-form" style="margin-top:8px;"><div class="field"><label>Reward rate %</label><input id="reward-track-rate-'+c.id+'" type="number" step="0.01" value="'+(Number(f.rewardRatePct)||0)+'"></div><div class="field"><label>Best-return category</label><input id="reward-track-cat-'+c.id+'" value="'+String(f.bestCategory||'').replace(/"/g,"&quot;")+'"></div><div class="field"><label>Monthly cap ₹</label><input id="reward-track-cap-'+c.id+'" type="number" value="'+(Number(f.monthlyRewardCap)||0)+'"></div><div class="field"><label>Cap reset</label><select id="reward-track-reset-'+c.id+'"><option value="calendar" '+(f.capResetBasis==='calendar'?'selected':'')+'>Calendar month</option><option value="statement" '+(f.capResetBasis==='statement'?'selected':'')+'>Statement cycle</option></select></div><div class="field"><label>Confirmed</label><select id="reward-track-confirmed-'+c.id+'"><option value="true" '+(f.rewardRateConfirmed?'selected':'')+'>Yes</option><option value="false" '+(!f.rewardRateConfirmed?'selected':'')+'>No</option></select></div></div><div class="chat-actions" style="margin-top:8px;"><button class="tab-btn" onclick="saveRewardTracking(\''+c.id+'\')">Save</button><button class="tab-btn" onclick="editingRewardCardId=null;render()">Cancel</button></div>';
     }
     html+='</div>';
   });
