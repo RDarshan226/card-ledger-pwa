@@ -457,12 +457,6 @@ function unb64(v){return b64ToBytes(v);}
 async function verifyChatEncryptionKey(){return {ok:true,reason:'local-file'};}
 async function inspectChatKeyHistory(){return refreshLocalDataStatus();}
 async function inspectCredentialVaultChatKey(){return refreshLocalDataStatus();}
-async function syncEncryptedChatUpdates(){return false;}
-
-
-async function copyEncryptedChat(){showToast('Transactions are saved directly to the selected local JSON file.');}
-
-
 async function loadChatUpdates(){
   try{
     chatUpdates=await readLocalDataFile();
@@ -1098,24 +1092,6 @@ async function createLocalDataFileUI(){try{await createLocalDataFile();}catch(e)
 async function selectLocalDataFileUI(){try{await selectLocalDataFile();}catch(e){showToast(e.message||'Could not select data file');}}
 async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect data file');}}
 async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
-async function selectChatKeyFileUI(){
-  try{
-    const result=await window.cardLedgerKeyFile.select();
-    const out=document.getElementById('chatKeyDiagnostic');
-    if(out){out.style.color='var(--ok)';out.textContent='✓ Key file selected · '+result.name+' · '+(result.persistent?'saved file reference':'session-only file access; select again after reopening')+' · key contents are not stored by the PWA';}
-    await refreshLocalDataStatus();
-    const merged=await syncEncryptedChatUpdates(false);
-    render();
-    refreshChatCardOptions();
-    if(merged) showToast('Key file selected · encrypted GitHub transactions synced');
-    else showToast('Key file selected');
-  }catch(e){showToast(e.message||'Could not select the key file');}
-}
-async function clearChatKeyFileUI(){
-  await window.cardLedgerKeyFile.clear();
-  await refreshKeyFileStatus();
-  showToast('Saved key-file reference removed');
-}
 function setTab(t){activeTab=t;render();if(t==='secure')setTimeout(refreshLocalDataStatus,0);}
 
 function render(){
