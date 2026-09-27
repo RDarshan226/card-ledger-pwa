@@ -115,3 +115,5 @@ After every repo change, report:
 - Automatic updates affect application code/assets only and do not clear or overwrite the user's IndexedDB ledger, encryption key file, GitHub token, or encrypted transaction data.
 
 - v78 consolidates the update listeners into one service-worker update flow and keeps the versioned service-worker URL so stale registrations are less likely to persist.
+
+- v79 fixes the Rewards tab to render the existing reward-tracking manager, exposing Add Card, Edit, Save, Cancel, and Remove controls while preserving the reward calculation panels.
