@@ -1,178 +1,159 @@
-/* Card Ledger PWA — GITHUB SYNC CORE
- * Protected module. Do not modify for GUI changes.
- * Owns GitHub token persistence, encrypted-feed access and encrypted payload upload.
+/* Card Ledger PWA — LOCAL DATA FILE CORE
+ * Transactions are stored as plain JSON in a user-selected local file.
+ * No encryption, decryption, GitHub upload, or remote feed is used.
  */
-const CHAT_UPDATES_URL = './chat-updates.json';
-const CHAT_KEY_STORAGE_KEY = 'card-ledger-chat-aes-key-v1';
-const GITHUB_TOKEN_STORAGE_KEY = 'card-ledger-github-token-v1';
-const GITHUB_REPO = 'RDarshan226/card-ledger-pwa';
-const GITHUB_PATH = 'chat-updates.json';
-const GITHUB_API_BASE = 'https://api.github.com';
-let chatUpdates = { version: 2, entries: [], cashback: [] };
+const LOCAL_DATA_DB='card-ledger-local-file-v1';
+const LOCAL_DATA_STORE='handles';
+const LOCAL_DATA_ID='primary';
+let localDataDbPromise;
+let chatUpdates={version:3,entries:[],cashback:[]};
 
-// Compatibility aliases retained for older encrypted-feed code paths.
-function B64(bytes){
-  const a=bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  let out='';
-  for(let i=0;i<a.length;i++) out+=String.fromCharCode(a[i]);
-  return btoa(out);
+function openLocalDataDB(){
+  if(localDataDbPromise) return localDataDbPromise;
+  localDataDbPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open(LOCAL_DATA_DB,1);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(LOCAL_DATA_STORE))req.result.createObjectStore(LOCAL_DATA_STORE);};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+  return localDataDbPromise;
 }
-function b64(bytes){ return B64(bytes); }
-
-function bytesToUtf8B64(text){
-  const bytes=new TextEncoder().encode(text);
-  let s='';
-  for(let i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
-  return btoa(s);
+async function saveLocalDataHandle(handle){
+  const db=await openLocalDataDB();
+  return await new Promise((resolve,reject)=>{
+    const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).put(handle,LOCAL_DATA_ID);
+    r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);
+  });
 }
-function b64ToUtf8(str){
-  const s=atob(String(str).replace(/\s/g,''));
-  const bytes=new Uint8Array(s.length);
-  for(let i=0;i<s.length;i++) bytes[i]=s.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
+async function loadLocalDataHandle(){
+  const db=await openLocalDataDB();
+  return await new Promise((resolve,reject)=>{
+    const r=db.transaction(LOCAL_DATA_STORE,'readonly').objectStore(LOCAL_DATA_STORE).get(LOCAL_DATA_ID);
+    r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);
+  });
 }
-async function getGitHubToken(){
+async function clearLocalDataHandle(){
+  const db=await openLocalDataDB();
+  return await new Promise((resolve,reject)=>{
+    const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).delete(LOCAL_DATA_ID);
+    r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);
+  });
+}
+async function localFilePermission(handle,request=false){
+  if(!handle)return false;
+  if(typeof handle.queryPermission!=='function')return true;
   try{
-    const saved=await window.storage.get(GITHUB_TOKEN_STORAGE_KEY,false);
-    return saved&&saved.value ? saved.value : '';
-  }catch(e){ return ''; }
-}
-async function setGitHubToken(token){
-  await window.storage.set(GITHUB_TOKEN_STORAGE_KEY,token);
-}
-async function clearGitHubToken(){
-  try{ await window.storage.remove(GITHUB_TOKEN_STORAGE_KEY); }catch(e){}
-}
-async function githubApi(path, options={}){
-  const token=options.token||await getGitHubToken();
-  if(!token) throw new Error('GitHub is not connected');
-  const headers={
-    'Accept':'application/vnd.github+json',
-    'Authorization':'Bearer '+token,
-    'X-GitHub-Api-Version':'2022-11-28',
-    ...(options.headers||{})
-  };
-  const res=await fetch(GITHUB_API_BASE+path,{...options,headers});
-  if(!res.ok){
-    let detail='';
-    try{ const body=await res.json(); detail=body.message||''; }catch(e){}
-    const err=new Error(detail||('GitHub request failed ('+res.status+')'));
-    err.status=res.status;
-    throw err;
-  }
-  return res;
-}
-async function getGitHubChatFile(token){
-  const res=await githubApi('/repos/'+GITHUB_REPO+'/contents/'+GITHUB_PATH+'?ref=main',{token});
-  const data=await res.json();
-  if(!data.content || !data.sha) throw new Error('GitHub returned an invalid chat feed');
-  return {sha:data.sha, data:JSON.parse(b64ToUtf8(data.content))};
-}
-function normaliseChatFeed(data){
-  return {
-    version:2,
-    entries:Array.isArray(data&&data.entries)?data.entries:[],
-    cashback:Array.isArray(data&&data.cashback)?data.cashback:[]
-  };
-}
-async function refreshGitHubStatus(message){
-  const el=document.getElementById('githubStatus');
-  if(!el) return;
-  const token=await getGitHubToken();
-  if(!token){
-    el.className='github-status';
-    el.textContent=message||'○ Not connected · encrypted transactions will stay local until you connect GitHub';
-    return;
-  }
-  el.className='github-status connected';
-  el.textContent=message||'✓ GitHub connected · upload target: '+GITHUB_REPO+'/'+GITHUB_PATH;
-}
-async function connectGitHub(){
-  const existing=await getGitHubToken();
-  const promptText='Paste a GitHub fine-grained Personal Access Token with access ONLY to this repository and Contents: Read and write.\n\nDo not use a broad/classic token. The token is stored encrypted in this PWA and is not uploaded to ChatGPT.';
-  const token=prompt(promptText,existing?'':'');
-  if(token===null) return;
-  const clean=token.trim();
-  if(!clean){ showToast('No GitHub token entered'); return; }
-  try{
-    await getGitHubChatFile(clean);
-    await setGitHubToken(clean);
-    await refreshGitHubStatus();
-    showToast('GitHub connected');
-  }catch(e){
-    await refreshGitHubStatus();
-    showToast(e.message||'Could not connect GitHub');
-  }
-}
-async function disconnectGitHub(){
-  if(!confirm('Disconnect GitHub from this device? Your encrypted ledger data will remain on the device and in GitHub.')) return;
-  await clearGitHubToken();
-  await refreshGitHubStatus();
-  showToast('GitHub disconnected');
-}
-async function uploadEncryptedPayload(token,verificationKey=null){
-  const clean=String(token||'').trim();
-  if(!clean) throw new Error('Nothing encrypted to upload');
-  let lastError=null;
-  for(let attempt=0; attempt<2; attempt++){
-    try{
-      const current=await getGitHubChatFile(await getGitHubToken());
-      const feed=normaliseChatFeed(current.data);
-      if(feed.entries.some(x=>x&&x.payload===clean)){
-        await refreshGitHubStatus('✓ Already uploaded · GitHub feed already contains this transaction');
-        return {already:true};
-      }
-      feed.entries.push({payload:clean});
-      const content=JSON.stringify(feed,null,2)+'\n';
-      const body={
-        message:'Add encrypted Card Ledger transaction',
-        content:bytesToUtf8B64(content),
-        sha:current.sha,
-        branch:'main'
-      };
-      const res=await githubApi('/repos/'+GITHUB_REPO+'/contents/'+GITHUB_PATH,{
-        method:'PUT',
-        body:JSON.stringify(body),
-        headers:{'Content-Type':'application/json'}
-      });
-      if(!res.ok) throw new Error('GitHub upload failed');
-      // Round-trip verification: only report success after the exact GitHub
-      // copy can be decrypted with the current encryption key.
-      const verify=await getGitHubChatFile(await getGitHubToken());
-      const verifiedEntries=Array.isArray(verify.data&&verify.data.entries)?verify.data.entries:[];
-      const remoteEntry=verifiedEntries.find(x=>x&&x.payload===clean);
-      if(!remoteEntry) throw new Error('GitHub accepted the upload, but the encrypted transaction could not be found in the GitHub feed.');
-      try{
-        if(verificationKey){
-          const ps=clean.split('.');
-          if(ps.length!==3) throw new Error('Invalid encrypted payload');
-          const ivRaw=atob(ps[1]),ctRaw=atob(ps[2]);
-          const iv=new Uint8Array(ivRaw.length),ct=new Uint8Array(ctRaw.length);
-          for(let i=0;i<ivRaw.length;i++) iv[i]=ivRaw.charCodeAt(i);
-          for(let i=0;i<ctRaw.length;i++) ct[i]=ctRaw.charCodeAt(i);
-          await crypto.subtle.decrypt({name:'AES-GCM',iv},verificationKey,ct);
-        }else if(typeof decryptChatPayload==='function') await decryptChatPayload(clean);
-        else{
-          const ps=clean.split('.');
-          if(ps.length!==3) throw new Error('Invalid encrypted payload');
-          const ivRaw=atob(ps[1]),ctRaw=atob(ps[2]);
-          const iv=new Uint8Array(ivRaw.length),ct=new Uint8Array(ctRaw.length);
-          for(let i=0;i<ivRaw.length;i++) iv[i]=ivRaw.charCodeAt(i);
-          for(let i=0;i<ctRaw.length;i++) ct[i]=ctRaw.charCodeAt(i);
-          await crypto.subtle.decrypt({name:'AES-GCM',iv},await getChatCryptoKey(),ct);
-        }
-      }catch(e){
-        throw new Error('GitHub accepted the encrypted transaction, but this device could not decrypt the uploaded copy with the current key. The key used for encryption and the selected key do not match.');
-      }
-      await refreshGitHubStatus('✓ Uploaded & verified · GitHub copy decrypts with the current key');
-      return {already:false,verified:true};
-    }catch(e){
-      lastError=e;
-      if(e.status===409 && attempt===0) continue;
-      break;
+    let s=await handle.queryPermission({mode:'readwrite'});
+    if(s==='granted')return true;
+    if(request&&typeof handle.requestPermission==='function'){
+      s=await handle.requestPermission({mode:'readwrite'});
+      return s==='granted';
     }
-  }
-  throw lastError||new Error('GitHub upload failed');
+  }catch(e){}
+  return false;
 }
-
- 
+function normaliseLocalData(data){
+  return {version:3,entries:Array.isArray(data&&data.entries)?data.entries:[],cashback:Array.isArray(data&&data.cashback)?data.cashback:[]};
+}
+async function readLocalDataFile(){
+  const handle=await loadLocalDataHandle();
+  if(!handle) throw new Error('No Card Ledger data file selected. Choose a local JSON file first.');
+  if(!(await localFilePermission(handle,true))) throw new Error('Permission to access the selected Card Ledger file was not granted.');
+  const file=await handle.getFile();
+  const text=await file.text();
+  if(!text.trim())return normaliseLocalData(null);
+  try{return normaliseLocalData(JSON.parse(text));}
+  catch(e){throw new Error('The selected Card Ledger file is not valid JSON.');}
+}
+async function writeLocalDataFile(data){
+  const handle=await loadLocalDataHandle();
+  if(!handle) throw new Error('No Card Ledger data file selected.');
+  if(!(await localFilePermission(handle,true))) throw new Error('Permission to write the selected Card Ledger file was not granted.');
+  const writable=await handle.createWritable();
+  await writable.write(JSON.stringify(normaliseLocalData(data),null,2)+'\n');
+  await writable.close();
+}
+async function selectLocalDataFile(){
+  if(!window.showOpenFilePicker) throw new Error('This browser does not support direct local-file access. Open the PWA in Chrome/Edge on a supported device.');
+  const picked=await window.showOpenFilePicker({
+    multiple:false,
+    types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}],
+    excludeAcceptAllOption:false
+  });
+  const handle=picked&&picked[0];
+  if(!handle)throw new Error('No data file selected.');
+  if(!(await localFilePermission(handle,true)))throw new Error('Permission to access the selected file was not granted.');
+  const file=await handle.getFile();
+  const text=await file.text();
+  let data;
+  if(!text.trim())data=normaliseLocalData(null);
+  else{try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}}
+  await saveLocalDataHandle(handle);
+  await writeLocalDataFile(data);
+  chatUpdates=data;
+  await refreshLocalDataStatus('✓ Local data file selected · '+handle.name);
+  showToast('Card Ledger data file selected');
+  return data;
+}
+async function createLocalDataFile(){
+  if(!window.showSaveFilePicker)throw new Error('This browser does not support direct local-file access. Open the PWA in Chrome/Edge on a supported device.');
+  const handle=await window.showSaveFilePicker({
+    suggestedName:'card-ledger-data.json',
+    types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}]
+  });
+  if(!handle)throw new Error('No data file selected.');
+  if(!(await localFilePermission(handle,true)))throw new Error('Permission to access the selected file was not granted.');
+  await saveLocalDataHandle(handle);
+  const data=normaliseLocalData(null);
+  await writeLocalDataFile(data);
+  chatUpdates=data;
+  await refreshLocalDataStatus('✓ Local data file created · '+handle.name);
+  showToast('Card Ledger data file created');
+  return data;
+}
+async function refreshLocalDataStatus(message){
+  const el=document.getElementById('githubStatus');
+  if(!el)return;
+  try{
+    const h=await loadLocalDataHandle();
+    el.className='github-status '+(h?'connected':'');
+    el.textContent=message||(h?'✓ Local data file selected · '+(h.name||'Card Ledger data'):'○ No local data file selected');
+  }catch(e){el.textContent=message||'○ No local data file selected';}
+}
+async function connectGitHub(){return selectLocalDataFile().catch(e=>showToast(e.message||'Could not select data file'));}
+async function disconnectGitHub(){
+  await clearLocalDataHandle();
+  chatUpdates=normaliseLocalData(null);
+  await refreshLocalDataStatus('○ Local data file disconnected');
+  showToast('Local data file disconnected');
+}
+async function uploadEncryptedPayload(payload){
+  const p=typeof payload==='string'?JSON.parse(payload):payload;
+  const data=await readLocalDataFile();
+  if(p&&p.id&&data.entries.some(x=>x&&x.id===p.id))return {already:true};
+  data.entries.push(p);
+  await writeLocalDataFile(data);
+  chatUpdates=data;
+  await refreshLocalDataStatus('✓ Saved locally · '+(await loadLocalDataHandle()).name);
+  return {already:false,local:true};
+}
+async function loadChatUpdates(){
+  try{
+    chatUpdates=await readLocalDataFile();
+    window.chatUpdatesForSecurity=chatUpdates.entries;
+    window.__chatFeedSource='local-file';
+    return chatUpdates;
+  }catch(e){
+    chatUpdates=normaliseLocalData(null);
+    window.__chatFeedSource='none';
+    return chatUpdates;
+  }
+}
+async function saveTransactionToLocalFile(payload){
+  const data=await readLocalDataFile();
+  if(!data.entries.some(x=>x&&x.id===payload.id))data.entries.push(payload);
+  await writeLocalDataFile(data);
+  chatUpdates=data;
+  await refreshLocalDataStatus('✓ Transaction saved · '+(await loadLocalDataHandle()).name);
+  return true;
+}
