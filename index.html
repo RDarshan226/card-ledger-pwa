@@ -10,6 +10,9 @@
 <link rel="manifest" href="manifest.json">
 <title>Card Ledger</title>
 <style>
+  /* Startup failsafe: the app must never remain on the splash screen if a later script throws. */
+  #startup-splash{animation:startupFailsafe 2.6s ease forwards;}
+  @keyframes startupFailsafe{0%,75%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden;pointer-events:none}}
   :root{
     --paper:#080B12; --paper-card:#101622; --line:#26344A; --line-soft:#1B2739;
     --margin:#00F5FF; --ink:#F2F7FF; --ink-soft:#93A4BD;
@@ -397,7 +400,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v93"></script>
+<script src="./github-sync-core.js?v=v94"></script>
 <script>
 /* PWA local database layer: IndexedDB values are encrypted at rest with AES-256-GCM.
    The device key is stored separately in IndexedDB and is never uploaded to GitHub. */
@@ -613,7 +616,7 @@ function bytesToB64(bytes){
 // Keep these global so an older script cannot fail with “B64 is not defined”.
 function B64(bytes){ return bytesToB64(bytes); }
 function b64(bytes){ return bytesToB64(bytes); }
-const APP_VERSION='v93';
+const APP_VERSION='v94';
 const versionText = APP_VERSION;
 const startupVersionEl = document.getElementById('startup-version');
 const appVersionEl = document.getElementById('app-version');
@@ -2502,6 +2505,8 @@ if('serviceWorker' in navigator){
 initTheme();
 const startupSplash=document.getElementById('startup-splash');
 setTimeout(()=>{ if(startupSplash) startupSplash.classList.add('hide'); },2000);
+// v94 startup failsafe: also hide the splash even if another initialization block errors.
+setTimeout(()=>{ if(startupSplash){startupSplash.classList.add('hide');startupSplash.style.display='none';} },2600);
 </script>
 <datalist id="cat-list">
   <option value="Grocery"><option value="Food & Dining"><option value="Shopping">
