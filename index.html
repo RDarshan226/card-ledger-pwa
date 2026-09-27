@@ -394,11 +394,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v94 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v95 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v94"></script>
+<script src="./github-sync-core.js?v=v95"></script>
 <script>
 /* PWA local database layer: IndexedDB values are encrypted at rest with AES-256-GCM.
    The device key is stored separately in IndexedDB and is never uploaded to GitHub. */
@@ -614,7 +614,7 @@ function bytesToB64(bytes){
 // Keep these global so an older script cannot fail with “B64 is not defined”.
 function B64(bytes){ return bytesToB64(bytes); }
 function b64(bytes){ return bytesToB64(bytes); }
-const APP_VERSION='v94';
+const APP_VERSION='v95';
 const versionText = APP_VERSION;
 const startupVersionEl = document.getElementById('startup-version');
 const appVersionEl = document.getElementById('app-version');
@@ -1213,60 +1213,17 @@ function clearEncryptedEntryFields(){
   if(typeEl) typeEl.value='expense';
   if(subtypeEl) subtypeEl.value='txn';
 }
-async function encryptChatEntry(){
-  try{
-    const mainType=document.getElementById('chat-entry-type').value;
-    const subtype=document.getElementById('chat-entry-subtype').value;
-    const entryType=mainType==='expense' ? (subtype==='cashback'?'cashback':'txn') : (subtype==='charge'?'charge':'repay');
-    const date=document.getElementById('chat-date').value || todayStr();
-    const amount=Number(document.getElementById('chat-amount').value);
-    const category=document.getElementById('chat-category').value.trim();
-    const platform=document.getElementById('chat-platform').value.trim();
-    const note=document.getElementById('chat-note').value.trim();
-    if(!amount || amount<=0){ showToast('Enter a valid amount'); return; }
-    const card=document.getElementById('chat-card').value;
-    if(!card){ showToast('Choose a card'); return; }
-    const id=(crypto.randomUUID?crypto.randomUUID():uid());
-    const isLedger=entryType==='txn' || entryType==='repay';
-    const payload=isLedger
-      ? {v:1,id,kind:'ledger',card,type:entryType,date,amount,category,platform,note}
-      : {v:2,id,kind:'cashback',card,type:entryType,date,amount,category,platform,note};
-    const iv=crypto.getRandomValues(new Uint8Array(12));
-    const key=await getChatCryptoKey();
-    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
-    const token='CL1.'+b64(iv)+'.'+b64(new Uint8Array(ct));
-    document.getElementById('chat-encrypted').value=token;
-    clearEncryptedEntryFields();
-    try{ await navigator.clipboard.writeText(token); showToast('Encrypted entry copied'); }catch(e){ showToast('Encrypted entry created — tap Copy'); }
-  }catch(e){ showToast('Could not encrypt entry'); }
-}
-async function copyEncryptedChat(){
-  const el=document.getElementById('chat-encrypted');
-  if(!el || !el.value) return;
-  await navigator.clipboard.writeText(el.value);
-  showToast('Encrypted transaction copied');
-}
+async function encryptChatEntry(){return encryptTransactionEntry(true);}
+async function copyEncryptedChat(){showToast('Transactions are saved directly to the selected local JSON file.');}
 async function loadChatUpdates(){
   try{
-    const token=await getGitHubToken();
-    if(token){
-      const remote=await getGitHubChatFile(token);
-      const data=remote.data||{};
-      chatUpdates={version:2,entries:Array.isArray(data.entries)?data.entries:[],cashback:Array.isArray(data.cashback)?data.cashback:[]};
-      window.chatUpdatesForSecurity=chatUpdates.entries;
-      window.__chatFeedSource='github-api';
-      return chatUpdates;
-    }
-  }catch(e){ console.warn('Direct GitHub feed read failed; using published feed.',e); }
-  try{
-    const res=await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), {cache:'reload'});
-    if(res.ok){
-      const data=await res.json();
-      chatUpdates={version:2,entries:Array.isArray(data.entries)?data.entries:[],cashback:Array.isArray(data.cashback)?data.cashback:[]};
-      window.chatUpdatesForSecurity=chatUpdates.entries;
-      window.__chatFeedSource='published';
-    }
-  }catch(e){}
+    chatUpdates=await readLocalDataFile();
+    window.chatUpdatesForSecurity=chatUpdates.entries;
+    window.__chatFeedSource='local-file';
+  }catch(e){
+    chatUpdates={version:3,entries:[],cashback:[]};
+    window.__chatFeedSource='none';
+  }
   return chatUpdates;
 }
 async function loadDeletedEntries(){try{const res=await window.storage.get(DELETED_ENTRIES_KEY,false);const ids=res&&res.value?JSON.parse(res.value):[];deletedEntryIds=new Set(Array.isArray(ids)?ids:[]);}catch(e){deletedEntryIds=new Set();}}
@@ -1274,21 +1231,27 @@ async function saveDeletedEntries(){try{await window.storage.set(DELETED_ENTRIES
 async function mergeChatEntries(){
   let changed=false,failed=0,added=0,skipped=0;
   const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
-  const normalizeName=name=>String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
-  const findLedgerCard=name=>{const exact=cards.find(c=>c.name===name);if(exact)return exact;const n=normalizeName(name);return cards.find(c=>normalizeName(c.name)===n);};
+  const normalizeName=name=>String(name||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const findLedgerCard=name=>{
+    const exact=cards.find(c=>c.name===name); if(exact)return exact;
+    const n=normalizeName(name); return cards.find(c=>normalizeName(c.name)===n);
+  };
   for(const p of feed){
     if(!p||!p.id)continue;
     try{
       if(deletedEntryIds.has(p.id)){skipped++;continue;}
       if(p.kind==='cashback'){
-        if(!cashbackLog.some(e=>e.id===p.id)){cashbackLog.push({id:p.id,type:p.type==='charge'?'charge':'cashback',date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',_fresh:true});changed=true;added++;}
+        if(!cashbackLog.some(e=>e.id===p.id)){
+          cashbackLog.push({id:p.id,type:p.type==='charge'?'charge':'cashback',date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',_fresh:true});
+          changed=true;added++;
+        }
         continue;
       }
       if(p.kind!=='transaction'&&p.kind!=='ledger'){skipped++;continue;}
-      const card=findLedgerCard(p.card);if(!card){skipped++;continue;}
+      const card=findLedgerCard(p.card); if(!card){skipped++;continue;}
       card.entries=Array.isArray(card.entries)?card.entries:[];
       if(card.entries.some(e=>e.id===p.id)){skipped++;continue;}
-      const rawType=p.type||p.mainType,entryType=(rawType==='repay'||rawType==='repayment')?'repay':'txn';
+      const rawType=p.type||p.mainType, entryType=(rawType==='repay'||rawType==='repayment')?'repay':'txn';
       const entry={id:p.id,type:entryType,date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true};
       card.entries.push(entry);
       if(entry.cashback>0)cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:entry.date,amount:entry.cashback,category:'Cashback',platform:entry.platform,note:entry.note});
@@ -1553,7 +1516,6 @@ async function loadData(){
   await loadRemovedCardNames();
   await loadRecurringPayments();
   await loadChatUpdates();
-  await reconcileChatKeyStores();
   try{
     if(window.storage && typeof window.storage.get === 'function'){
       const res = await window.storage.get(STORAGE_KEY, false);
@@ -1889,31 +1851,8 @@ function renderSecureUpdate(){return `
 </div>`;}
 async function createLocalDataFileUI(){try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}}
 async function selectLocalDataFileUI(){try{await selectLocalDataFile();}catch(e){showToast(e.message||'Could not select data file');}}
-async function disconnectLocalDataFileUI(){await disconnectGitHub();}
-async function refreshKeyFileStatus(){
-  const el=document.getElementById('keyFileStatus');
-  if(!el) return;
-  try{
-    // Use a bounded status read so a browser/IndexedDB permission operation
-    // can never leave the UI stuck forever on "Key file: checking…".
-    const result=await Promise.race([
-      window.cardLedgerKeyFile.getStatus(),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Key file status timed out')),2500))
-    ]);
-    if(!result || !result.selected){
-      el.textContent='⚠ No key file selected';
-      el.style.color='var(--danger)';el.style.background='var(--danger-soft)';return;
-    }
-    const granted=result.permission==='granted';
-    el.textContent=(granted?'✓ ':'⚠ ')+result.name+
-      (granted?' · ready for automatic encryption/decryption':' · permission needs to be granted');
-    el.style.color=granted?'var(--ok)':'var(--danger)';
-    el.style.background=granted?'var(--ok-soft)':'var(--danger-soft)';
-  }catch(e){
-    el.textContent='⚠ Key file status unavailable · select it again';
-    el.style.color='var(--danger)';el.style.background='var(--danger-soft)';
-  }
-}
+async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect data file');}}
+async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
 async function selectChatKeyFileUI(){
   try{
     const result=await window.cardLedgerKeyFile.select();
@@ -1953,13 +1892,41 @@ else if(activeTab==='alerts')renderAlerts();
 else if(activeTab==='secure'){app.innerHTML=renderSecureUpdate();refreshLocalDataStatus();}
 }
 
+async function refreshGitHubStatus(){return refreshLocalDataStatus();}
+
+function updateTransactionEntryFields(){}
+
+async function encryptTransactionEntry(){
+  try{
+    const mainType=document.getElementById('entry-main-type').value;
+    const card=document.getElementById('entry-card').value;
+    const date=document.getElementById('entry-date').value||todayStr();
+    const amount=Number(document.getElementById('entry-amount').value);
+    const category=document.getElementById('entry-category').value.trim();
+    const platform=document.getElementById('entry-platform').value.trim();
+    const cashback=Number(document.getElementById('entry-cashback').value)||0;
+    const charge=Number(document.getElementById('entry-charge').value)||0;
+    const note=document.getElementById('entry-note').value.trim();
+    if(!card){showToast('Choose a card');return;}
+    if(!amount||amount<=0){showToast('Enter a valid amount');return;}
+    const payload={v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type:mainType==='repayment'?'repay':'txn',date,amount,category,platform,note,cashback,charge};
+    await saveTransactionToLocalFile(payload);
+    chatUpdates=await readLocalDataFile();
+    await mergeChatEntries();
+    await saveData();
+    ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    render(); refreshChatCardOptions(); updateTransactionEntryFields();
+    showToast('Transaction saved to local data file');
+  }catch(e){showToast(e.message||'Could not save transaction');}
+}
+
 function renderQuickEntryPanel(){
   return `
     <div class="panel chat-panel" id="chatSyncPanel">
-      <div class="chat-head"><div><div class="chat-kicker">SECURE ENTRY</div><div class="tab-heading-row"><h2>🔐 Add transaction</h2></div><div class="sub">One transaction can be an Expense or Card repayment, with Cashback and Charge paid recorded as additional fields.</div></div><div class="secure-badge">AES-256-GCM</div></div>
+      <div class="chat-head"><div><div class="chat-kicker">LOCAL ENTRY</div><div class="tab-heading-row"><h2>🧾 Add transaction</h2></div><div class="sub">One transaction can be an Expense or Card repayment, with Cashback and Charge paid recorded as additional fields.</div></div><div class="secure-badge">LOCAL JSON</div></div>
 
       <div class="chat-section entry-section">
-        <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details below belong to the same transaction</small></div></div>
+        <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details are stored together in the selected local JSON file</small></div></div>
         <div class="chat-form chat-form-stacked">
           <div class="field"><label>Main type</label><select id="entry-main-type" onchange="updateTransactionEntryFields()"><option value="expense">Expense</option><option value="repayment">Card repayment</option></select></div>
           <div class="field"><label>Card</label><select id="entry-card" class="entry-card"></select></div>
@@ -3246,31 +3213,7 @@ async function hasRecoveryPackage(){
     return status && status.exported === true;
   }catch(e){ return false; }
 }
-async function refreshRecoveryStatus(){
-  const el=document.getElementById('recoveryStatus');
-  if(!el) return;
-  try{
-    const res=await window.storage.get(RECOVERY_STATUS_KEY);
-    if(res && res.value){
-      const status=JSON.parse(res.value);
-      if(status && status.exported){
-        const stamp=status.exportedAt || status.importedAt;
-        const when=stamp ? new Date(stamp).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-        el.textContent=(status.verified?'✓ Recovery package VERIFIED':'✓ Recovery package saved')+(when ? ' · '+when : '');
-        el.style.color='var(--ok)';
-        el.style.background='var(--ok-soft)';
-        el.style.borderColor='rgba(57,255,182,.45)';
-        el.style.boxShadow='0 0 14px rgba(57,255,182,.12)';
-        return;
-      }
-    }
-    el.textContent='⚠ Recovery package not exported yet — create one before clearing PWA data';
-    el.style.color='var(--danger)';
-    el.style.background='var(--danger-soft)';
-  }catch(e){
-    el.textContent='Recovery status unavailable';
-  }
-}
+async function refreshRecoveryStatus(){return refreshLocalDataStatus();}
 
 async function downloadBackup(){
   try{
