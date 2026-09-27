@@ -7,6 +7,8 @@ const KEY_FILE_DB='card-ledger-key-file-v1';
 const KEY_FILE_STORE='handles';
 const KEY_FILE_ID='primary';
 let keyFileDbPromise;
+let sessionKeyText='';
+let sessionKeyFileName='';
 
 function openKeyFileDB(){
   if(keyFileDbPromise) return keyFileDbPromise;
@@ -54,27 +56,56 @@ async function keyFilePermission(handle,request=false){
   return false;
 }
 async function selectChatKeyFile(){
-  if(!window.showOpenFilePicker) throw new Error('This browser does not support persistent key-file access. Use a browser with File System Access support.');
-  const picked=await window.showOpenFilePicker({
-    multiple:false,
-    types:[{description:'Card Ledger key text file',accept:{'text/plain':['.txt']}}],
-    excludeAcceptAllOption:false
+  // Preferred path: File System Access API (Chrome/compatible desktop browsers).
+  if(window.showOpenFilePicker){
+    const picked=await window.showOpenFilePicker({
+      multiple:false,
+      types:[{description:'Card Ledger key text file',accept:{'text/plain':['.txt']}}],
+      excludeAcceptAllOption:false
+    });
+    const handle=picked&&picked[0];
+    if(!handle) throw new Error('No key file selected');
+    const ok=await keyFilePermission(handle,true);
+    if(!ok) throw new Error('Permission to read the key file was not granted');
+    const file=await handle.getFile();
+    const text=await file.text();
+    if(!String(text).trim()) throw new Error('The selected key file is empty');
+    await saveKeyFileHandle(handle);
+    return {name:handle.name,bytes:text.length,persistent:true};
+  }
+
+  // Brave/Android fallback: normal file input. The key text is held only in
+  // memory for the current session; it is never written to storage or GitHub.
+  return await new Promise((resolve,reject)=>{
+    const input=document.createElement('input');
+    input.type='file';
+    input.accept='.txt,text/plain';
+    input.style.display='none';
+    let settled=false;
+    const finish=(fn,value)=>{if(settled)return;settled=true;input.remove();fn(value);};
+    input.onchange=async()=>{
+      try{
+        const file=input.files&&input.files[0];
+        if(!file){finish(reject,new Error('No key file selected'));return;}
+        const text=await file.text();
+        if(!String(text).trim()){finish(reject,new Error('The selected key file is empty'));return;}
+        sessionKeyText=text.trim();
+        sessionKeyFileName=file.name;
+        finish(resolve,{name:file.name,bytes:text.length,persistent:false});
+      }catch(e){finish(reject,e);}
+    };
+    document.body.appendChild(input);
+    input.click();
   });
-  const handle=picked&&picked[0];
-  if(!handle) throw new Error('No key file selected');
-  const ok=await keyFilePermission(handle,true);
-  if(!ok) throw new Error('Permission to read the key file was not granted');
-  const file=await handle.getFile();
-  const text=await file.text();
-  if(!String(text).trim()) throw new Error('The selected key file is empty');
-  await saveKeyFileHandle(handle);
-  return {name:handle.name,bytes:text.length};
 }
 async function clearChatKeyFile(){
+  sessionKeyText='';
+  sessionKeyFileName='';
   await removeKeyFileHandle();
   return true;
 }
 async function readChatKeyText(){
+  if(sessionKeyText) return sessionKeyText;
   const handle=await loadKeyFileHandle();
   if(!handle) throw new Error('No encryption key file is selected. Open Secure and select your .txt key file.');
   if(handle.kind!=='file') throw new Error('The saved encryption key handle is not a file');
