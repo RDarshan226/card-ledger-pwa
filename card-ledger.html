@@ -160,6 +160,17 @@
   .plat-chip{ font-size:10px; color:var(--ink-soft); }
 
   .footnote{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); margin-top:18px; text-align:center; opacity:.8; }
+  #splash-screen{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper,#0b0f14);overflow:hidden;animation:splashFade 1s ease forwards;pointer-events:none;}
+  .splash-glow{position:absolute;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(0,220,255,.22) 0%,rgba(0,220,255,.07) 38%,transparent 72%);filter:blur(5px);animation:splashGlow 1s ease-in-out infinite alternate;}
+  .splash-icon-wrap{position:relative;width:118px;height:118px;display:grid;place-items:center;animation:splashIconIn .7s cubic-bezier(.2,.85,.25,1.25) both;}
+  .splash-icon{width:94px;height:94px;object-fit:contain;filter:drop-shadow(0 0 12px rgba(0,220,255,.5));animation:splashPulse .9s ease-in-out .15s infinite alternate;}
+  .splash-title{position:relative;margin-top:20px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.28em;color:#dffaff;opacity:0;animation:splashTitle .45s ease .35s forwards;}
+  @keyframes splashIconIn{0%{opacity:0;transform:scale(.55) translateY(14px);filter:blur(5px)}65%{opacity:1;transform:scale(1.08) translateY(-2px);filter:blur(0)}100%{transform:scale(1) translateY(0)}}
+  @keyframes splashPulse{from{transform:scale(1);filter:drop-shadow(0 0 9px rgba(0,220,255,.35))}to{transform:scale(1.045);filter:drop-shadow(0 0 19px rgba(0,220,255,.72))}}
+  @keyframes splashGlow{from{transform:scale(.82);opacity:.55}to{transform:scale(1.12);opacity:1}}
+  @keyframes splashTitle{to{opacity:1;transform:translateY(0)}from{transform:translateY(6px)}}
+  @keyframes splashFade{0%,78%{opacity:1}100%{opacity:0;visibility:hidden}}\n  @keyframes appReveal{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){#splash-screen,.splash-icon-wrap,.splash-icon,.splash-glow,.splash-title{animation:none!important}#splash-screen{opacity:0;visibility:hidden}}
   .loading{ text-align:center; padding:60px 0; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); }
   .no-match{ text-align:center; padding:30px 0; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); font-size:12.5px; }
 
@@ -259,6 +270,13 @@
 </style>
 </head>
 <body>
+<div id="splash-screen" aria-hidden="true">
+  <div class="splash-glow"></div>
+  <div class="splash-icon-wrap">
+    <img src="icon-192.png" alt="" class="splash-icon">
+  </div>
+  <div class="splash-title">CARD LEDGER</div>
+</div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="eyebrow" id="dateline">Card Ledger</div>
@@ -273,7 +291,7 @@
     <button class="tab-btn" id="tab-rewards" onclick="setTab('rewards')">Rewards</button>
     <button class="tab-btn" id="tab-accounts" onclick="setTab('accounts')">Account Ages</button>
   </div>
-  <div id="app"><div class="loading">opening the ledger…</div></div>
+  <div id="app" style="opacity:0;animation:appReveal .35s ease 1s forwards;"><div class="loading">opening the ledger…</div></div>
   <div class="footnote">Tap a card to log a spend or repayment, edit its limit / billing date, or view its statement. Use Bills & Dues to record actual statement totals, minimum dues and payments. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
