@@ -136,8 +136,28 @@ async function uploadEncryptedPayload(token){
         headers:{'Content-Type':'application/json'}
       });
       if(!res.ok) throw new Error('GitHub upload failed');
-      await refreshGitHubStatus('✓ Uploaded · encrypted transaction is now in GitHub');
-      return {already:false};
+      // Round-trip verification: only report success after the exact GitHub
+      // copy can be decrypted with the current encryption key.
+      const verify=await getGitHubChatFile(await getGitHubToken());
+      const verifiedEntries=Array.isArray(verify.data&&verify.data.entries)?verify.data.entries:[];
+      const remoteEntry=verifiedEntries.find(x=>x&&x.payload===clean);
+      if(!remoteEntry) throw new Error('GitHub accepted the upload, but the encrypted transaction could not be found in the GitHub feed.');
+      try{
+        if(typeof decryptChatPayload==='function') await decryptChatPayload(clean);
+        else{
+          const ps=clean.split('.');
+          if(ps.length!==3) throw new Error('Invalid encrypted payload');
+          const ivRaw=atob(ps[1]),ctRaw=atob(ps[2]);
+          const iv=new Uint8Array(ivRaw.length),ct=new Uint8Array(ctRaw.length);
+          for(let i=0;i<ivRaw.length;i++) iv[i]=ivRaw.charCodeAt(i);
+          for(let i=0;i<ctRaw.length;i++) ct[i]=ctRaw.charCodeAt(i);
+          await crypto.subtle.decrypt({name:'AES-GCM',iv},await getChatCryptoKey(),ct);
+        }
+      }catch(e){
+        throw new Error('GitHub accepted the encrypted transaction, but this device could not decrypt the uploaded copy with the current key. The key used for encryption and the selected key do not match.');
+      }
+      await refreshGitHubStatus('✓ Uploaded & verified · GitHub copy decrypts with the current key');
+      return {already:false,verified:true};
     }catch(e){
       lastError=e;
       if(e.status===409 && attempt===0) continue;
