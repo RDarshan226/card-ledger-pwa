@@ -3707,6 +3707,15 @@ if('serviceWorker' in navigator){
   });
 }
 if('serviceWorker' in navigator){
+  // Always bypass the browser's HTTP cache when checking for a new service worker.
+  // When a new worker is found, activate it immediately and reload once so the
+  // newly published GitHub Pages files are displayed without manual cache clearing.
+  let appReloadingForUpdate=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(appReloadingForUpdate) return;
+    appReloadingForUpdate=true;
+    window.location.reload();
+  });
   navigator.serviceWorker.addEventListener('message',event=>{
     const data=event.data||{};
     if(data.type==='CHECK_STATEMENT_NOTIFICATIONS') checkStatementNotifications();
@@ -3715,7 +3724,28 @@ if('serviceWorker' in navigator){
       render();
     }
   });
+  window.cardLedgerCheckForUpdate=async function(){
+    try{
+      const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+      await reg.update();
+      if(reg.waiting){
+        reg.waiting.postMessage({type:'SKIP_WAITING'});
+        return true;
+      }
+      return false;
+    }catch(e){
+      console.warn('PWA update check failed',e);
+      return false;
+    }
+  };
+  // Check shortly after startup and again when the app returns to the foreground.
+  setTimeout(()=>window.cardLedgerCheckForUpdate(),1500);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') window.cardLedgerCheckForUpdate();
+  });
+  window.addEventListener('focus',()=>window.cardLedgerCheckForUpdate());
 }
+
 initTheme();
 const startupSplash=document.getElementById('startup-splash');
 setTimeout(()=>{ if(startupSplash) startupSplash.classList.add('hide'); },2000);
