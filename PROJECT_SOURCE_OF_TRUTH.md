@@ -3,7 +3,7 @@
 ## Baseline
 - Repository: RDarshan226/card-ledger-pwa
 - Branch: main
-- Current app version: v74
+- Current app version: v75
 - Main UI file: index.html
 
 ## Change discipline
@@ -84,3 +84,10 @@ After every repo change, report:
 - Recurring Payment tab has its own persistent recurring-payment records with add, edit and remove.
 - Removed default cards are tombstoned so loadData does not silently recreate them.
 - Recurring payments and removed-card tombstones are included in rolling local backup data.
+
+
+## Brave Android key-file fallback (v75)
+- If the browser supports File System Access, the selected .txt key-file handle may be persisted.
+- If it does not support that API (including Brave Android in the current supported configuration), Card Ledger falls back to a normal .txt file picker.
+- In fallback mode, the key text is held only in memory for the current browser session and is never stored in localStorage, IndexedDB, GitHub, or a backup.
+- The user must select the key file again after a session where the in-memory key has been cleared.
