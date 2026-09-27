@@ -112,7 +112,7 @@
     transition:box-shadow .15s ease, background .15s ease, color .15s ease;
   }
   .tab-btn:hover{ box-shadow:0 4px 14px -6px rgba(224,149,42,.5); }
-  .tab-btn.active{ background:linear-gradient(120deg, var(--brass), var(--gold)); color:#06100B; border-color:transparent; }
+  .tab-btn.active{ background:linear-gradient(135deg,#00CFFF,#007BFF); color:#FFFFFF; border-color:rgba(0,207,255,.8); box-shadow:0 0 14px rgba(0,191,255,.28); }
 
   /* ---- Hero / cover ---- */
   .cover{
@@ -160,7 +160,11 @@
   .row.debit-row{ border-style:dashed; }
   .row-main{ display:grid; grid-template-columns: minmax(0,1fr) auto; align-items:center; padding:16px 18px; gap:12px; cursor:pointer; }
   .row-name{ font-family:'Fraunces', serif; font-size:18px; font-weight:600; }
-  .row-name .share-tag{ font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:#8A5A0E; background:linear-gradient(120deg,var(--gold-bright),var(--gold)); border-radius:3px; padding:1px 6px; margin-left:8px; vertical-align:middle; }
+  .row-name .fee-type-tag{ background:linear-gradient(135deg,#00CFFF,#007BFF); color:#FFFFFF; border:1px solid rgba(255,255,255,.22); box-shadow:0 0 8px rgba(0,191,255,.2); }
+  .fee-track-btn{ background:linear-gradient(135deg,#00CFFF,#007BFF)!important; color:#FFFFFF!important; border:1px solid rgba(255,255,255,.22)!important; box-shadow:0 0 12px rgba(0,191,255,.25)!important; }
+  .due-toolbar button,.due-form button,.due-actions button{ background:linear-gradient(135deg,#00CFFF,#007BFF)!important; color:#FFFFFF!important; border:1px solid rgba(255,255,255,.22)!important; box-shadow:0 0 10px rgba(0,191,255,.22); }
+  .due-actions button:hover{ color:#FFFFFF!important; box-shadow:0 0 14px rgba(0,191,255,.38); }
+  .share-tag{ font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:#8A5A0E; background:linear-gradient(120deg,var(--gold-bright),var(--gold)); border-radius:3px; padding:1px 6px; margin-left:8px; vertical-align:middle; }
   .row-sub{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); margin-top:2px; }
   .row-amts{ min-width:110px; text-align:right; font-family:'IBM Plex Mono',monospace; }
   .row-used{ font-size:17px; font-weight:600; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
@@ -1625,7 +1629,7 @@ async function loadData(){
     const d = DEFAULTS[c.name];
     if(!d) return;
     if(!c.limit) c.limit = d.limit;
-    if(!c.billingDate) c.billingDate = d.billingDate;
+    if(d.billingDate) c.billingDate = d.billingDate;
     if(d.limitGroup && !c.limitGroup) c.limitGroup = d.limitGroup;
   });
 
@@ -2526,7 +2530,7 @@ function renderFees(){
     html += `<div class="row">
       <div class="row-main" onclick="toggleFeeCard('${r.card.id}')">
         <div>
-          <div class="row-name">${r.card.name}<span class="share-tag">${r.card.isInsurance ? 'Insurance' : (r.card.isDebit ? 'Debit' : 'Credit')}</span></div>
+          <div class="row-name">${r.card.name}<span class="share-tag fee-type-tag">${r.card.isInsurance ? 'Insurance' : (r.card.isDebit ? 'Debit' : 'Credit')}</span></div>
           <div class="row-sub">${lastPayment ? 'Last paid ' + lastPayment.date + ' · ' + inr(lastPayment.amount) : 'No payment logged yet'}</div>
         </div>
         <div class="row-amts">
@@ -2551,7 +2555,7 @@ function renderFees(){
       <div class="sub">Only cards with a fee logged show above — bring in another one here</div>
       <div class="entry-form" style="grid-template-columns:1fr auto;">
         <select id="untracked-card-select">${untracked.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
-        <button onclick="trackFee(document.getElementById('untracked-card-select').value)">Track fee</button>
+        <button class="fee-track-btn" onclick="trackFee(document.getElementById('untracked-card-select').value)">Track fee</button>
       </div>
     </div>`;
   }
