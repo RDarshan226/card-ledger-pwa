@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v84';
+const APP_VERSION = 'v85';
 const versionText = APP_VERSION;
 const startupVersionEl = document.getElementById('startup-version');
 const appVersionEl = document.getElementById('app-version');
@@ -2116,7 +2116,12 @@ async function encryptTransactionEntry(uploadAfter=false){
     }
     clearTransactionEntryFields();
     return token;
-  }catch(e){showToast('Could not encrypt transaction');return null;}
+  }catch(e){
+    const msg=String(e?.message||e||'Encryption failed');
+    console.error('Transaction encryption failed:',e);
+    showToast(msg);
+    return null;
+  }
 }
 
 function renderLedger(){
