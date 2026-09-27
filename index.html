@@ -367,10 +367,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version">v75</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version">v76</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v75</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v76</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v75';
+const APP_VERSION = 'v76';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -3664,7 +3664,48 @@ async function restoreBackup(evt){
 let deferredInstallPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredInstallPrompt=e; const b=document.getElementById('installBtn'); if(b)b.style.display='inline-flex';});
 async function installPWA(){ if(!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt=null; document.getElementById('installBtn').style.display='none'; }
-if('serviceWorker' in navigator){ window.addEventListener('load',async()=>{ try{ const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}); await reg.update(); if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }); }
+if('serviceWorker' in navigator){
+  let swReloading=false;
+  const reloadAfterControllerChange=()=>{
+    if(swReloading) return;
+    swReloading=true;
+    window.location.reload();
+  };
+  navigator.serviceWorker.addEventListener('controllerchange',reloadAfterControllerChange);
+
+  const checkForAppUpdate=async()=>{
+    try{
+      const reg=await navigator.serviceWorker.getRegistration('./');
+      if(!reg) return;
+      await reg.update();
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+    }catch(e){}
+  };
+
+  window.addEventListener('load',async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+      reg.addEventListener('updatefound',()=>{
+        const worker=reg.installing;
+        if(!worker) return;
+        worker.addEventListener('statechange',()=>{
+          if(worker.state==='installed' && navigator.serviceWorker.controller){
+            worker.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+      await reg.update();
+
+      // Keep the installed PWA checking GitHub Pages for a newer service worker.
+      // The checks do not touch ledger data or encryption keys.
+      setInterval(checkForAppUpdate,5*60*1000);
+      document.addEventListener('visibilitychange',()=>{
+        if(document.visibilityState==='visible') checkForAppUpdate();
+      });
+      window.addEventListener('focus',checkForAppUpdate);
+    }catch(e){}
+  });
+}
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message',event=>{
     const data=event.data||{};
