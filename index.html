@@ -1933,29 +1933,14 @@ function computeCardRewardEntries(card){
 
 function renderRewardTrackingManager(){
   const rewardCards=cards.filter(c=>c.name!==DEBIT_CARD_NAME&&!c.isInsurance);
-  let html='<div class="panel"><h2>Manage reward tracking</h2><div class="sub">Add a card from here, or edit/remove the reward tracking settings attached to an existing card.</div>';
+  let html='<div class="panel"><h2>Manage reward tracking</h2><div class="sub">Reward tracking settings for your cards.</div>';
   rewardCards.forEach(c=>{
     const f=c.fee||blankFeeForCard(c.name);
-    html+='<div class="recur-row"><div class="recur-head"><div><div class="recur-name">'+c.name+'<span class="share-tag">'+(f.rewardRateConfirmed?'Confirmed':'Unconfirmed')+'</span></div><div class="row-sub">General rate '+(Number(f.rewardRatePct)||0)+'% · '+(f.bestCategory||'No best category')+'</div></div><div class="chat-actions"><button class="tab-btn" onclick="editingRewardCardId=\''+c.id+'\';render()">Edit</button><button class="tab-btn" onclick="removeCardUI(\''+c.id+'\',event)">Remove</button></div></div>';
-    if(editingRewardCardId===c.id){
-      html+='<div class="entry-form" style="margin-top:8px;"><div class="field"><label>Reward rate %</label><input id="reward-track-rate-'+c.id+'" type="number" step="0.01" value="'+(Number(f.rewardRatePct)||0)+'"></div><div class="field"><label>Best-return category</label><input id="reward-track-cat-'+c.id+'" value="'+String(f.bestCategory||'').replace(/"/g,"&quot;")+'"></div><div class="field"><label>Monthly cap ₹</label><input id="reward-track-cap-'+c.id+'" type="number" value="'+(Number(f.monthlyRewardCap)||0)+'"></div><div class="field"><label>Cap reset</label><select id="reward-track-reset-'+c.id+'"><option value="calendar" '+(f.capResetBasis==='calendar'?'selected':'')+'>Calendar month</option><option value="statement" '+(f.capResetBasis==='statement'?'selected':'')+'>Statement cycle</option></select></div><div class="field"><label>Confirmed</label><select id="reward-track-confirmed-'+c.id+'"><option value="true" '+(f.rewardRateConfirmed?'selected':'')+'>Yes</option><option value="false" '+(!f.rewardRateConfirmed?'selected':'')+'>No</option></select></div></div><div class="chat-actions" style="margin-top:8px;"><button class="tab-btn" onclick="saveRewardTracking(\''+c.id+'\')">Save</button><button class="tab-btn" onclick="editingRewardCardId=null;render()">Cancel</button></div>';
-    }
-    html+='</div>';
+    html+='<div class="recur-row"><div class="recur-head"><div><div class="recur-name">'+c.name+'</div><div class="row-sub">General rate '+(Number(f.rewardRatePct)||0)+'%</div></div></div></div>';
   });
   html+=addCardFormHTML('rewards')+'</div>';
   return html;
 }
-async function saveRewardTracking(id){
-  const c=findCard(id);if(!c)return;
-  c.fee=c.fee||blankFeeForCard(c.name);
-  c.fee.rewardRatePct=Number(document.getElementById('reward-track-rate-'+id)?.value)||0;
-  c.fee.bestCategory=(document.getElementById('reward-track-cat-'+id)?.value||'').trim();
-  c.fee.monthlyRewardCap=Number(document.getElementById('reward-track-cap-'+id)?.value)||0;
-  c.fee.capResetBasis=document.getElementById('reward-track-reset-'+id)?.value||'calendar';
-  c.fee.rewardRateConfirmed=document.getElementById('reward-track-confirmed-'+id)?.value==='true';
-  await saveData();editingRewardCardId=null;render();showToast('Reward tracking updated');
-}
-
 function renderRewards(){
   const app = document.getElementById('app');
   const now = new Date();
