@@ -370,7 +370,7 @@
 <div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v69</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v70</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -393,7 +393,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v69 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v70 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v69';
+const APP_VERSION = 'v70';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -1167,6 +1167,49 @@ async function inspectChatKeyHistory(){
     out.textContent='Key history check: no legacy Chat key material was found in browser localStorage or raw IndexedDB. The current Chat key remains untouched. If you exported the older CLKEY1 recovery key before the mismatch occurred, it may still be the only recoverable copy.';
   }catch(e){
     out.textContent='Key history check could not complete: '+(e&&e.message?e.message:'unknown error')+'. No key was changed.';
+  }
+}
+
+async function inspectCredentialVaultChatKey(){
+  const out=document.getElementById('chatKeyDiagnostic');
+  if(!out) return;
+  out.style.color='var(--ink-soft)';
+  out.textContent='Credential Vault check: reading the stored Chat key without changing anything…';
+  try{
+    if(!window.cardLedgerCredentialVault || !window.cardLedgerCredentialVault.getChatJwk){
+      out.textContent='Credential Vault check: the credential vault API is unavailable. No key was changed.';
+      return;
+    }
+    const jwk=await window.cardLedgerCredentialVault.getChatJwk();
+    if(!jwk){
+      out.textContent='Credential Vault check: no Chat key is stored there. No key was changed.';
+      return;
+    }
+    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+    const payloads=feed.map(x=>x&&typeof x.payload==='string'?x.payload:'').filter(x=>x.startsWith('CL1.'));
+    if(!payloads.length){
+      out.textContent='Credential Vault check: a Chat key is present, but GitHub has no encrypted entries to verify. No key was changed.';
+      return;
+    }
+    const key=await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    let matched=0;
+    for(const token of payloads){
+      const parts=token.split('.');
+      if(parts.length!==3) continue;
+      try{
+        await crypto.subtle.decrypt({name:'AES-GCM',iv:b64ToBytes(parts[1])},key,b64ToBytes(parts[2]));
+        matched++;
+      }catch(e){}
+    }
+    if(matched===payloads.length){
+      out.textContent='✓ Credential Vault Chat key MATCHES ALL '+matched+'/'+payloads.length+' GitHub entries. This may be the original working key. No key was changed.';
+    }else if(matched>0){
+      out.textContent='⚠ Credential Vault Chat key decrypts '+matched+'/'+payloads.length+' GitHub entries. It is not a complete match. No key was changed.';
+    }else{
+      out.textContent='⚠ Credential Vault Chat key is readable, but decrypts 0/'+payloads.length+' GitHub entries. It does not match the current GitHub feed. No key was changed.';
+    }
+  }catch(e){
+    out.textContent='Credential Vault check could not complete: '+(e&&e.message?e.message:'unknown error')+'. No key was changed.';
   }
 }
 
@@ -1858,7 +1901,7 @@ function renderSecureUpdate(){
   return `
     <div class="panel secure-update-panel">
       <div class="chat-head"><div><div class="chat-kicker">SECURE UPDATE</div><div class="tab-heading-row"><h2>🔒 Encryption &amp; Recovery</h2></div><div class="sub">Encryption, recovery and GitHub controls are kept separate from transaction entry.</div></div><div class="secure-badge">AES-256-GCM</div></div>
-      <div class="chat-actions"><button class="tab-btn" onclick="backupChatKeyUI()">💾 Backup Chat Key</button><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="backupChatKeyUI()">💾 Backup Chat Key</button><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="inspectCredentialVaultChatKey()">🔐 Check Vault Key</button></div>
       <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
       <div class="github-sync-box" style="margin-top:12px;"><div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only AES-256-GCM ciphertext is uploaded to <b>chat-updates.json</b>. Your encryption key and transaction plaintext stay on this device.</small></div></div><div id="githubStatus" class="github-status">Checking GitHub connection…</div><div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div></div>
