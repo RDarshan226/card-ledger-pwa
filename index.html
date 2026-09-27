@@ -1363,6 +1363,47 @@ async function decryptChatPayload(token){
   const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
   return JSON.parse(new TextDecoder().decode(plain));
 }
+async function reconcileChatKeyStores(){
+  try{
+    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+    const payloads=feed.map(x=>x&&x.payload).filter(x=>typeof x==='string'&&x.startsWith('CL1.'));
+    if(!payloads.length || !window.cardLedgerCredentialVault) return;
+    const importKey=async jwk=>{
+      if(!jwk) return null;
+      try{return await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);}catch(e){return null;}
+    };
+    const matches=async key=>{
+      if(!key) return false;
+      for(const token of payloads){
+        const p=token.split('.');
+        if(p.length!==3) continue;
+        try{
+          const s=window.cardLedgerB64ToBytes;
+          if(typeof s!=='function') return false;
+          await crypto.subtle.decrypt({name:'AES-GCM',iv:s(p[1])},key,s(p[2]));
+          return true;
+        }catch(e){}
+      }
+      return false;
+    };
+    let vaultJwk=null, legacyJwk=null;
+    try{vaultJwk=await window.cardLedgerCredentialVault.getChatJwk();}catch(e){}
+    try{
+      const saved=await window.storage.get(CHAT_KEY_STORAGE_KEY,false);
+      if(saved&&saved.value) legacyJwk=JSON.parse(saved.value);
+    }catch(e){}
+    const vaultKey=await importKey(vaultJwk);
+    const legacyKey=await importKey(legacyJwk);
+    const vaultMatch=await matches(vaultKey);
+    const legacyMatch=await matches(legacyKey);
+    if(legacyMatch && !vaultMatch){
+      await window.cardLedgerCredentialVault.setChatJwk(legacyJwk);
+      console.info('Card Ledger: restored matching Chat key from legacy encrypted storage.');
+    }
+  }catch(e){
+    console.warn('Card Ledger: Chat key reconciliation skipped:',e);
+  }
+}
 async function loadChatUpdates(){
   try{
     const res = await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), {cache:'no-store'});
@@ -1459,6 +1500,7 @@ function refreshChatCardOptions(){
 async function loadData(){
   await loadDeletedEntries();
   await loadChatUpdates();
+  await reconcileChatKeyStores();
   try{
     if(window.storage && typeof window.storage.get === 'function'){
       const res = await window.storage.get(STORAGE_KEY, false);
