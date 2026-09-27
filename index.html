@@ -1089,7 +1089,9 @@ function renderSecureUpdate(){return `
 <div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div></div>
 <div class="disclaimer">Your transaction details stay in the local JSON file you choose. The PWA remembers the file location on this device.</div>
 </div>`;}
-async function createLocalDataFileUI(){try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}}
+async function createLocalDataFileUI(){
+  try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}
+}
 async function selectLocalDataFileUI(){try{await selectLocalDataFile();}catch(e){showToast(e.message||'Could not select data file');}}
 async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect data file');}}
 async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
