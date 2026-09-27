@@ -1828,7 +1828,29 @@ function initTheme(){
   applyTheme(saved);
 }
 
-function setTab(t){ activeTab = t; render(); if(t==='secure') setTimeout(refreshKeyFileStatus,0); }
+function renderLedger(){
+  const app=document.getElementById('app');
+  if(!app)return;
+  const visible=cards.filter(c=>!removedCardNames.has(c.name));
+  let html='<div class="cover"><div class="cover-figures"><div class="cover-line"><span class="cover-label">Outstanding</span><span class="cover-amt total">'+inr(visible.reduce((s,c)=>s+Math.max(0,utilised(c)),0))+'</span></div><div class="cover-line"><span class="cover-label">Cards tracked</span><span class="cover-amt">'+visible.filter(c=>!c.isDebit&&!c.feeOnly).length+'</span></div></div><div class="stamp"><span class="pct">'+(visible.filter(c=>!c.isDebit&&!c.feeOnly).length)+'</span><span class="cap">cards</span></div></div>';
+  html+='<div class="toolbar"><input type="text" placeholder="Search cards..." value="'+String(filterText||'').replace(/"/g,'&quot;')+'" oninput="filterText=this.value;renderLedger()"><button class="sort-btn '+(sortByUtil?'active':'')+'" onclick="sortByUtil=!sortByUtil;renderLedger()">Sort by utilisation</button></div><div class="ledger">';
+  let list=visible.filter(c=>!c.feeOnly);
+  if(filterText)list=list.filter(c=>String(c.name).toLowerCase().includes(String(filterText).toLowerCase()));
+  if(sortByUtil)list=list.slice().sort((a,b)=>utilised(b)-utilised(a));
+  list.forEach(c=>{const used=Math.max(0,utilised(c)),limit=Number(c.limit)||0,pct=limit?Math.min(100,used/limit*100):0;html+='<div class="row '+(c.isDebit?'debit-row':'')+'"><div class="row-main"><div><div class="row-name">'+c.name+'</div><div class="row-sub">'+(c.billingDate?'Statement '+c.billingDate:'')+'</div></div><div class="row-amts"><div class="row-used">'+inr(used)+'</div><div class="row-limit">'+(limit?inr(limit)+' limit':'Debit / tracking')+'</div></div><div class="bar-track"><div class="bar-fill '+(pct>=90?'over':pct>=70?'warn':'')+'" style="width:'+pct+'%"></div></div></div></div>';});
+  if(!list.length)html+='<div class="empty-analysis">No cards match the current search.</div>';
+  html+='</div>';app.innerHTML=html;
+}
+function renderAnalysis(){
+  const app=document.getElementById('app'); if(!app)return;
+  const spend=cards.reduce((s,c)=>s+c.entries.filter(e=>e.type==='txn').reduce((a,e)=>a+Number(e.amount||0),0),0);
+  const repay=cards.reduce((s,c)=>s+c.entries.filter(e=>e.type==='repay').reduce((a,e)=>a+Number(e.amount||0),0),0);
+  app.innerHTML='<div class="panel"><div class="tab-heading-row"><h2>Spend Analysis</h2></div><div class="sub">Current local ledger totals.</div><div class="due-summary"><div class="due-stat"><div class="k">Spend</div><div class="v">'+inr(spend)+'</div></div><div class="due-stat"><div class="k">Repayments</div><div class="v">'+inr(repay)+'</div></div><div class="due-stat alert"><div class="k">Net</div><div class="v">'+inr(spend-repay)+'</div></div></div></div>';
+}
+if(typeof refreshGitHubStatus==='undefined') window.refreshGitHubStatus=refreshLocalDataStatus;
+if(typeof syncEncryptedChatUpdates==='undefined') window.syncEncryptedChatUpdates=async()=>{await loadChatUpdates();return false;};
+
+function setTab(t){ activeTab = t; render(); if(t==='secure') setTimeout(refreshLocalDataStatus,0); }
 
 function render(){
   document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
@@ -1852,7 +1874,7 @@ function render(){
   else if(activeTab === 'rewards') renderRewards();
   else if(activeTab === 'accounts') renderAccounts();
   else if(activeTab === 'alerts') renderAlerts();
-  else if(activeTab === 'secure') { document.getElementById('app').innerHTML = renderSecureUpdate(); refreshLocalDataStatus(); refreshGitHubStatus(); }
+  else if(activeTab === 'secure') { document.getElementById('app').innerHTML = renderSecureUpdate(); refreshLocalDataStatus(); }
   refreshChatCardOptions();
   if(activeTab === 'entry') { refreshChatCardOptions(); updateTransactionEntryFields(); }
 }
