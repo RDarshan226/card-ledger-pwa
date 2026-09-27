@@ -110,7 +110,7 @@ async function disconnectGitHub(){
   await refreshGitHubStatus();
   showToast('GitHub disconnected');
 }
-async function uploadEncryptedPayload(token){
+async function uploadEncryptedPayload(token,verificationKey=null){
   const clean=String(token||'').trim();
   if(!clean) throw new Error('Nothing encrypted to upload');
   let lastError=null;
@@ -143,7 +143,15 @@ async function uploadEncryptedPayload(token){
       const remoteEntry=verifiedEntries.find(x=>x&&x.payload===clean);
       if(!remoteEntry) throw new Error('GitHub accepted the upload, but the encrypted transaction could not be found in the GitHub feed.');
       try{
-        if(typeof decryptChatPayload==='function') await decryptChatPayload(clean);
+        if(verificationKey){
+          const ps=clean.split('.');
+          if(ps.length!==3) throw new Error('Invalid encrypted payload');
+          const ivRaw=atob(ps[1]),ctRaw=atob(ps[2]);
+          const iv=new Uint8Array(ivRaw.length),ct=new Uint8Array(ctRaw.length);
+          for(let i=0;i<ivRaw.length;i++) iv[i]=ivRaw.charCodeAt(i);
+          for(let i=0;i<ctRaw.length;i++) ct[i]=ctRaw.charCodeAt(i);
+          await crypto.subtle.decrypt({name:'AES-GCM',iv},verificationKey,ct);
+        }else if(typeof decryptChatPayload==='function') await decryptChatPayload(clean);
         else{
           const ps=clean.split('.');
           if(ps.length!==3) throw new Error('Invalid encrypted payload');
