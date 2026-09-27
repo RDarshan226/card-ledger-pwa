@@ -3,7 +3,7 @@
 ## Baseline
 - Repository: RDarshan226/card-ledger-pwa
 - Branch: main
-- Current app version: v77
+- Current app version: v78
 - Main UI file: index.html
 
 ## Change discipline
@@ -107,7 +107,7 @@ After every repo change, report:
 - This is designed to pick up future GitHub Pages releases without requiring the user to manually clear the site's cache.
 
 
-## Automatic PWA update detection (v77)
+## Automatic PWA update detection (v78)
 - Service-worker registration uses a versioned script query (sw.js?app=vXX) together with updateViaCache:'none', so the browser checks the GitHub Pages service worker instead of relying on a stale HTTP-cached worker script.
 - The app checks for updates on startup, after a short delay, when the app regains focus/visibility, and periodically while open.
 - A newly installed service worker is activated immediately with skipWaiting, then the page reloads once on controllerchange.
