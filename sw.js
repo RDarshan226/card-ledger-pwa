@@ -1,5 +1,5 @@
-const CACHE='card-ledger-pwa-v59';
-const APP=['./','./index.html','./manifest.json','./sw.js','./chat-updates.json','./icon-192.svg','./icon-512.svg'];
+const CACHE='card-ledger-pwa-v64';
+const APP=['./','./index.html','./manifest.json','./sw.js','./chat-updates.json','./security-core.js','./github-sync-core.js','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP)).then(()=>self.skipWaiting()));
