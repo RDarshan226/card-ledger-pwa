@@ -132,15 +132,4 @@ async function uploadEncryptedPayload(token){
   throw lastError||new Error('GitHub upload failed');
 }
 
-
-function bytesToB64(bytes){
-  let s='';
-  for(let i=0;i<bytes.length;i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s);
-}
-function b64ToBytes(str){
-  const s=atob(str);
-  const out=new Uint8Array(s.length);
-  for(let i=0;i<s.length;i++) out[i]=s.charCodeAt(i);
-  return out;
-}
+ 
