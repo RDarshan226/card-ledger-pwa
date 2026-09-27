@@ -393,7 +393,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v61 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -489,19 +489,27 @@
     if(!payload.chatJwk) throw new Error('This recovery package does not contain the Chat encryption key. GitHub encrypted transactions cannot be recovered from this package.');
     try{ chatTest=await crypto.subtle.importKey('jwk',payload.chatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']); }catch(e){ throw new Error('Recovery package contains an invalid Chat encryption key'); }
 
-    // Verify the candidate Chat key BEFORE changing anything in IndexedDB.
+    // Verify the candidate Chat key against the GitHub feed BEFORE changing
+    // anything in IndexedDB. Test every entry so a feed whose first record was
+    // written under an older key does not falsely reject a valid recovery package.
     try{
       const res=await fetch(CHAT_UPDATES_URL+'?v='+Date.now(),{cache:'no-store'});
       if(res.ok){
         const data=await res.json();
         const entries=Array.isArray(data.entries)?data.entries:[];
-        if(entries.length){
-          const first=entries[0].payload;
-          if(typeof first!=='string'||!first.startsWith('CL1.')) throw new Error('Unsupported encrypted payload');
-          const parts2=first.split('.');
-          if(parts2.length!==3) throw new Error('Invalid encrypted payload');
-          await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(parts2[1])},chatTest,unb64(parts2[2]));
+        let tested=0, matched=0;
+        for(const item of entries){
+          const token=item&&item.payload;
+          if(typeof token!=='string'||!token.startsWith('CL1.')) continue;
+          tested++;
+          const ps=token.split('.');
+          if(ps.length!==3) continue;
+          try{
+            await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(ps[1])},chatTest,unb64(ps[2]));
+            matched++;
+          }catch(e){}
         }
+        if(tested && matched===0) throw new Error('No GitHub entry can be decrypted with this Chat key');
       }
     }catch(e){
       throw new Error('Recovery package Chat key does not match the encrypted GitHub transaction data. Nothing was changed on this device. Do not create a new recovery package.');
@@ -528,28 +536,35 @@
       candidateChat=await crypto.subtle.importKey('jwk',payload.chatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
     }catch(e){ throw new Error('Recovery package contains an invalid encryption key'); }
 
-    const currentLocal=await localKey();
-    const currentChatJwk=await (async()=>{
-      const rec=await rawGet(CHAT_KEY_STORAGE_KEY);
-      if(!rec) throw new Error('No current Chat encryption key is stored on this device');
-      const plain=await decryptValue(rec);
-      return JSON.parse(plain);
-    })();
-    const currentChat=await crypto.subtle.importKey('jwk',currentChatJwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
-
-    const probe=crypto.getRandomValues(new Uint8Array(32));
-    const iv1=crypto.getRandomValues(new Uint8Array(12));
-    const ctLocal=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv1},currentLocal,probe);
-    try{ await crypto.subtle.decrypt({name:'AES-GCM',iv:iv1},candidateLocal,ctLocal); }catch(e){ throw new Error('Recovery package local key does not match this device. Nothing was changed.'); }
-    const iv2=crypto.getRandomValues(new Uint8Array(12));
-    const ctChat=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv2},currentChat,probe);
-    try{ await crypto.subtle.decrypt({name:'AES-GCM',iv:iv2},candidateChat,ctChat); }catch(e){ throw new Error('Recovery package Chat key does not match the current Chat key. Nothing was changed.'); }
+    // Verification must test the package against the encrypted GitHub feed,
+    // not against whatever Chat key happens to be stored locally. If the local
+    // key is already wrong, requiring it to match would reject the very package
+    // that is supposed to repair the device.
+    const feedRes=await fetch(CHAT_UPDATES_URL+'?v='+Date.now(),{cache:'no-store'});
+    let feedEntries=[];
+    if(feedRes.ok){
+      const feedData=await feedRes.json();
+      feedEntries=Array.isArray(feedData.entries)?feedData.entries:[];
+    }
+    let decryptedCount=0;
+    for(const item of feedEntries){
+      if(!item || typeof item.payload!=='string' || !item.payload.startsWith('CL1.')) continue;
+      try{
+        const ps=item.payload.split('.');
+        if(ps.length!==3) continue;
+        await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(ps[1])},candidateChat,unb64(ps[2]));
+        decryptedCount++;
+      }catch(e){}
+    }
+    if(feedEntries.length && decryptedCount===0){
+      throw new Error('Recovery package Chat key does not match any encrypted GitHub transaction. Nothing was changed.');
+    }
 
     const fingerprint=async keyJwk=>{
       const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(keyJwk)));
       return Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,12).toUpperCase();
     };
-    return {chatKeyId:await fingerprint(currentChatJwk),localKeyId:await fingerprint(payload.localJwk)};
+    return {chatKeyId:await fingerprint(payload.chatJwk),localKeyId:await fingerprint(payload.localJwk),githubEntries:feedEntries.length,decryptedEntries:decryptedCount};
   }
 
   window.storage={
@@ -583,6 +598,7 @@
   };
 })();
 
+const APP_VERSION = 'v61';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -1198,6 +1214,13 @@ async function getChatCryptoKey(){
     }catch(e){
       throw new Error('The saved Chat encryption key is invalid. Import a current Card Ledger recovery package.');
     }
+  }
+  // IMPORTANT: never silently create a replacement key when encrypted GitHub
+  // data already exists. A replacement key would make the existing feed
+  // permanently unreadable and is the main cause of recurring key mismatches.
+  const existingFeed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+  if(existingFeed.some(x=>x&&typeof x.payload==='string'&&x.payload.startsWith('CL1.'))){
+    throw new Error('No saved Chat encryption key is available, but encrypted GitHub transactions already exist. The app will not create a new key. Import the recovery package containing the original Chat key.');
   }
   const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
   const jwk=await crypto.subtle.exportKey('jwk',key);
