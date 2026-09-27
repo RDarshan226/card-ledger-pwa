@@ -3,7 +3,7 @@
 ## Baseline
 - Repository: RDarshan226/card-ledger-pwa
 - Branch: main
-- Current app version: v64
+- Current app version: v72
 - Main UI file: index.html
 
 ## Change discipline
@@ -15,39 +15,40 @@
 
 ## Protected architecture
 
-### Security Core — DO NOT MODIFY FOR UNRELATED CHANGES
+### User-selected encryption key file
 File: `security-core.js`
 
 Owns:
-- Chat AES-GCM encryption key
-- Chat key persistence identifier: `card-ledger-chat-aes-key-v1`
-- `CL1.` encrypted payload encoding helpers
-- Existing Chat key recovery/mismatch protections
+- User-selected local text-file key handle
+- Reading the key text only when encryption/decryption is required
+- AES-256-GCM key derivation/import from that text
+- No automatic encryption-key generation
+- No persistence of key contents in IndexedDB/localStorage/credential vault
+- No upload of the key to GitHub
 
 Rules:
-- Never rotate, replace, delete, migrate, or silently regenerate the Chat key for a GUI/data change.
-- Never silently generate a replacement key when encrypted `CL1.` GitHub entries exist.
-- Never change the encrypted `CL1.` format for an unrelated feature.
-- If the security core must change, treat it as a separate security change and explain the impact first.
+- The PWA must never generate a replacement encryption key.
+- The PWA may persist only a reference/handle to the user-selected key file so supported browsers can reopen it.
+- The key file contents must never be written to PWA storage or GitHub.
+- The same selected key file is used for GitHub transaction encryption/decryption.
+- If the key file is unavailable or its permission is lost, the PWA must request the user to select/re-authorize the file rather than generate a new key.
 
-### GitHub Sync Core — DO NOT MODIFY FOR UNRELATED CHANGES
+### GitHub Sync Core
 File: `github-sync-core.js`
 
 Owns:
-- GitHub token storage: `card-ledger-github-token-v1`
+- GitHub token persistence and API transport
 - Repository: `RDarshan226/card-ledger-pwa`
 - Encrypted feed: `chat-updates.json`
-- GitHub API upload/download transport
+- Upload/download of ciphertext only
 
 Rules:
-- Never clear or replace the stored GitHub token for an unrelated change.
-- Never rewrite/delete existing encrypted feed entries for an unrelated change.
-- Never change sync architecture for a GUI change.
+- Never upload the key file or plaintext transaction data.
+- Never replace or regenerate the user-selected encryption key.
+- Existing encrypted feed entries remain untouched.
 
-### Recovery
-Recovery package format is `CLREC1....`.
-Recovery functionality must remain compatible with existing exported recovery packages.
-Recovery verification must validate the candidate key before replacing local security material.
+### Existing legacy recovery
+Older `CLREC1` recovery packages and credential-vault Chat keys belong to the previous architecture. They are no longer used by the new text-file key architecture.
 
 ## UI/application layer
 `index.html` contains the GUI and application logic. UI requests should be implemented here whenever possible without touching the protected modules.
