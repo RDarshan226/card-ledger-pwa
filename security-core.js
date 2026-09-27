@@ -71,6 +71,8 @@ async function selectChatKeyFile(){
     const text=await file.text();
     if(!String(text).trim()) throw new Error('The selected key file is empty');
     await saveKeyFileHandle(handle);
+    sessionKeyText=String(text).trim();
+    sessionKeyFileName=handle.name;
     return {name:handle.name,bytes:text.length,persistent:true};
   }
 
