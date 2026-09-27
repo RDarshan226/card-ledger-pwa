@@ -370,7 +370,7 @@
 <div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v70</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v71</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -393,7 +393,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v70 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v71 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v70';
+const APP_VERSION = 'v71';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -1176,11 +1176,22 @@ async function inspectCredentialVaultChatKey(){
   out.style.color='var(--ink-soft)';
   out.textContent='Credential Vault check: reading the stored Chat key without changing anything…';
   try{
-    if(!window.cardLedgerCredentialVault || !window.cardLedgerCredentialVault.getChatJwk){
-      out.textContent='Credential Vault check: the credential vault API is unavailable. No key was changed.';
-      return;
+    let jwk=null;
+    if(window.cardLedgerCredentialVault && window.cardLedgerCredentialVault.getChatJwk){
+      jwk=await window.cardLedgerCredentialVault.getChatJwk();
+    }else{
+      const db=await new Promise((resolve,reject)=>{
+        const req=indexedDB.open('card-ledger-credentials-v1');
+        req.onsuccess=()=>resolve(req.result);
+        req.onerror=()=>reject(req.error);
+      });
+      if(!db.objectStoreNames.contains('credentials')) throw new Error('Credential store unavailable');
+      jwk=await new Promise((resolve,reject)=>{
+        const req=db.transaction('credentials','readonly').objectStore('credentials').get('chatJwk');
+        req.onsuccess=()=>resolve(req.result==null?null:req.result);
+        req.onerror=()=>reject(req.error);
+      });
     }
-    const jwk=await window.cardLedgerCredentialVault.getChatJwk();
     if(!jwk){
       out.textContent='Credential Vault check: no Chat key is stored there. No key was changed.';
       return;
@@ -1201,13 +1212,9 @@ async function inspectCredentialVaultChatKey(){
         matched++;
       }catch(e){}
     }
-    if(matched===payloads.length){
-      out.textContent='✓ Credential Vault Chat key MATCHES ALL '+matched+'/'+payloads.length+' GitHub entries. This may be the original working key. No key was changed.';
-    }else if(matched>0){
-      out.textContent='⚠ Credential Vault Chat key decrypts '+matched+'/'+payloads.length+' GitHub entries. It is not a complete match. No key was changed.';
-    }else{
-      out.textContent='⚠ Credential Vault Chat key is readable, but decrypts 0/'+payloads.length+' GitHub entries. It does not match the current GitHub feed. No key was changed.';
-    }
+    if(matched===payloads.length) out.textContent='✓ Credential Vault Chat key MATCHES ALL '+matched+'/'+payloads.length+' GitHub entries. No key was changed.';
+    else if(matched>0) out.textContent='⚠ Credential Vault Chat key decrypts '+matched+'/'+payloads.length+' GitHub entries. No key was changed.';
+    else out.textContent='⚠ Credential Vault Chat key is readable, but decrypts 0/'+payloads.length+' GitHub entries. It does not match the current GitHub feed. No key was changed.';
   }catch(e){
     out.textContent='Credential Vault check could not complete: '+(e&&e.message?e.message:'unknown error')+'. No key was changed.';
   }
