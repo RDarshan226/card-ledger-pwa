@@ -104,6 +104,14 @@ async function clearChatKeyFile(){
   await removeKeyFileHandle();
   return true;
 }
+async function getKeyFileStatus(){
+  if(sessionKeyText) return {selected:true,name:sessionKeyFileName||'Selected key file',persistent:false,permission:'granted'};
+  const handle=await loadKeyFileHandle();
+  if(!handle) return {selected:false,name:'',persistent:false,permission:'none'};
+  if(handle.kind!=='file') return {selected:false,name:'',persistent:false,permission:'none'};
+  const granted=await keyFilePermission(handle,false);
+  return {selected:true,name:handle.name||'Selected key file',persistent:true,permission:granted?'granted':'denied'};
+}
 async function readChatKeyText(){
   if(sessionKeyText) return sessionKeyText;
   const handle=await loadKeyFileHandle();
@@ -144,6 +152,7 @@ window.cardLedgerKeyFile={
   select:selectChatKeyFile,
   clear:clearChatKeyFile,
   getHandle:loadKeyFileHandle,
+  getStatus:getKeyFileStatus,
   readText:readChatKeyText,
   getKey:getChatCryptoKey
 };
