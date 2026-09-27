@@ -115,9 +115,13 @@ async function getKeyFileStatus(){
   return {selected:true,name:handle.name||'Selected key file',persistent:true,permission:granted?'granted':'denied'};
 }
 async function readChatKeyText(){
-  if(sessionKeyText) return sessionKeyText;
+  // Re-read the persisted file handle before every crypto operation so a key
+  // file changed since selection cannot leave stale key material in memory.
   const handle=await loadKeyFileHandle();
-  if(!handle) throw new Error('No encryption key file is selected. Open Secure and select your .txt key file.');
+  if(!handle){
+    if(sessionKeyText) return sessionKeyText;
+    throw new Error('No encryption key file is selected. Open Secure and select your .txt key file.');
+  }
   if(handle.kind!=='file') throw new Error('The saved encryption key handle is not a file');
   if(!(await keyFilePermission(handle,false))) throw new Error('Key file permission is not currently available. Open Secure and select the key file again.');
   const file=await handle.getFile();
