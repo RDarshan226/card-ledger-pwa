@@ -130,3 +130,7 @@ After every repo change, report:
 ## Version bump (v81)
 - Bumped the app version from v80 to v81 as requested. No functional changes were made.
 - Service-worker cache version is synchronized to v81.
+
+
+### v82 note
+- v82 fixes the splash-screen version to v82, refreshes key-file status whenever the Secure tab is opened, and forces the update checker to register the current versioned service-worker URL instead of reusing an older registration blindly.
