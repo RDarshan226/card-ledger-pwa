@@ -113,3 +113,5 @@ After every repo change, report:
 - A newly installed service worker is activated immediately with skipWaiting, then the page reloads once on controllerchange.
 - The service worker cache version is kept in sync with the app version; activation removes older app caches.
 - Automatic updates affect application code/assets only and do not clear or overwrite the user's IndexedDB ledger, encryption key file, GitHub token, or encrypted transaction data.
+
+- v78 consolidates the update listeners into one service-worker update flow and keeps the versioned service-worker URL so stale registrations are less likely to persist.
