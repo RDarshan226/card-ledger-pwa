@@ -1629,6 +1629,10 @@ function renderQuickEntryPanel(){
 
 function setVersionUI(){ const v=APP_VERSION; const a=document.getElementById('app-version'); const b=document.getElementById('startup-version'); if(a)a.textContent=v; if(b)b.textContent=v; }
 
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0}); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
 async function init(){
   // Render the shell first so a slow/failing local or encrypted-data operation
   // can never leave the PWA permanently stuck on "opening the ledger…".
