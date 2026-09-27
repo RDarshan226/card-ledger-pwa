@@ -1438,6 +1438,11 @@ async function importRecoveryPackageUI(){
   }catch(e){ showToast(e.message||'Recovery package could not be verified'); }
 }
 async function resetChatEncryptionUI(){
+  const existingFeed=Array.isArray(chatUpdates.entries)?chatUpdates.entries.filter(x=>x&&typeof x.payload==='string'&&x.payload.startsWith('CL1.')):[];
+  if(existingFeed.length){
+    showToast('Reset blocked: encrypted GitHub transactions already exist. Import the original recovery package instead of creating a new Chat key.');
+    return;
+  }
   let warning='Start a fresh Chat encryption setup? This will replace the current local Chat encryption key. Any recovery package for the current key will no longer recover the new key. Your card data, ledger data and existing recovery package files will not be deleted. Only do this if you deliberately want a completely new encryption key.';
   try{
     const statusRes=await window.storage.get(RECOVERY_STATUS_KEY);
