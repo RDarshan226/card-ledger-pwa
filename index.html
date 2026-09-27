@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v78';
+const APP_VERSION = 'v79';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -3347,6 +3347,8 @@ function renderRewards(){
       capProgress.push({ name:c.name, label: r.platform+(c.fee.capResetBasis==='statement' ? ' cap (statement cycle)' : ' cap'), used:usedThisMonth, cap:r.merchantCapAmount });
     });
   });
+
+  let html = renderRewardTrackingManager();
 
   let html = `<div class="cover">
     <div class="cover-figures">
