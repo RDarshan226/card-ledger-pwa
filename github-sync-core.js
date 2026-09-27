@@ -10,6 +10,15 @@ const GITHUB_PATH = 'chat-updates.json';
 const GITHUB_API_BASE = 'https://api.github.com';
 let chatUpdates = { version: 2, entries: [], cashback: [] };
 
+// Compatibility aliases retained for older encrypted-feed code paths.
+function B64(bytes){
+  const a=bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let out='';
+  for(let i=0;i<a.length;i++) out+=String.fromCharCode(a[i]);
+  return btoa(out);
+}
+function b64(bytes){ return B64(bytes); }
+
 function bytesToUtf8B64(text){
   const bytes=new TextEncoder().encode(text);
   let s='';
