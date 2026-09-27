@@ -3,7 +3,7 @@
 ## Baseline
 - Repository: RDarshan226/card-ledger-pwa
 - Branch: main
-- Current app version: v75
+- Current app version: v76
 - Main UI file: index.html
 
 ## Change discipline
@@ -91,3 +91,10 @@ After every repo change, report:
 - If it does not support that API (including Brave Android in the current supported configuration), Card Ledger falls back to a normal .txt file picker.
 - In fallback mode, the key text is held only in memory for the current browser session and is never stored in localStorage, IndexedDB, GitHub, or a backup.
 - The user must select the key file again after a session where the in-memory key has been cleared.
+
+
+## Automatic PWA update mechanism (v76)
+- On app load, the PWA registers the service worker with `updateViaCache: 'none'` and explicitly checks for an update.
+- The PWA checks for a newer service worker again when returning to the app, on window focus, and every 5 minutes while open.
+- A newly installed service worker is instructed to skip waiting, and the page reloads automatically after the new controller takes over.
+- The update process does not clear ledger data, IndexedDB/local storage, encryption keys, or GitHub sync data.
