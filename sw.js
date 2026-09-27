@@ -1,4 +1,4 @@
-const CACHE='card-ledger-pwa-v94';
+const CACHE='card-ledger-pwa-v95';
 const APP=['./','./index.html','./manifest.json','./sw.js','./chat-updates.json','./security-core.js','./github-sync-core.js','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
@@ -52,14 +52,6 @@ self.addEventListener('notificationclick',event=>{
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET') return;
   const url=new URL(event.request.url);
-
-  if(url.pathname.endsWith('/chat-updates.json')){
-    event.respondWith(
-      fetch(event.request,{cache:'reload'})
-        .catch(()=>caches.match('./chat-updates.json'))
-    );
-    return;
-  }
 
   const isNavigation = event.request.mode === 'navigate' || (event.request.headers.get('accept')||'').includes('text/html');
   if(isNavigation){
