@@ -98,3 +98,10 @@ After every repo change, report:
 - The PWA checks for a newer service worker again when returning to the app, on window focus, and every 5 minutes while open.
 - A newly installed service worker is instructed to skip waiting, and the page reloads automatically after the new controller takes over.
 - The update process does not clear ledger data, IndexedDB/local storage, encryption keys, or GitHub sync data.
+
+
+## Automatic PWA update mechanism (v76)
+- On startup, the PWA registers the service worker with `updateViaCache:'none'` and explicitly calls `registration.update()`.
+- The app also checks for updates when returning to the foreground/visible state and on window focus.
+- When a new service worker is waiting, the app sends `SKIP_WAITING`; the new worker claims clients and `controllerchange` triggers one automatic reload.
+- This is designed to pick up future GitHub Pages releases without requiring the user to manually clear the site's cache.
