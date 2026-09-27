@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v71';
+const APP_VERSION = 'v72';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -1272,134 +1272,10 @@ async function diagnoseChatKey(){
     set('⚠ Chat key record is readable and contains a valid AES key, but it decrypts 0/'+feed.length+' GitHub entries. The stored Chat key does NOT match the key used for the current GitHub transaction feed. No key was changed or created.');
   }
 }
-async function backupChatKeyUI(){
-  try{
-    await loadChatUpdates();
-    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
-    const chatKey=await getChatCryptoKey();
-    let matched=0, tested=0;
-    for(const item of feed){
-      const token=item&&item.payload;
-      if(typeof token!=='string'||!token.startsWith('CL1.')) continue;
-      const ps=token.split('.');
-      if(ps.length!==3) continue;
-      tested++;
-      try{
-        await crypto.subtle.decrypt({name:'AES-GCM',iv:b64ToBytes(ps[1])},chatKey,b64ToBytes(ps[2]));
-        matched++;
-      }catch(e){}
-    }
-    if(tested && matched!==tested){
-      throw new Error('The currently stored Chat key does not match the GitHub transaction feed ('+matched+'/'+tested+'). Recover the original key first; a backup of this key would not recover the existing transactions.');
-    }
-    const p1=prompt('Create a recovery password (minimum 8 characters). Keep this password separate from the backup package.');
-    if(!p1) return;
-    const p2=prompt('Confirm your recovery password');
-    if(p1!==p2){ showToast('Passwords do not match'); return; }
-    const chatJwk=await crypto.subtle.exportKey('jwk',chatKey);
-    const token=await window.storage.exportRecoveryPackage(p1,chatJwk);
-    const blob=new Blob([token],{type:'text/plain;charset=utf-8'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download='card-ledger-chat-recovery-'+new Date().toISOString().slice(0,10)+'.txt';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
-    try{ await navigator.clipboard.writeText(token); }catch(e){}
-    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:true, exportedAt:new Date().toISOString()}));
-    refreshRecoveryStatus();
-    showToast('Verified Chat recovery backup saved');
-  }catch(e){ showToast(e.message||'Could not create Chat recovery backup'); }
-}
-async function exportRecoveryPackageUI(){
-  try{
-    const p1=prompt('Create a recovery password (minimum 8 characters). You will need this after clearing PWA data.');
-    if(!p1) return;
-    const p2=prompt('Confirm your recovery password');
-    if(p1!==p2){ showToast('Passwords do not match'); return; }
-    const chatKey=await getChatCryptoKey();
-    const chatJwk=await crypto.subtle.exportKey('jwk',chatKey);
-    const token=await window.storage.exportRecoveryPackage(p1,chatJwk);
-    await navigator.clipboard.writeText(token);
-    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:true, exportedAt:new Date().toISOString()}));
-    refreshRecoveryStatus();
-    showToast('Password-protected recovery package copied');
-  }catch(e){ showToast(e.message||'Could not create recovery package'); }
-}
-async function verifyRecoveryPackageUI(){
-  const token=prompt('Paste the recovery package you saved (CLREC1....)');
-  if(!token) return;
-  const password=prompt('Enter the recovery password');
-  if(!password) return;
-  const out=document.getElementById('chatKeyDiagnostic');
-  try{
-    if(out){ out.style.color='var(--ink-soft)'; out.textContent='Recovery package test: verifying password, key integrity and current-key match…'; }
-    const result=await window.storage.verifyRecoveryPackage(token,password);
-    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({
-      exported:true,
-      verified:true,
-      verifiedAt:new Date().toISOString(),
-      chatKeyId:result.chatKeyId,
-      localKeyId:result.localKeyId
-    }));
-    if(out){
-      out.style.color='var(--ok)';
-      out.textContent='✓ Recovery package VERIFIED · Chat Key ID '+result.chatKeyId+' · Local Key ID '+result.localKeyId+' · No key or data was changed';
-    }
-    refreshRecoveryStatus();
-    showToast('Recovery package verified — safe to proceed');
-  }catch(e){
-    if(out){ out.style.color='var(--danger)'; out.textContent='⚠ Recovery package test failed · '+(e.message||'Unknown error')+' · No key or data was changed'; }
-    showToast(e.message||'Recovery package could not be verified');
-  }
-}
-async function importRecoveryPackageUI(){
-  const token=prompt('Paste your Card Ledger recovery package (CLREC1....)');
-  if(!token) return;
-  const password=prompt('Enter your recovery password');
-  if(!password) return;
-  try{
-    await window.storage.importRecoveryPackage(token,password);
-    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:true, importedAt:new Date().toISOString(),verified:true,verifiedAt:new Date().toISOString()}));
-    refreshRecoveryStatus();
-    showToast('Recovery package verified — reload the PWA');
-    setTimeout(()=>location.reload(),700);
-  }catch(e){ showToast(e.message||'Recovery package could not be verified'); }
-}
-async function resetChatEncryptionUI(){
-  const existingFeed=Array.isArray(chatUpdates.entries)?chatUpdates.entries.filter(x=>x&&typeof x.payload==='string'&&x.payload.startsWith('CL1.')):[];
-  if(existingFeed.length){
-    showToast('Reset blocked: encrypted GitHub transactions already exist. Import the original recovery package instead of creating a new Chat key.');
-    return;
-  }
-  let warning='Start a fresh Chat encryption setup? This will replace the current local Chat encryption key. Any recovery package for the current key will no longer recover the new key. Your card data, ledger data and existing recovery package files will not be deleted. Only do this if you deliberately want a completely new encryption key.';
-  try{
-    const statusRes=await window.storage.get(RECOVERY_STATUS_KEY);
-    const status=statusRes&&statusRes.value?JSON.parse(statusRes.value):null;
-    if(status&&status.verified) warning+=' Your current recovery package is marked VERIFIED, so resetting now would deliberately invalidate that backup.';
-  }catch(e){}
-  const ok=confirm(warning);
-  if(!ok) return;
-  try{
-    await window.storage.remove(CHAT_KEY_STORAGE_KEY);
-    const freshKey=await getChatCryptoKey();
-    await window.storage.set(RECOVERY_STATUS_KEY, JSON.stringify({exported:false, resetAt:new Date().toISOString()}));
-    const jwk=await crypto.subtle.exportKey('jwk',freshKey);
-    const fingerprint=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(jwk)));
-    const hex=Array.from(new Uint8Array(fingerprint)).map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,12).toUpperCase();
-    const out=document.getElementById('chatKeyDiagnostic');
-    if(out){
-      out.style.color='var(--ok)';
-      out.textContent='✓ Fresh Chat encryption key created · ID '+hex+' · Old key was not retained or exported';
-    }
-    refreshRecoveryStatus();
-    showToast('Fresh Chat encryption key created — export a new recovery package now');
-  }catch(e){
-    showToast(e.message||'Could not reset Chat encryption');
-  }
-}
+async function backupChatKeyUI(){ showToast('The encryption key is the selected local .txt file; no key backup is generated by the PWA.'); }
+async function verifyRecoveryPackageUI(){ showToast('Recovery packages are no longer used for the text-file encryption key. Keep your selected key .txt file safe.'); }
+async function importRecoveryPackageUI(){ showToast('Recovery packages are no longer used for the text-file encryption key. Select the original key .txt file instead.'); }
+async function resetChatEncryptionUI(){ showToast('The PWA no longer generates or resets encryption keys. Select a local key .txt file instead.'); }
 function clearEncryptedEntryFields(){
   const dateEl=document.getElementById('chat-date');
   const amountEl=document.getElementById('chat-amount');
@@ -1459,51 +1335,7 @@ async function decryptChatPayload(token){
   const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
   return JSON.parse(new TextDecoder().decode(plain));
 }
-async function reconcileChatKeyStores(){
-  try{
-    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
-    const payloads=feed.map(x=>x&&x.payload).filter(x=>typeof x==='string'&&x.startsWith('CL1.'));
-    if(!payloads.length || !window.cardLedgerCredentialVault) return;
-    const importKey=async jwk=>{
-      if(!jwk) return null;
-      try{return await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);}catch(e){return null;}
-    };
-    const matches=async key=>{
-      if(!key) return false;
-      for(const token of payloads){
-        const p=token.split('.');
-        if(p.length!==3) continue;
-        try{
-          const s=str=>{
-            const raw=atob(String(str).replace(/\\s/g,''));
-            const out=new Uint8Array(raw.length);
-            for(let i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
-            return out;
-          };
-          await crypto.subtle.decrypt({name:'AES-GCM',iv:s(p[1])},key,s(p[2]));
-          return true;
-        }catch(e){}
-      }
-      return false;
-    };
-    let vaultJwk=null, legacyJwk=null;
-    try{vaultJwk=await window.cardLedgerCredentialVault.getChatJwk();}catch(e){}
-    try{
-      const saved=await window.storage.get(CHAT_KEY_STORAGE_KEY,false);
-      if(saved&&saved.value) legacyJwk=JSON.parse(saved.value);
-    }catch(e){}
-    const vaultKey=await importKey(vaultJwk);
-    const legacyKey=await importKey(legacyJwk);
-    const vaultMatch=await matches(vaultKey);
-    const legacyMatch=await matches(legacyKey);
-    if(legacyMatch && !vaultMatch){
-      await window.cardLedgerCredentialVault.setChatJwk(legacyJwk);
-      console.info('Card Ledger: restored matching Chat key from legacy encrypted storage.');
-    }
-  }catch(e){
-    console.warn('Card Ledger: Chat key reconciliation skipped:',e);
-  }
-}
+async function reconcileChatKeyStores(){ return false; }
 async function loadChatUpdates(){
   try{
     const res = await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), {cache:'no-store'});
@@ -1907,14 +1739,51 @@ function render(){
 function renderSecureUpdate(){
   return `
     <div class="panel secure-update-panel">
-      <div class="chat-head"><div><div class="chat-kicker">SECURE UPDATE</div><div class="tab-heading-row"><h2>🔒 Encryption &amp; Recovery</h2></div><div class="sub">Encryption, recovery and GitHub controls are kept separate from transaction entry.</div></div><div class="secure-badge">AES-256-GCM</div></div>
-      <div class="chat-actions"><button class="tab-btn" onclick="backupChatKeyUI()">💾 Backup Chat Key</button><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="inspectCredentialVaultChatKey()">🔐 Check Vault Key</button></div>
-      <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
-      <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
-      <div class="github-sync-box" style="margin-top:12px;"><div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only AES-256-GCM ciphertext is uploaded to <b>chat-updates.json</b>. Your encryption key and transaction plaintext stay on this device.</small></div></div><div id="githubStatus" class="github-status">Checking GitHub connection…</div><div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div></div>
-      <div class="disclaimer">AES-256-GCM protects Chat Sync payloads and local ledger storage. GitHub receives ciphertext only. The GitHub access token is stored encrypted on this device; if you clear PWA data, reconnect GitHub.</div>
+      <div class="chat-head"><div><div class="chat-kicker">SECURE UPDATE</div><div class="tab-heading-row"><h2>🔐 Encryption Key File</h2></div><div class="sub">Choose one local .txt file. The PWA reads the key from that file whenever it encrypts or decrypts GitHub transactions.</div></div><div class="secure-badge">AES-256-GCM</div></div>
+      <div class="chat-section">
+        <div class="chat-section-title"><span class="chat-icon">🔑</span><div><strong>Local key file</strong><small>The key contents are never copied into PWA storage or uploaded to GitHub.</small></div></div>
+        <div class="chat-actions">
+          <button class="tab-btn" onclick="selectChatKeyFileUI()">📄 Select key .txt file</button>
+          <button class="tab-btn" onclick="clearChatKeyFileUI()">Remove saved file</button>
+        </div>
+        <div id="keyFileStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Key file: checking…</div>
+        <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Encryption key status: not checked</div>
+      </div>
+      <div class="github-sync-box" style="margin-top:12px;"><div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only encrypted ciphertext is uploaded to <b>chat-updates.json</b>. The text-file key and transaction plaintext stay outside GitHub.</small></div></div><div id="githubStatus" class="github-status">Checking GitHub connection…</div><div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div></div>
+      <div class="disclaimer">The encryption key is supplied only by your selected local text file. The PWA does not generate, save, rotate, or upload an encryption key. GitHub stores ciphertext only.</div>
     </div>`;
 }
+async function refreshKeyFileStatus(){
+  const el=document.getElementById('keyFileStatus');
+  if(!el) return;
+  try{
+    const h=await window.cardLedgerKeyFile.getHandle();
+    if(!h){el.textContent='⚠ No key file selected';el.style.color='var(--danger)';el.style.background='var(--danger-soft)';return;}
+    const granted=await (typeof h.queryPermission==='function'?h.queryPermission({mode:'read'}):'granted');
+    el.textContent=(granted==='granted'?'✓ ':'⚠ ')+h.name+(granted==='granted'?' · ready for automatic encryption/decryption':' · permission needs to be granted');
+    el.style.color=granted==='granted'?'var(--ok)':'var(--danger)';
+    el.style.background=granted==='granted'?'var(--ok-soft)':'var(--danger-soft)';
+  }catch(e){el.textContent='⚠ Key file unavailable · select it again';el.style.color='var(--danger)';}
+}
+async function selectChatKeyFileUI(){
+  try{
+    const result=await window.cardLedgerKeyFile.select();
+    const out=document.getElementById('chatKeyDiagnostic');
+    if(out){out.style.color='var(--ok)';out.textContent='✓ Key file selected · '+result.name+' · key contents are not stored by the PWA';}
+    await refreshKeyFileStatus();
+    const merged=await syncEncryptedChatUpdates(false);
+    render();
+    refreshChatCardOptions();
+    if(merged) showToast('Key file selected · encrypted GitHub transactions synced');
+    else showToast('Key file selected');
+  }catch(e){showToast(e.message||'Could not select the key file');}
+}
+async function clearChatKeyFileUI(){
+  await window.cardLedgerKeyFile.clear();
+  await refreshKeyFileStatus();
+  showToast('Saved key-file reference removed');
+}
+function refreshRecoveryStatus(){ return refreshKeyFileStatus(); }
 
 function renderQuickEntryPanel(){
   return `
@@ -2438,7 +2307,7 @@ async function init(){
     await loadDues();
     render();
     refreshChatCardOptions();
-    refreshRecoveryStatus();
+    refreshKeyFileStatus();
     refreshGitHubStatus();
     registerNotificationBackgroundCheck();
     setTimeout(checkStatementNotifications,1200);
