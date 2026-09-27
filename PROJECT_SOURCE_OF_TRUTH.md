@@ -3,7 +3,7 @@
 ## Baseline
 - Repository: RDarshan226/card-ledger-pwa
 - Branch: main
-- Current app version: v78
+- Current app version: v80
 - Main UI file: index.html
 
 ## Change discipline
@@ -119,3 +119,9 @@ After every repo change, report:
 - v80 fixes the Rewards tab to render the existing reward-tracking manager, exposing Add Card, Edit, Save, Cancel, and Remove controls while preserving the reward calculation panels.
 
 - v80 fixes a duplicate `let html` declaration introduced while wiring the Rewards tracker manager; this JavaScript syntax error was preventing the app from finishing startup and leaving the splash screen visible.
+
+
+## Key-file status fix (v80)
+- The Secure tab key-file status now uses a dedicated status API that recognizes both persistent File System Access handles and the Brave/Android session-only fallback.
+- The status read is bounded to 2.5 seconds so an IndexedDB or browser permission operation cannot leave the label permanently stuck on “Key file: checking…”.
+- This change does not store key contents, generate keys, alter GitHub ciphertext, or change the encryption format.
