@@ -1325,7 +1325,7 @@ async function encryptChatEntry(){
     const iv=crypto.getRandomValues(new Uint8Array(12));
     const key=await getChatCryptoKey();
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
-    const token='CL1.'+bytesToB64(iv)+'.'+bytesToB64(new Uint8Array(ct));
+    const token='CL1.'+b64(iv)+'.'+b64(new Uint8Array(ct));
     document.getElementById('chat-encrypted').value=token;
     clearEncryptedEntryFields();
     try{ await navigator.clipboard.writeText(token); showToast('Encrypted entry copied'); }catch(e){ showToast('Encrypted entry created — tap Copy'); }
@@ -2091,7 +2091,7 @@ async function encryptTransactionEntry(uploadAfter=false){
     const iv=crypto.getRandomValues(new Uint8Array(12));
     const key=await getChatCryptoKey();
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
-    const token='CL1.'+bytesToB64(iv)+'.'+bytesToB64(new Uint8Array(ct));
+    const token='CL1.'+b64(iv)+'.'+b64(new Uint8Array(ct));
     document.getElementById('chat-encrypted').value=token;
     try{await navigator.clipboard.writeText(token);}catch(e){}
     if(uploadAfter){
