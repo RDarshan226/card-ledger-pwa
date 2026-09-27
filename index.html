@@ -605,7 +605,12 @@
   };
 })();
 
-const APP_VERSION = 'v85';
+function bytesToB64(bytes){
+  let s='';
+  for(let i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+const APP_VERSION = 'v86';
 const versionText = APP_VERSION;
 const startupVersionEl = document.getElementById('startup-version');
 const appVersionEl = document.getElementById('app-version');
