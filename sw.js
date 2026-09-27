@@ -1,4 +1,4 @@
-const CACHE='card-ledger-pwa-v88';
+const CACHE='card-ledger-pwa-v89';
 const APP=['./','./index.html','./manifest.json','./sw.js','./chat-updates.json','./security-core.js','./github-sync-core.js','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
@@ -55,12 +55,7 @@ self.addEventListener('fetch',event=>{
 
   if(url.pathname.endsWith('/chat-updates.json')){
     event.respondWith(
-      fetch(event.request,{cache:'no-store'})
-        .then(response=>{
-          const copy=response.clone();
-          caches.open(CACHE).then(c=>c.put('./chat-updates.json',copy));
-          return response;
-        })
+      fetch(event.request,{cache:'reload'})
         .catch(()=>caches.match('./chat-updates.json'))
     );
     return;
