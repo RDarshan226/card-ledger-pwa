@@ -116,4 +116,6 @@ After every repo change, report:
 
 - v78 consolidates the update listeners into one service-worker update flow and keeps the versioned service-worker URL so stale registrations are less likely to persist.
 
-- v79 fixes the Rewards tab to render the existing reward-tracking manager, exposing Add Card, Edit, Save, Cancel, and Remove controls while preserving the reward calculation panels.
+- v80 fixes the Rewards tab to render the existing reward-tracking manager, exposing Add Card, Edit, Save, Cancel, and Remove controls while preserving the reward calculation panels.
+
+- v80 fixes a duplicate `let html` declaration introduced while wiring the Rewards tracker manager; this JavaScript syntax error was preventing the app from finishing startup and leaving the splash screen visible.
