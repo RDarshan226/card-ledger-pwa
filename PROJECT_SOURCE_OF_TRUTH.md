@@ -3,7 +3,7 @@
 ## Baseline
 - Repository: RDarshan226/card-ledger-pwa
 - Branch: main
-- Current app version: v72
+- Current app version: v74
 - Main UI file: index.html
 
 ## Change discipline
@@ -73,3 +73,14 @@ After every repo change, report:
 - exact requested change
 - protected functionality preserved
 - commit SHA(s)
+
+
+## Card and tab management additions (v74)
+- Ledger can add cards with name, credit/debit type, limit, billing date, shared-limit group, network, tier, BIN, opening month/year, annual fee and reward rate.
+- A card added through Ledger is the same card record used by Card Fees, Rewards, Account Ageing and relevant other tabs.
+- Card Fees supports add, edit and remove of cards and card details.
+- Rewards supports card-level reward tracking edits and card add/remove; detailed reward rules remain editable from Card Fees.
+- Account Ageing supports card add, edit and remove and opening-date editing.
+- Recurring Payment tab has its own persistent recurring-payment records with add, edit and remove.
+- Removed default cards are tombstoned so loadData does not silently recreate them.
+- Recurring payments and removed-card tombstones are included in rolling local backup data.
