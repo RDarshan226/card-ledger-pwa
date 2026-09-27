@@ -397,8 +397,8 @@
 </div>
 <div id="toast"></div>
 
-<script src="./security-core.js?v=v90"></script>
-<script src="./github-sync-core.js?v=v90"></script>
+<script src="./security-core.js?v=v91"></script>
+<script src="./github-sync-core.js?v=v91"></script>
 <script>
 /* PWA local database layer: IndexedDB values are encrypted at rest with AES-256-GCM.
    The device key is stored separately in IndexedDB and is never uploaded to GitHub. */
@@ -614,7 +614,7 @@ function bytesToB64(bytes){
 // Keep these global so an older script cannot fail with “B64 is not defined”.
 function B64(bytes){ return bytesToB64(bytes); }
 function b64(bytes){ return bytesToB64(bytes); }
-const APP_VERSION='v90';
+const APP_VERSION='v91';
 const versionText = APP_VERSION;
 const startupVersionEl = document.getElementById('startup-version');
 const appVersionEl = document.getElementById('app-version');
