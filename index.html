@@ -397,8 +397,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./security-core.js?v=v92"></script>
-<script src="./github-sync-core.js?v=v92"></script>
+<script src="./github-sync-core.js?v=v93"></script>
 <script>
 /* PWA local database layer: IndexedDB values are encrypted at rest with AES-256-GCM.
    The device key is stored separately in IndexedDB and is never uploaded to GitHub. */
@@ -614,7 +613,7 @@ function bytesToB64(bytes){
 // Keep these global so an older script cannot fail with “B64 is not defined”.
 function B64(bytes){ return bytesToB64(bytes); }
 function b64(bytes){ return bytesToB64(bytes); }
-const APP_VERSION='v92';
+const APP_VERSION='v93';
 const versionText = APP_VERSION;
 const startupVersionEl = document.getElementById('startup-version');
 const appVersionEl = document.getElementById('app-version');
@@ -1346,17 +1345,6 @@ async function copyEncryptedChat(){
   await navigator.clipboard.writeText(el.value);
   showToast('Encrypted transaction copied');
 }
-async function decryptChatPayload(token){
-  if(typeof token!=='string' || !token.startsWith('CL1.')) throw new Error('Unsupported encrypted payload');
-  const parts=token.split('.');
-  if(parts.length!==3) throw new Error('Invalid encrypted payload');
-  const iv=b64ToBytes(parts[1]);
-  const ct=b64ToBytes(parts[2]);
-  const key=await getChatCryptoKey();
-  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
-  return JSON.parse(new TextDecoder().decode(plain));
-}
-async function reconcileChatKeyStores(){ return false; }
 async function loadChatUpdates(){
   try{
     const token=await getGitHubToken();
@@ -1383,53 +1371,32 @@ async function loadChatUpdates(){
 async function loadDeletedEntries(){try{const res=await window.storage.get(DELETED_ENTRIES_KEY,false);const ids=res&&res.value?JSON.parse(res.value):[];deletedEntryIds=new Set(Array.isArray(ids)?ids:[]);}catch(e){deletedEntryIds=new Set();}}
 async function saveDeletedEntries(){try{await window.storage.set(DELETED_ENTRIES_KEY,JSON.stringify([...deletedEntryIds]),false);return true;}catch(e){return false;}}
 async function mergeChatEntries(){
-  let changed=false, failed=0, decrypted=0, added=0, skipped=0;
+  let changed=false,failed=0,added=0,skipped=0;
   const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
-  const normalizeName = name => String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
-  const findLedgerCard = name => {
-    const exact=cards.find(c=>c.name===name);
-    if(exact) return exact;
-    const n=normalizeName(name);
-    return cards.find(c=>normalizeName(c.name)===n);
-  };
-
-  for(const item of feed){
-    if(!item || !item.payload) continue;
+  const normalizeName=name=>String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
+  const findLedgerCard=name=>{const exact=cards.find(c=>c.name===name);if(exact)return exact;const n=normalizeName(name);return cards.find(c=>normalizeName(c.name)===n);};
+  for(const p of feed){
+    if(!p||!p.id)continue;
     try{
-      const p=await decryptChatPayload(item.payload);
-      decrypted++;
-      if(!p || (p.kind!=='ledger' && p.kind!=='transaction' && p.kind!=='cashback')){ skipped++; continue; }
-      if(!p.id || deletedEntryIds.has(p.id)){ skipped++; continue; }
-
+      if(deletedEntryIds.has(p.id)){skipped++;continue;}
       if(p.kind==='cashback'){
-        if(!cashbackLog.some(e=>e.id===p.id)){
-          cashbackLog.push({id:p.id,type:p.type==='charge'?'charge':'cashback',date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',_fresh:true});
-          changed=true; added++;
-        }
+        if(!cashbackLog.some(e=>e.id===p.id)){cashbackLog.push({id:p.id,type:p.type==='charge'?'charge':'cashback',date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',_fresh:true});changed=true;added++;}
         continue;
       }
-
-      const card=findLedgerCard(p.card);
-      if(!card){ skipped++; continue; }
+      if(p.kind!=='transaction'&&p.kind!=='ledger'){skipped++;continue;}
+      const card=findLedgerCard(p.card);if(!card){skipped++;continue;}
       card.entries=Array.isArray(card.entries)?card.entries:[];
-      if(card.entries.some(e=>e.id===p.id)){ skipped++; continue; }
-
-      const rawType=p.type||p.mainType;
-      const entryType=(rawType==='repay'||rawType==='repayment')?'repay':'txn';
-      const entry={
-        id:p.id,type:entryType,date:p.date||todayStr(),amount:Number(p.amount)||0,
-        category:p.category||'',platform:p.platform||'',note:p.note||'',
-        cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true
-      };
+      if(card.entries.some(e=>e.id===p.id)){skipped++;continue;}
+      const rawType=p.type||p.mainType,entryType=(rawType==='repay'||rawType==='repayment')?'repay':'txn';
+      const entry={id:p.id,type:entryType,date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true};
       card.entries.push(entry);
-      if(entry.cashback>0) cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:entry.date,amount:entry.cashback,category:'Cashback',platform:entry.platform,note:entry.note});
-      if(entry.charge>0) cashbackLog.push({id:p.id+'-charge',card:p.card,type:'charge',date:entry.date,amount:entry.charge,category:'Charge paid',platform:entry.platform,note:entry.note});
-      changed=true; added++;
-    }catch(e){ failed++; }
+      if(entry.cashback>0)cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:entry.date,amount:entry.cashback,category:'Cashback',platform:entry.platform,note:entry.note});
+      if(entry.charge>0)cashbackLog.push({id:p.id+'-charge',card:p.card,type:'charge',date:entry.date,amount:entry.charge,category:'Charge paid',platform:entry.platform,note:entry.note});
+      changed=true;added++;
+    }catch(e){failed++;}
   }
-  if(failed && feed.length) console.warn('Encrypted feed: '+decrypted+' decrypted, '+failed+' failed. The local recovery key must match the key used to create the feed.');
-  window.__chatSyncStatus={feedCount:feed.length,decrypted,failed,added,skipped};
-  return {changed,added,failed,decrypted,feedCount:feed.length};
+  window.__chatSyncStatus={feedCount:feed.length,added,failed,skipped};
+  return {changed,added,failed,feedCount:feed.length};
 }
 async function syncEncryptedChatUpdates(showResult){
   try{
@@ -1992,20 +1959,22 @@ function render(){
 function renderSecureUpdate(){
   return `
     <div class="panel secure-update-panel">
-      <div class="chat-head"><div><div class="chat-kicker">SECURE UPDATE</div><div class="tab-heading-row"><h2>🔐 Encryption Key File</h2></div><div class="sub">Choose one local .txt file. The PWA reads the key from that file whenever it encrypts or decrypts GitHub transactions.</div></div><div class="secure-badge">AES-256-GCM</div></div>
+      <div class="chat-head"><div><div class="chat-kicker">LOCAL DATA</div><div class="tab-heading-row"><h2>📁 Card Ledger Data File</h2></div><div class="sub">Choose where your Card Ledger transactions should be stored. The PWA reads and writes the plain JSON file directly on your device.</div></div><div class="secure-badge">LOCAL ONLY</div></div>
       <div class="chat-section">
-        <div class="chat-section-title"><span class="chat-icon">🔑</span><div><strong>Local key file</strong><small>The key contents are never copied into PWA storage or uploaded to GitHub.</small></div></div>
+        <div class="chat-section-title"><span class="chat-icon">📄</span><div><strong>Transaction data file</strong><small>No encryption, decryption, GitHub upload, or remote feed is used.</small></div></div>
         <div class="chat-actions">
-          <button class="tab-btn" onclick="selectChatKeyFileUI()">📄 Select key .txt file</button>
-          <button class="tab-btn" onclick="clearChatKeyFileUI()">Remove saved file</button>
+          <button class="tab-btn" onclick="createLocalDataFileUI()">＋ Create data file</button>
+          <button class="tab-btn" onclick="selectLocalDataFileUI()">📂 Select existing file</button>
+          <button class="tab-btn" onclick="disconnectLocalDataFileUI()">Remove selection</button>
         </div>
-        <div id="keyFileStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Key file: checking…</div>
-        <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Encryption key status: not checked</div>
+        <div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div>
       </div>
-      <div class="github-sync-box" style="margin-top:12px;"><div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only encrypted ciphertext is uploaded to <b>chat-updates.json</b>. The text-file key and transaction plaintext stay outside GitHub.</small></div></div><div id="githubStatus" class="github-status">Checking GitHub connection…</div><div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div></div>
-      <div class="disclaimer">The encryption key is supplied only by your selected local text file. The PWA does not generate, save, rotate, or upload an encryption key. GitHub stores ciphertext only.</div>
+      <div class="disclaimer">Your transaction details stay in the local JSON file you choose. The PWA remembers the file location on this device.</div>
     </div>`;
 }
+async function createLocalDataFileUI(){try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}}
+async function selectLocalDataFileUI(){try{await selectLocalDataFile();}catch(e){showToast(e.message||'Could not select data file');}}
+async function disconnectLocalDataFileUI(){await disconnectGitHub();}
 async function refreshKeyFileStatus(){
   const el=document.getElementById('keyFileStatus');
   if(!el) return;
@@ -2068,316 +2037,10 @@ function renderQuickEntryPanel(){
           <div class="field"><label>Charge paid ₹ <em>optional</em></label><input id="entry-charge" type="number" inputmode="decimal" min="0" placeholder="0"></div>
           <div class="field"><label>Note <em>optional</em></label><input id="entry-note" type="text" placeholder="Optional note"></div>
         </div>
-        <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry(true)">🔒 Encrypt &amp; upload to GitHub</button>
+        <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry(true)">💾 Save to local data file</button>
       </div>
 
-      <div class="chat-output"><div class="chat-output-head"><div><strong>Encrypted code</strong><small>Generated locally. Copy is available as a fallback; upload sends ciphertext directly to GitHub.</small></div><span>CL1</span></div><textarea id="chat-encrypted" readonly placeholder="Your encrypted code will appear here…"></textarea><button class="chat-copy" onclick="copyEncryptedChat()">Copy code</button></div>
-
-    </div>`;
-}
-
-function updateTransactionEntryFields(){
-  const type=document.getElementById('entry-main-type')?.value;
-  const category=document.getElementById('entry-category');
-  if(!category) return;
-  category.placeholder=type==='repayment'?'Card bill payment':'Shopping / Bills';
-}
-
-function clearTransactionEntryFields(){
-  ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const type=document.getElementById('entry-main-type');if(type)type.value='expense';
-  const date=document.getElementById('entry-date');if(date)date.value=todayStr();
-  updateTransactionEntryFields();
-}
-
-async function encryptTransactionEntry(uploadAfter=false){
-  try{
-    const mainType=document.getElementById('entry-main-type').value;
-    const card=document.getElementById('entry-card').value;
-    const date=document.getElementById('entry-date').value || todayStr();
-    const amount=Number(document.getElementById('entry-amount').value);
-    const category=document.getElementById('entry-category').value.trim();
-    const platform=document.getElementById('entry-platform').value.trim();
-    const cashback=Number(document.getElementById('entry-cashback').value)||0;
-    const charge=Number(document.getElementById('entry-charge').value)||0;
-    const note=document.getElementById('entry-note').value.trim();
-    if(!card){showToast('Choose a card');return null;}
-    if(!amount || amount<=0){showToast('Enter a valid transaction amount');return null;}
-    if(cashback<0 || charge<0){showToast('Cashback and charge cannot be negative');return null;}
-    const payload={
-      v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'transaction',
-      mainType,card,date,amount,category,platform,note,
-      cashback,charge
-    };
-    const iv=crypto.getRandomValues(new Uint8Array(12));
-    const key=await getChatCryptoKey();
-    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
-    const token='CL1.'+b64(iv)+'.'+b64(new Uint8Array(ct));
-    document.getElementById('chat-encrypted').value=token;
-    try{await navigator.clipboard.writeText(token);}catch(e){}
-    if(uploadAfter){
-      const githubToken=await getGitHubToken();
-      if(!githubToken){
-        showToast('Connect GitHub first — encrypted code is ready');
-        await refreshGitHubStatus();
-        return token;
-      }
-      try{
-        await uploadEncryptedPayload(token,key);
-        showToast('Encrypted transaction uploaded to GitHub');
-      }catch(e){
-        if(e.status===401 || e.status===403){
-          await clearGitHubToken();
-          await refreshGitHubStatus('⚠ GitHub authorization failed · reconnect GitHub');
-        }
-        showToast(e.message||'Upload failed — encrypted code is still available to copy');
-      }
-    }else{
-      showToast('Encrypted transaction created');
-    }
-    clearTransactionEntryFields();
-    return token;
-  }catch(e){
-    const msg=String(e?.message||e||'Encryption failed');
-    console.error('Transaction encryption failed:',e);
-    showToast(msg);
-    return null;
-  }
-}
-
-function renderLedger(){
-  const app = document.getElementById('app');
-  const creditCards = cards.filter(c=>!c.isDebit && !c.feeOnly);
-  const debitCards = cards.filter(c=>c.name===DEBIT_CARD_NAME);
-
-  const seenGroups = new Set();
-  let totalLimit = 0;
-  creditCards.forEach(c=>{
-    if(c.limitGroup){ if(seenGroups.has(c.limitGroup)) return; seenGroups.add(c.limitGroup); }
-    totalLimit += Number(c.limit)||0;
-  });
-  const totalUsed = creditCards.reduce((s,c)=> s + Math.max(0, utilised(c)), 0);
-  const pct = totalLimit > 0 ? Math.round((totalUsed/totalLimit)*100) : 0;
-  const over = pct >= 90;
-
-  let html = '';
-  html += `<div class="cover">
-    <div class="cover-figures">
-      <div class="cover-line"><span class="cover-label">Total utilised</span><span class="cover-amt total">${inr(totalUsed)}</span></div>
-      <div class="cover-line"><span class="cover-label">Combined limit</span><span class="cover-amt">${inr(totalLimit)}</span></div>
-      <div class="cover-line"><span class="cover-label">Headroom left</span><span class="cover-amt">${inr(Math.max(0,totalLimit-totalUsed))}</span></div>
-    </div>
-    <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
-  </div>`;
-
-  html += `<div class="toolbar">
-    <input type="text" id="search" placeholder="Find a card…" value="${filterText}" oninput="onSearch(this.value)">
-    <button class="sort-btn ${sortByUtil?'active':''}" onclick="toggleSort()">${sortByUtil ? '⇅ Sorted by usage' : '⇅ Sort by usage'}</button>
-  </div>`;
-
-  let list = creditCards.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()));
-  if(sortByUtil){
-    list = [...list].sort((a,b)=>{
-      const pa = (Number(a.limit)||0) > 0 ? utilised(a)/Number(a.limit) : -1;
-      const pb = (Number(b.limit)||0) > 0 ? utilised(b)/Number(b.limit) : -1;
-      return pb - pa;
-    });
-  }
-
-  html += '<div class="ledger">';
-  if(!list.length){ html += '<div class="no-match">No card matches that search.</div>'; }
-  list.forEach(card => { html += renderRow(card); });
-  html += '</div>';
-
-  if(!filterText){
-    html += `<div class="section-label">Tracked for analysis only</div><div class="ledger">${debitCards.map(c=>renderRow(c)).join('')}</div>`;
-  }
-  html += addCardFormHTML('ledger');
-
-  document.getElementById('app').innerHTML = html;
-}
-
-function renderRow(card){
-  const used = utilised(card);
-  const limit = Number(card.limit)||0;
-  const cardPct = (!card.isDebit && limit>0) ? Math.min(100, Math.max(0,(used/limit)*100)) : 0;
-  const barClass = cardPct>=90 ? 'over' : cardPct>=70 ? 'warn' : '';
-  const isOpen = openId === card.id;
-  return `<div class="row ${card.isDebit?'debit-row':''}" data-id="${card.id}">
-      <div class="row-main" onclick="toggleCard('${card.id}')">
-        <div>
-          <div class="row-name">${card.name}${card.limitGroup ? '<span class="share-tag">shared limit</span>' : ''}</div>
-          <div class="row-sub">${card.isDebit ? 'Not counted in credit utilisation' : (card.billingDate ? 'Bill date · ' + card.billingDate : 'Bill date not set')}</div>
-        </div>
-        <div class="row-amts">
-          <div class="row-used">${inr(Math.max(0,used))}<span class="chevron ${isOpen?'open':''}">▼</span></div>
-          <div class="row-limit">${card.isDebit ? 'lifetime logged' : 'of ' + (limit>0?inr(limit):'limit not set')}</div>
-        </div>
-        ${card.isDebit ? '' : `<div class="bar-track"><div class="bar-fill ${barClass}" style="width:${cardPct}%"></div></div>`}
-      </div>
-      <div class="detail-wrap ${isOpen?'open':''}">
-        <div class="detail-inner"><div class="detail">${renderDetail(card)}</div></div>
-      </div>
-    </div>`;
-}
-
-function renderDetail(card){
-  const entries = [...card.entries].sort((a,b)=> b.date.localeCompare(a.date));
-  const editor = editingCardId===card.id ? cardEditorHTML(card,'ledger') : '';
-
-  let rows = entries.map(e => `
-    <tr class="${e._fresh ? 'fresh' : ''}">
-      <td>${e.date}</td>
-      <td><span class="tag ${e.type}">${e.type==='txn'?'Spend':'Repaid'}</span></td>
-      <td class="${e.type==='txn'?'amt-txn':'amt-repay'}">${e.type==='txn'?'+':'−'}${inr(e.amount)}</td>
-      <td>${e.type==='txn' && e.category ? `<span class="cat-chip">${e.category}</span>` : ''}${e.platform ? ` <span class="plat-chip">${e.platform}</span>` : ''}</td>
-      <td>${e.note ? e.note : ''}</td>
-      <td><button class="del" onclick="deleteEntry('${card.id}','${e.id}', event)">remove</button></td>
-    </tr>`).join('');
-
-  const limitFields = card.isDebit ? '' : `
-    <div class="detail-grid">
-      <div class="field">
-        <label>Credit limit (₹)</label>
-        <input type="number" value="${card.limit||''}" placeholder="e.g. 50000" onchange="updateLimit('${card.id}', this.value)">
-        ${card.limitGroup ? `<div class="share-note">Shared with the other GoldX variant — editing this updates both.</div>` : ''}
-      </div>
-      <div class="field">
-        <label>Billing date</label>
-        <input type="text" value="${card.billingDate||''}" placeholder="e.g. 5th of month" onchange="updateBillingDate('${card.id}', this.value)">
-      </div>
-    </div>`;
-
-  return `
-    ${editingCardId===card.id ? editor : `<div class="chat-actions" style="margin-bottom:10px;"><button class="tab-btn" onclick="editCardDetails('${card.id}')">Edit card</button><button class="tab-btn" onclick="removeCardUI('${card.id}',event)">Remove card</button></div>`}
-    ${limitFields}
-    <div class="card-entry-form">
-      <div class="field"><label>Type</label><select id="type-${card.id}"><option value="txn">Expense</option><option value="repay">Card repayment</option></select></div>
-      <div class="field"><label>Date</label><input id="date-${card.id}" type="date" value="${todayStr()}"></div>
-      <div class="field"><label>Amount ₹</label><input id="amt-${card.id}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Amount"></div>
-      <div class="field"><label>Category</label><input id="cat-${card.id}" type="text" list="cat-list" placeholder="Shopping / Bills"></div>
-      <div class="field"><label>Platform / Merchant</label><input id="plat-${card.id}" type="text" placeholder="Amazon / merchant"></div>
-      <div class="field"><label>Note</label><input id="note-${card.id}" type="text" placeholder="Optional note"></div>
-      <button class="card-entry-add" onclick="addEntry('${card.id}',event)">Add entry</button>
-    </div>
-    ${entries.length ? `<div class="table-scroll"><table class="statement">
-      <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category / Platform</th><th>Note</th><th></th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>` : '<div class="empty-stmt">No entries logged yet for this card.</div>'}
-  `;
-}
-
-function toggleCard(id){ openId = (openId === id) ? null : id; render(); }
-function onSearch(v){ filterText = v; render(); const s=document.getElementById('search'); if(s){ s.focus(); s.setSelectionRange(v.length, v.length); } }
-function toggleSort(){ sortByUtil = !sortByUtil; render(); }
-function findCard(id){ return cards.find(c=>c.id===id); }
-
-async function updateLimit(id, val){
-  const c = findCard(id);
-  const newLimit = Number(val)||0;
-  if(c.limitGroup){ cards.forEach(x => { if(x.limitGroup === c.limitGroup) x.limit = newLimit; }); }
-  else { c.limit = newLimit; }
-  await saveData(); render(); showToast('Limit updated');
-}
-async function updateBillingDate(id, val){
-  const c = findCard(id); c.billingDate = val;
-  await saveData(); render(); showToast('Billing date updated');
-}
-async function addEntry(id, evt){
-  evt.stopPropagation();
-  const type = document.getElementById('type-'+id).value;
-  const date = document.getElementById('date-'+id).value || todayStr();
-  const amtInput = document.getElementById('amt-'+id);
-  const amount = Number(amtInput.value);
-  const category = document.getElementById('cat-'+id).value.trim();
-  const platform = document.getElementById('plat-'+id).value.trim();
-  const note = document.getElementById('note-'+id).value.trim();
-  if(!amount || amount<=0){ amtInput.focus(); return; }
-  const c = findCard(id);
-  c.entries.push({id: uid(), type, date, amount, note, category: type==='txn'?category:'', platform: type==='txn'?platform:'', _fresh:true});
-  await saveData();
-  render();
-  showToast(type==='txn' ? 'Spend logged' : 'Repayment logged');
-}
-async function deleteEntry(cardId, entryId, evt){
-  evt.stopPropagation();
-  const c = findCard(cardId); if(!c) return;
-  c.entries = c.entries.filter(e=>e.id!==entryId);
-  deletedEntryIds.add(entryId);
-  await saveDeletedEntries();
-  await saveData();
-  render();
-  showToast('Entry removed');
-}
-
-/* ---------------- Analysis ---------------- */
-
-function collectSpends(){
-  const rows = [];
-  cards.forEach(card => {
-    card.entries.forEach(e => {
-      if(e.type !== 'txn') return;
-      rows.push({
-        card: card.name,
-        isDebit: !!card.isDebit,
-        category: e.category && e.category.trim() ? e.category.trim() : 'Uncategorised',
-        platform: e.platform && e.platform.trim() ? e.platform.trim() : '',
-        amount: e.amount,
-        date: e.date
-      });
-    });
-  });
-
-  // Card annual fees / insurance premiums — logged under the debit bucket,
-  // since none of these are card spends earning rewards.
-  cards.forEach(card => {
-    if(card.name === DEBIT_CARD_NAME) return;
-    if(!feeApplicable(card.fee)) return;
-    card.fee.payments.forEach(p => {
-      rows.push({
-        card: DEBIT_CARD_NAME, isDebit: true,
-        category: card.isInsurance ? 'Insurance' : 'Card Fees',
-        platform: card.name,
-        amount: p.amount, date: p.date
-      });
-    });
-  });
-
-  // Term Insurance — automatic monthly occurrences for this calendar year,
-  // one per month whose due date has already passed.
-  const now = new Date();
-  for(let m=0; m<=now.getMonth(); m++){
-    const day = Math.min(TERM_INSURANCE.day, daysInMonth(now.getFullYear(), m));
-    const d = new Date(now.getFullYear(), m, day);
-    if(d > now) continue;
-    rows.push({
-      card: DEBIT_CARD_NAME, isDebit: true, category: 'Insurance', platform: 'Term Insurance',
-      amount: TERM_INSURANCE.amount, date: d.toISOString().slice(0,10)
-    });
-  }
-
-  return rows;
-}
-
-function periodParts(dateStr){ const d = new Date(dateStr+'T00:00:00'); return { y: d.getFullYear(), m: d.getMonth() }; }
-
-function sumWhere(rows, fn){ return rows.reduce((s,r)=> fn(r) ? s + r.amount : s, 0); }
-
-function pctDelta(curr, prev){
-  if(prev === 0 && curr === 0) return {label:'—', cls:'flat'};
-  if(prev === 0) return {label:'new', cls:'up'};
-  const d = Math.round(((curr-prev)/prev)*100);
-  if(d === 0) return {label:'0%', cls:'flat'};
-  return { label:(d>0?'+':'')+d+'%', cls: d>0 ? 'up' : 'down' };
-}
-
-function deltaBadge(curr, prev){ const d = pctDelta(curr, prev); return `<span class="delta ${d.cls}">${d.label}</span>`; }
-
-function renderAnalysis(){
-  const app = document.getElementById('app');
-  const rows = collectSpends();
-  if(!rows.length){
-    app.innerHTML = `<div class="panel"><div class="empty-analysis">No spends logged yet. Log a few transactions with a category (and platform, where relevant) on the Ledger tab, and the breakdowns will show up here.</div></div>`;
+      <div class="chat-output"><div class="chat-output-head"><div><strong>Local data storage</strong><small>The transaction is written directly to the selected JSON file. Nothing is encrypted or uploaded.</small></div><span>JSON</span></div>`;
     return;
   }
 
