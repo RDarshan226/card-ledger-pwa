@@ -3,7 +3,7 @@
 ## Baseline
 - Repository: RDarshan226/card-ledger-pwa
 - Branch: main
-- Current app version: v80
+- Current app version: v81
 - Main UI file: index.html
 
 ## Change discipline
@@ -125,3 +125,8 @@ After every repo change, report:
 - The Secure tab key-file status now uses a dedicated status API that recognizes both persistent File System Access handles and the Brave/Android session-only fallback.
 - The status read is bounded to 2.5 seconds so an IndexedDB or browser permission operation cannot leave the label permanently stuck on “Key file: checking…”.
 - This change does not store key contents, generate keys, alter GitHub ciphertext, or change the encryption format.
+
+
+## Version bump (v81)
+- Bumped the app version from v80 to v81 as requested. No functional changes were made.
+- Service-worker cache version is synchronized to v81.
