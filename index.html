@@ -372,11 +372,11 @@
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version"></span></div>
-  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
+  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
     <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Entry</button>
-    <button class="tab-btn" id="tab-secure" onclick="setTab('secure')" style="display:none">🔒 Encryption &amp; Recovery</button>
+    <button class="tab-btn" id="tab-secure" onclick="setTab('secure')" style="display:none">📁 Local Data File</button>
     <button class="tab-btn" id="tab-analysis" onclick="setTab('analysis')">Spend Analysis</button>
     <button class="tab-btn" id="tab-fees" onclick="setTab('fees')">Card Fees</button>
     <button class="tab-btn" id="tab-dues" onclick="setTab('dues')">Upcoming Dues</button>
@@ -458,10 +458,10 @@ async function verifyChatEncryptionKey(){return {ok:true,reason:'local-file'};}
 async function inspectChatKeyHistory(){return refreshLocalDataStatus();}
 async function inspectCredentialVaultChatKey(){return refreshLocalDataStatus();}
 async function syncEncryptedChatUpdates(){return false;}
-async function selectChatKeyFileUI(){showToast('Encryption key files are no longer used.');}
-async function clearChatKeyFileUI(){showToast('Encryption key files are no longer used.');}
+
+
 async function copyEncryptedChat(){showToast('Transactions are saved directly to the selected local JSON file.');}
-async function encryptChatEntry(){return encryptTransactionEntry(true);}
+
 
 async function loadChatUpdates(){
   try{
@@ -1057,9 +1057,6 @@ function renderAnalysis(){
   const repay=cards.reduce((s,c)=>s+c.entries.filter(e=>e.type==='repay').reduce((a,e)=>a+Number(e.amount||0),0),0);
   app.innerHTML='<div class="panel"><div class="tab-heading-row"><h2>Spend Analysis</h2></div><div class="sub">Current local ledger totals.</div><div class="due-summary"><div class="due-stat"><div class="k">Spend</div><div class="v">'+inr(spend)+'</div></div><div class="due-stat"><div class="k">Repayments</div><div class="v">'+inr(repay)+'</div></div><div class="due-stat alert"><div class="k">Net</div><div class="v">'+inr(spend-repay)+'</div></div></div></div>';
 }
-if(typeof refreshGitHubStatus==='undefined') window.refreshGitHubStatus=refreshLocalDataStatus;
-if(typeof syncEncryptedChatUpdates==='undefined') window.syncEncryptedChatUpdates=async()=>{await loadChatUpdates();return false;};
-
 function setTab(t){ activeTab = t; render(); if(t==='secure') setTimeout(refreshLocalDataStatus,0); }
 
 function render(){
@@ -1119,8 +1116,6 @@ async function clearChatKeyFileUI(){
   await refreshKeyFileStatus();
   showToast('Saved key-file reference removed');
 }
-function refreshRecoveryStatus(){ return refreshKeyFileStatus(); }
-
 function setTab(t){activeTab=t;render();if(t==='secure')setTimeout(refreshLocalDataStatus,0);}
 
 function render(){
@@ -1206,8 +1201,7 @@ async function init(){
     await loadDues();
     render();
     refreshChatCardOptions();
-    refreshKeyFileStatus();
-    refreshGitHubStatus();
+    refreshLocalDataStatus();
     registerNotificationBackgroundCheck();
     setTimeout(checkStatementNotifications,1200);
     setInterval(checkStatementNotifications,15*60*1000);
@@ -1218,7 +1212,7 @@ async function init(){
     try{
       render();
       refreshChatCardOptions();
-      refreshRecoveryStatus();
+      refreshLocalDataStatus();
     }catch(_e){}
     try{ showToast('Ledger opened · some background data could not be loaded'); }catch(_e){}
   }
