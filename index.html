@@ -3665,22 +3665,34 @@ let deferredInstallPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); deferredInstallPrompt=e; const b=document.getElementById('installBtn'); if(b)b.style.display='inline-flex';});
 async function installPWA(){ if(!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt=null; document.getElementById('installBtn').style.display='none'; }
 if('serviceWorker' in navigator){
-  let swReloading=false;
-  const reloadAfterControllerChange=()=>{
-    if(swReloading) return;
-    swReloading=true;
+  // Automatic PWA updates. The versioned service-worker URL forces a fresh
+  // update check on every release, while the checks below catch updates
+  // published while the PWA is already open.
+  let appReloadingForUpdate=false;
+  const reloadOnControllerChange=()=>{
+    if(appReloadingForUpdate) return;
+    appReloadingForUpdate=true;
     window.location.reload();
   };
-  navigator.serviceWorker.addEventListener('controllerchange',reloadAfterControllerChange);
+  navigator.serviceWorker.addEventListener('controllerchange',reloadOnControllerChange);
 
   const checkForAppUpdate=async()=>{
     try{
-      const reg=await navigator.serviceWorker.getRegistration('./');
-      if(!reg) return;
+      const reg=await navigator.serviceWorker.getRegistration('./') ||
+        await navigator.serviceWorker.register('./sw.js?app='+encodeURIComponent(APP_VERSION),{updateViaCache:'none'});
       await reg.update();
       if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
     }catch(e){}
   };
+
+  navigator.serviceWorker.addEventListener('message',event=>{
+    const data=event.data||{};
+    if(data.type==='CHECK_STATEMENT_NOTIFICATIONS') checkStatementNotifications();
+    if(data.type==='OPEN_STATEMENT_CARD'){
+      activeTab='dues';
+      render();
+    }
+  });
 
   window.addEventListener('load',async()=>{
     try{
@@ -3695,57 +3707,16 @@ if('serviceWorker' in navigator){
         });
       });
       await reg.update();
-
-      // Keep the installed PWA checking GitHub Pages for a newer service worker.
-      // The checks do not touch ledger data or encryption keys.
-      setInterval(checkForAppUpdate,5*60*1000);
-      document.addEventListener('visibilitychange',()=>{
-        if(document.visibilityState==='visible') checkForAppUpdate();
-      });
-      window.addEventListener('focus',checkForAppUpdate);
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
     }catch(e){}
+    setTimeout(checkForAppUpdate,1500);
+    setInterval(checkForAppUpdate,5*60*1000);
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible') checkForAppUpdate();
+    });
+    window.addEventListener('focus',checkForAppUpdate);
   });
 }
-if('serviceWorker' in navigator){
-  // Always bypass the browser's HTTP cache when checking for a new service worker.
-  // When a new worker is found, activate it immediately and reload once so the
-  // newly published GitHub Pages files are displayed without manual cache clearing.
-  let appReloadingForUpdate=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(appReloadingForUpdate) return;
-    appReloadingForUpdate=true;
-    window.location.reload();
-  });
-  navigator.serviceWorker.addEventListener('message',event=>{
-    const data=event.data||{};
-    if(data.type==='CHECK_STATEMENT_NOTIFICATIONS') checkStatementNotifications();
-    if(data.type==='OPEN_STATEMENT_CARD'){
-      activeTab='dues';
-      render();
-    }
-  });
-  window.cardLedgerCheckForUpdate=async function(){
-    try{
-      const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
-      await reg.update();
-      if(reg.waiting){
-        reg.waiting.postMessage({type:'SKIP_WAITING'});
-        return true;
-      }
-      return false;
-    }catch(e){
-      console.warn('PWA update check failed',e);
-      return false;
-    }
-  };
-  // Check shortly after startup and again when the app returns to the foreground.
-  setTimeout(()=>window.cardLedgerCheckForUpdate(),1500);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible') window.cardLedgerCheckForUpdate();
-  });
-  window.addEventListener('focus',()=>window.cardLedgerCheckForUpdate());
-}
-
 initTheme();
 const startupSplash=document.getElementById('startup-splash');
 setTimeout(()=>{ if(startupSplash) startupSplash.classList.add('hide'); },2000);
