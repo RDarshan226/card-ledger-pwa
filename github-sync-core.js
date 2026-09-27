@@ -11,10 +11,16 @@ const GITHUB_API_BASE = 'https://api.github.com';
 let chatUpdates = { version: 2, entries: [], cashback: [] };
 
 function bytesToUtf8B64(text){
-  return bytesToB64(new TextEncoder().encode(text));
+  const bytes=new TextEncoder().encode(text);
+  let s='';
+  for(let i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
+  return btoa(s);
 }
 function b64ToUtf8(str){
-  return new TextDecoder().decode(b64ToBytes(str.replace(/\s/g,'')));
+  const s=atob(String(str).replace(/\s/g,''));
+  const bytes=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++) bytes[i]=s.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 async function getGitHubToken(){
   try{
