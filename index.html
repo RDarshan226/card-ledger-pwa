@@ -397,8 +397,8 @@
 </div>
 <div id="toast"></div>
 
-<script src="./security-core.js?v=v88"></script>
-<script src="./github-sync-core.js?v=v88"></script>
+<script src="./security-core.js?v=v89"></script>
+<script src="./github-sync-core.js?v=v89"></script>
 <script>
 /* PWA local database layer: IndexedDB values are encrypted at rest with AES-256-GCM.
    The device key is stored separately in IndexedDB and is never uploaded to GitHub. */
@@ -614,7 +614,7 @@ function bytesToB64(bytes){
 // Keep these global so an older script cannot fail with “B64 is not defined”.
 function B64(bytes){ return bytesToB64(bytes); }
 function b64(bytes){ return bytesToB64(bytes); }
-const APP_VERSION='v88';
+const APP_VERSION='v89';
 const versionText = APP_VERSION;
 const startupVersionEl = document.getElementById('startup-version');
 const appVersionEl = document.getElementById('app-version');
@@ -1359,11 +1359,23 @@ async function decryptChatPayload(token){
 async function reconcileChatKeyStores(){ return false; }
 async function loadChatUpdates(){
   try{
-    const res = await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), {cache:'no-store'});
-    if(res.ok){
-      const data = await res.json();
-      chatUpdates = {version:2, entries:Array.isArray(data.entries)?data.entries:[], cashback:Array.isArray(data.cashback)?data.cashback:[]};
+    const token=await getGitHubToken();
+    if(token){
+      const remote=await getGitHubChatFile(token);
+      const data=remote.data||{};
+      chatUpdates={version:2,entries:Array.isArray(data.entries)?data.entries:[],cashback:Array.isArray(data.cashback)?data.cashback:[]};
       window.chatUpdatesForSecurity=chatUpdates.entries;
+      window.__chatFeedSource='github-api';
+      return chatUpdates;
+    }
+  }catch(e){ console.warn('Direct GitHub feed read failed; using published feed.',e); }
+  try{
+    const res=await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), {cache:'reload'});
+    if(res.ok){
+      const data=await res.json();
+      chatUpdates={version:2,entries:Array.isArray(data.entries)?data.entries:[],cashback:Array.isArray(data.cashback)?data.cashback:[]};
+      window.chatUpdatesForSecurity=chatUpdates.entries;
+      window.__chatFeedSource='published';
     }
   }catch(e){}
   return chatUpdates;
