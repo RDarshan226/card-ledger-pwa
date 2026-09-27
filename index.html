@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v76';
+const APP_VERSION = 'v77';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -3684,7 +3684,7 @@ if('serviceWorker' in navigator){
 
   window.addEventListener('load',async()=>{
     try{
-      const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('./sw.js?app='+encodeURIComponent(APP_VERSION),{updateViaCache:'none'});
       reg.addEventListener('updatefound',()=>{
         const worker=reg.installing;
         if(!worker) return;
