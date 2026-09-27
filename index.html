@@ -367,7 +367,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version">v80</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version">v82</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v81</span></div>
@@ -605,7 +605,7 @@
   };
 })();
 
-const APP_VERSION = 'v81';
+const APP_VERSION = 'v82';
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
 const DUES_KEY = 'card-ledger-dues-v1';
@@ -1934,7 +1934,7 @@ function initTheme(){
   applyTheme(saved);
 }
 
-function setTab(t){ activeTab = t; render(); }
+function setTab(t){ activeTab = t; render(); if(t==='secure') setTimeout(refreshKeyFileStatus,0); }
 
 function render(){
   document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
@@ -3691,8 +3691,13 @@ if('serviceWorker' in navigator){
 
   const checkForAppUpdate=async()=>{
     try{
-      const reg=await navigator.serviceWorker.getRegistration('./') ||
-        await navigator.serviceWorker.register('./sw.js?app='+encodeURIComponent(APP_VERSION),{updateViaCache:'none'});
+      // Always register the versioned worker URL. Do not reuse an older
+      // registration blindly, otherwise a new APP_VERSION can remain on the
+      // old service-worker script forever.
+      const reg=await navigator.serviceWorker.register(
+        './sw.js?app='+encodeURIComponent(APP_VERSION),
+        {updateViaCache:'none'}
+      );
       await reg.update();
       if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
     }catch(e){}
