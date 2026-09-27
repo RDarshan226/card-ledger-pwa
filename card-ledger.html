@@ -151,6 +151,10 @@
   .amt-repay{ color:var(--ok); }
   .del{ color:var(--ink-soft); cursor:pointer; font-size:11px; background:none; border:none; font-family:inherit; }
   .del:hover{ color:var(--danger); }
+  .edit-btn{ color:var(--ink-soft); cursor:pointer; font-size:11px; background:none; border:none; font-family:inherit; margin-right:7px; }
+  .edit-btn:hover{ color:var(--brass); }
+  .editing-entry input,.editing-entry select{ width:100%; min-width:70px; padding:5px 6px; border:1px solid var(--line); border-radius:5px; background:#fff; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink); margin:2px 0; }
+  .editing-entry input:focus,.editing-entry select:focus{ outline:2px solid var(--gold); outline-offset:1px; }
   .empty-stmt{ font-size:12.5px; color:var(--ink-soft); padding:10px 0; font-family:'IBM Plex Mono',monospace; }
   .cat-chip{ font-size:10px; background:#F1E6C9; color:#7A5C10; padding:1px 6px; border-radius:4px; }
   .plat-chip{ font-size:10px; color:var(--ink-soft); }
@@ -284,6 +288,7 @@ let backupSeq = 0;
 let cashbackLog = [];
 let cards = [];
 let openId = null;
+let editingEntry = null; // { cardId, entryId } while an existing transaction is being edited
 let filterText = '';
 let sortByUtil = false;
 let activeTab = 'ledger';
@@ -1079,15 +1084,43 @@ function renderRow(card){
 
 function renderDetail(card){
   const entries = [...card.entries].sort((a,b)=> b.date.localeCompare(a.date));
-  let rows = entries.map(e => `
-    <tr class="${e._fresh ? 'fresh' : ''}">
-      <td>${e.date}</td>
-      <td><span class="tag ${e.type}">${e.type==='txn'?'Spend':'Repaid'}</span></td>
-      <td class="${e.type==='txn'?'amt-txn':'amt-repay'}">${e.type==='txn'?'+':'−'}${inr(e.amount)}</td>
-      <td>${e.type==='txn' && e.category ? `<span class="cat-chip">${e.category}</span>` : ''}${e.platform ? ` <span class="plat-chip">${e.platform}</span>` : ''}</td>
-      <td>${e.note ? e.note : ''}</td>
-      <td><button class="del" onclick="deleteEntry('${card.id}','${e.id}', event)">remove</button></td>
-    </tr>`).join('');
+  let rows = entries.map(e => {
+    const isEditing = editingEntry && editingEntry.cardId === card.id && editingEntry.entryId === e.id;
+    if(isEditing){
+      return `
+        <tr class="editing-entry">
+          <td><input type="date" id="edit-date-${card.id}-${e.id}" value="${e.date}"></td>
+          <td>
+            <select id="edit-type-${card.id}-${e.id}" onchange="toggleEditEntryFields('${card.id}','${e.id}')">
+              <option value="txn" ${e.type==='txn'?'selected':''}>Spend</option>
+              ${card.isDebit ? '' : `<option value="repay" ${e.type==='repay'?'selected':''}>Repayment</option>`}
+            </select>
+          </td>
+          <td><input type="number" id="edit-amt-${card.id}-${e.id}" value="${e.amount}" min="0" step="0.01"></td>
+          <td>
+            <input list="cat-list" id="edit-cat-${card.id}-${e.id}" value="${e.category||''}" placeholder="Category">
+            <input type="text" id="edit-plat-${card.id}-${e.id}" value="${e.platform||''}" placeholder="Platform">
+          </td>
+          <td><input type="text" id="edit-note-${card.id}-${e.id}" value="${e.note||''}" placeholder="Note"></td>
+          <td>
+            <button class="edit-btn" onclick="saveEditedEntry('${card.id}','${e.id}', event)">save</button>
+            <button class="del" onclick="cancelEditEntry(event)">cancel</button>
+          </td>
+        </tr>`;
+    }
+    return `
+      <tr class="${e._fresh ? 'fresh' : ''}">
+        <td>${e.date}</td>
+        <td><span class="tag ${e.type}">${e.type==='txn'?'Spend':'Repaid'}</span></td>
+        <td class="${e.type==='txn'?'amt-txn':'amt-repay'}">${e.type==='txn'?'+':'−'}${inr(e.amount)}</td>
+        <td>${e.type==='txn' && e.category ? `<span class="cat-chip">${e.category}</span>` : ''}${e.platform ? ` <span class="plat-chip">${e.platform}</span>` : ''}</td>
+        <td>${e.note ? e.note : ''}</td>
+        <td>
+          <button class="edit-btn" onclick="startEditEntry('${card.id}','${e.id}', event)">edit</button>
+          <button class="del" onclick="deleteEntry('${card.id}','${e.id}', event)">remove</button>
+        </td>
+      </tr>`;
+  }).join('');
 
   const limitFields = card.isDebit ? '' : `
     <div class="detail-grid">
@@ -1171,6 +1204,65 @@ async function deleteEntry(cardId, entryId, evt){
   await saveData();
   render();
   showToast('Entry removed');
+}
+
+function startEditEntry(cardId, entryId, evt){
+  evt.stopPropagation();
+  editingEntry = { cardId, entryId };
+  render();
+  setTimeout(() => {
+    const el = document.getElementById('edit-date-'+cardId+'-'+entryId);
+    if(el) el.focus();
+  }, 0);
+}
+
+function cancelEditEntry(evt){
+  evt.stopPropagation();
+  editingEntry = null;
+  render();
+}
+
+function toggleEditEntryFields(cardId, entryId){
+  const type = document.getElementById('edit-type-'+cardId+'-'+entryId).value;
+  const catEl = document.getElementById('edit-cat-'+cardId+'-'+entryId);
+  const platEl = document.getElementById('edit-plat-'+cardId+'-'+entryId);
+  const disabled = type === 'repay';
+  catEl.disabled = disabled;
+  platEl.disabled = disabled;
+  catEl.style.opacity = disabled ? .4 : 1;
+  platEl.style.opacity = disabled ? .4 : 1;
+}
+
+async function saveEditedEntry(cardId, entryId, evt){
+  evt.stopPropagation();
+  const c = findCard(cardId);
+  const e = c && c.entries.find(x=>x.id===entryId);
+  if(!e) return;
+
+  const type = document.getElementById('edit-type-'+cardId+'-'+entryId).value;
+  const date = document.getElementById('edit-date-'+cardId+'-'+entryId).value || e.date;
+  const amount = Number(document.getElementById('edit-amt-'+cardId+'-'+entryId).value);
+  const category = document.getElementById('edit-cat-'+cardId+'-'+entryId).value.trim();
+  const platform = document.getElementById('edit-plat-'+cardId+'-'+entryId).value.trim();
+  const note = document.getElementById('edit-note-'+cardId+'-'+entryId).value.trim();
+
+  if(!amount || amount <= 0){
+    document.getElementById('edit-amt-'+cardId+'-'+entryId).focus();
+    return;
+  }
+
+  e.type = type;
+  e.date = date;
+  e.amount = amount;
+  e.category = type === 'txn' ? category : '';
+  e.platform = type === 'txn' ? platform : '';
+  e.note = note;
+  delete e._fresh;
+
+  editingEntry = null;
+  await saveData();
+  render();
+  showToast('Transaction updated');
 }
 
 /* ---------------- Analysis ---------------- */
