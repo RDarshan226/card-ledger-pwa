@@ -370,7 +370,7 @@
 <div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v65</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">PWA v66</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Encryption &amp; Recovery" aria-label="Encryption &amp; Recovery">🔒</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="syncEncryptedChatUpdates(true)" title="Sync encrypted data">↻ Sync</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1765,7 +1765,7 @@ function renderSecureUpdate(){
   return `
     <div class="panel secure-update-panel">
       <div class="chat-head"><div><div class="chat-kicker">SECURE UPDATE</div><div class="tab-heading-row"><h2>🔒 Encryption &amp; Recovery</h2></div><div class="sub">Encryption, recovery and GitHub controls are kept separate from transaction entry.</div></div><div class="secure-badge">AES-256-GCM</div></div>
-      <div class="chat-actions"><button class="tab-btn" onclick="exportRecoveryPackageUI()">Export recovery package</button><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button><button class="tab-btn" onclick="resetChatEncryptionUI()">♻ Reset Chat Encryption</button></div>
+      <div class="chat-actions"><button class="tab-btn" onclick="verifyRecoveryPackageUI()">🛡 Test recovery package</button><button class="tab-btn" onclick="importRecoveryPackageUI()">Import recovery package</button><button class="tab-btn" onclick="diagnoseChatKey()">🔎 Check Chat Key</button><button class="tab-btn" onclick="inspectChatKeyHistory()">🧭 Inspect Key History</button></div>
       <div id="chatKeyDiagnostic" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px &quot;IBM Plex Mono&quot;,monospace;color:var(--ink-soft);">Chat key check: not run</div>
       <div id="recoveryStatus" style="margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:9px;background:var(--paper-card);font:600 10px 'IBM Plex Mono',monospace;color:var(--ink-soft);">Recovery status: checking…</div>
       <div class="github-sync-box" style="margin-top:12px;"><div class="github-sync-head"><div><strong>Direct GitHub upload</strong><small>Only AES-256-GCM ciphertext is uploaded to <b>chat-updates.json</b>. Your encryption key and transaction plaintext stay on this device.</small></div></div><div id="githubStatus" class="github-status">Checking GitHub connection…</div><div class="github-actions"><button class="tab-btn" onclick="connectGitHub()">🔗 Connect GitHub</button><button class="tab-btn" onclick="disconnectGitHub()">Disconnect</button></div></div>
