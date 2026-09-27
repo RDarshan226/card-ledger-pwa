@@ -612,6 +612,8 @@ const DUES_KEY = 'card-ledger-dues-v1';
 const BACKUP_KEY = 'card-ledger-auto-backup-v1';
 const RECOVERY_STATUS_KEY = 'card-ledger-recovery-package-status-v1';
 const DELETED_ENTRIES_KEY = 'card-ledger-deleted-entries-v1';
+const REMOVED_CARDS_KEY = 'card-ledger-removed-cards-v1';
+const RECURRING_PAYMENTS_KEY = 'card-ledger-recurring-payments-v1';
 let deletedEntryIds = new Set();
 let dueBills = [];
 let backupSeq = 0;
@@ -621,6 +623,11 @@ let openId = null;
 let filterText = '';
 let sortByUtil = false;
 let activeTab = 'ledger';
+let removedCardNames = new Set();
+let recurringPayments = [];
+let editingCardId = null;
+let editingRewardCardId = null;
+let editingRecurringId = null;
 
 const CATEGORY_OPTIONS = ["Grocery","Food & Dining","Shopping","Travel","Transport","Fuel","Entertainment","Bills & Utilities","Health & Pharmacy","Rent","Personal Care","Subscriptions","Education","Investment","Other"];
 
@@ -1429,8 +1436,228 @@ function refreshChatCardOptions(){
   sel.innerHTML=usable.map(c=>'<option value="'+String(c.name).replace(/"/g,'&quot;')+'">'+c.name+'</option>').join('');
   if(current && usable.some(c=>c.name===current)) sel.value=current;
 }
+async function loadRemovedCardNames(){
+  try{
+    const r=await window.storage.get(REMOVED_CARDS_KEY,false);
+    if(r&&r.value){ const a=JSON.parse(r.value); removedCardNames=new Set(Array.isArray(a)?a:[]); }
+  }catch(e){ removedCardNames=new Set(); }
+}
+async function saveRemovedCardNames(){
+  try{ await window.storage.set(REMOVED_CARDS_KEY,JSON.stringify([...removedCardNames]),false); return true; }catch(e){ return false; }
+}
+function blankFeeForCard(name){
+  const fd=FEE_DEFAULTS[name];
+  return {
+    baseAmount:fd?fd.baseAmount:0,
+    gstPct:fd&&fd.gstPct!=null?fd.gstPct:GST_PCT,
+    rewardRatePct:fd&&fd.rewardRatePct!=null?fd.rewardRatePct:1,
+    rewardRateConfirmed:!!(fd&&fd.rewardRatePct!=null),
+    perTxnCapAmount:fd&&fd.perTxnCapAmount?fd.perTxnCapAmount:0,
+    voucherSurchargePct:fd&&fd.voucherSurchargePct?fd.voucherSurchargePct:0,
+    redemptionFeeAmount:fd&&fd.redemptionFeeAmount?fd.redemptionFeeAmount:0,
+    capResetBasis:fd&&fd.capResetBasis?fd.capResetBasis:'calendar',
+    surchargeRules:fd&&fd.surchargeRules?fd.surchargeRules.map(r=>({...r})) : [],
+    rewardRules:fd&&fd.rewardRules?fd.rewardRules.map(r=>({...r})) : [],
+    monthlyRewardCap:fd&&fd.monthlyRewardCap?fd.monthlyRewardCap:0,
+    bestCategory:'',
+    nextDueOverride:fd&&fd.nextDueOverride?fd.nextDueOverride:null,
+    waiver:fd&&fd.waiver?fd.waiver:null,
+    payments:fd&&fd.payments?fd.payments.map(p=>({id:uid(),...p})):[],
+    tracked:false
+  };
+}
+function newCardObject(data){
+  const name=String(data.name||'').trim();
+  const d=DEFAULTS[name]||{};
+  return {
+    id:uid(), name, limit:Number(data.limit)||0, billingDate:String(data.billingDate||d.billingDate||'').trim(),
+    limitGroup:String(data.limitGroup||d.limitGroup||'').trim()||null,
+    isDebit:data.isDebit==='true'||data.isDebit===true,
+    feeOnly:false, isInsurance:false, entries:[],
+    network:String(data.network||'').trim(), tier:String(data.tier||'').trim(), bin:String(data.bin||'').trim(),
+    openedMonth:Number(data.openedMonth)||0, openedYear:Number(data.openedYear)||0,
+    fee:blankFeeForCard(name)
+  };
+}
+function cardEditorHTML(card, context){
+  if(!card) return '';
+  const months=MONTH_NAMES.map((mn,i)=>'<option value="'+(i+1)+'" '+(Number(card.openedMonth)===i+1?'selected':'')+'>'+mn+'</option>').join('');
+  return `
+    <div class="breakeven-box" style="margin-top:10px;">
+      <div class="entry-form">
+        <div class="field"><label>Card name</label><input id="edit-card-name-${card.id}" value="${String(card.name||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Type</label><select id="edit-card-debit-${card.id}"><option value="false" ${!card.isDebit?'selected':''}>Credit</option><option value="true" ${card.isDebit?'selected':''}>Debit</option></select></div>
+        <div class="field"><label>Credit limit ₹</label><input id="edit-card-limit-${card.id}" type="number" value="${Number(card.limit)||0}"></div>
+        <div class="field"><label>Billing / statement date</label><input id="edit-card-billing-${card.id}" value="${String(card.billingDate||'').replace(/"/g,'&quot;')}" placeholder="e.g. 22nd"></div>
+        <div class="field"><label>Shared limit group</label><input id="edit-card-group-${card.id}" value="${String(card.limitGroup||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Network</label><input id="edit-card-network-${card.id}" value="${String(card.network||'').replace(/"/g,'&quot;')}" placeholder="Visa / RuPay / Mastercard"></div>
+        <div class="field"><label>Tier</label><input id="edit-card-tier-${card.id}" value="${String(card.tier||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>BIN</label><input id="edit-card-bin-${card.id}" value="${String(card.bin||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Opening month</label><select id="edit-card-month-${card.id}"><option value="">Not set</option>${months}</select></div>
+        <div class="field"><label>Opening year</label><input id="edit-card-year-${card.id}" type="number" min="2000" max="2100" value="${card.openedYear||''}"></div>
+      </div>
+      <div class="chat-actions" style="margin-top:10px;">
+        <button class="tab-btn" onclick="saveCardDetails('${card.id}','${context||'card'}')">Save card details</button>
+        <button class="tab-btn" onclick="cancelCardEdit()">Cancel</button>
+        <button class="tab-btn" onclick="removeCardUI('${card.id}', event)">Remove card</button>
+      </div>
+    </div>`;
+}
+function addCardFormHTML(context){
+  return `
+    <div class="panel">
+      <h2>Add card</h2>
+      <div class="sub">Add it once here and the same card immediately becomes available wherever relevant — Ledger, Card Fees, Rewards and Account Ageing.</div>
+      <div class="entry-form">
+        <div class="field"><label>Card name</label><input id="new-card-name" placeholder="e.g. HDFC Regalia Gold"></div>
+        <div class="field"><label>Type</label><select id="new-card-debit"><option value="false">Credit</option><option value="true">Debit</option></select></div>
+        <div class="field"><label>Credit limit ₹</label><input id="new-card-limit" type="number" placeholder="0"></div>
+        <div class="field"><label>Billing / statement date</label><input id="new-card-billing" placeholder="e.g. 22nd"></div>
+        <div class="field"><label>Shared limit group</label><input id="new-card-group" placeholder="Optional"></div>
+        <div class="field"><label>Network</label><input id="new-card-network" placeholder="Visa / RuPay / Mastercard"></div>
+        <div class="field"><label>Tier</label><input id="new-card-tier" placeholder="Optional"></div>
+        <div class="field"><label>BIN</label><input id="new-card-bin" placeholder="First 6 digits"></div>
+        <div class="field"><label>Opening month</label><select id="new-card-month"><option value="">Not set</option>${MONTH_NAMES.map((mn,i)=>'<option value="'+(i+1)+'">'+mn+'</option>').join('')}</select></div>
+        <div class="field"><label>Opening year</label><input id="new-card-year" type="number" placeholder="2026"></div>
+        <div class="field"><label>Base annual fee ₹</label><input id="new-card-fee" type="number" placeholder="0"></div>
+        <div class="field"><label>General reward rate %</label><input id="new-card-rate" type="number" step="0.01" placeholder="1"></div>
+      </div>
+      <button class="chat-primary" onclick="addCardFromForm('${context||'card'}')">＋ Add card</button>
+    </div>`;
+}
+async function addCardFromForm(context){
+  const name=(document.getElementById('new-card-name')?.value||'').trim();
+  if(!name){showToast('Enter a card name');return;}
+  if(cards.some(c=>c.name.toLowerCase()===name.toLowerCase())){showToast('A card with this name already exists');return;}
+  const data={
+    name,
+    isDebit:document.getElementById('new-card-debit')?.value||'false',
+    limit:document.getElementById('new-card-limit')?.value||0,
+    billingDate:document.getElementById('new-card-billing')?.value||'',
+    limitGroup:document.getElementById('new-card-group')?.value||'',
+    network:document.getElementById('new-card-network')?.value||'',
+    tier:document.getElementById('new-card-tier')?.value||'',
+    bin:document.getElementById('new-card-bin')?.value||'',
+    openedMonth:document.getElementById('new-card-month')?.value||0,
+    openedYear:document.getElementById('new-card-year')?.value||0
+  };
+  const card=newCardObject(data);
+  const fee=Number(document.getElementById('new-card-fee')?.value)||0;
+  const rate=Number(document.getElementById('new-card-rate')?.value);
+  if(fee>0) card.fee.baseAmount=fee;
+  if(Number.isFinite(rate)&&rate>0){card.fee.rewardRatePct=rate;card.fee.rewardRateConfirmed=true;}
+  cards.push(card);
+  removedCardNames.delete(name);
+  await saveRemovedCardNames();
+  await saveData();
+  editingCardId=null;
+  editingRewardCardId=null;
+  render();
+  showToast(name+' added');
+}
+async function saveCardDetails(id, context){
+  const c=findCard(id); if(!c) return;
+  const oldName=c.name;
+  const name=(document.getElementById('edit-card-name-'+id)?.value||'').trim();
+  if(!name){showToast('Card name cannot be empty');return;}
+  if(cards.some(x=>x.id!==id && x.name.toLowerCase()===name.toLowerCase())){showToast('Another card already has this name');return;}
+  c.name=name;
+  c.isDebit=document.getElementById('edit-card-debit-'+id)?.value==='true';
+  c.limit=Number(document.getElementById('edit-card-limit-'+id)?.value)||0;
+  c.billingDate=(document.getElementById('edit-card-billing-'+id)?.value||'').trim();
+  c.limitGroup=(document.getElementById('edit-card-group-'+id)?.value||'').trim()||null;
+  c.network=(document.getElementById('edit-card-network-'+id)?.value||'').trim();
+  c.tier=(document.getElementById('edit-card-tier-'+id)?.value||'').trim();
+  c.bin=(document.getElementById('edit-card-bin-'+id)?.value||'').trim();
+  c.openedMonth=Number(document.getElementById('edit-card-month-'+id)?.value)||0;
+  c.openedYear=Number(document.getElementById('edit-card-year-'+id)?.value)||0;
+  dueBills.forEach(b=>{if(b.cardId===id||b.cardName===oldName){b.cardId=id;b.cardName=name;}});
+  if(oldName!==name){removedCardNames.delete(name);if(removedCardNames.has(oldName))removedCardNames.add(oldName);}
+  await saveRemovedCardNames(); await saveData(); await saveDues();
+  editingCardId=null; editingRewardCardId=null;
+  render(); showToast('Card details updated');
+}
+function editCardDetails(id){editingCardId=id;editingRewardCardId=null;render();}
+function cancelCardEdit(){editingCardId=null;editingRewardCardId=null;render();}
+async function removeCardUI(id,evt){
+  if(evt) evt.stopPropagation();
+  const c=findCard(id); if(!c) return;
+  const ok=confirm('Remove '+c.name+' from Card Ledger? This removes the card from Ledger, Card Fees, Rewards and Account Ageing. Its saved transactions will also be removed from the active tracker.');
+  if(!ok)return;
+  removedCardNames.add(c.name);
+  cards=cards.filter(x=>x.id!==id);
+  dueBills=dueBills.filter(b=>b.cardId!==id);
+  await saveRemovedCardNames(); await saveData(); await saveDues();
+  editingCardId=null;editingRewardCardId=null;
+  render();showToast(c.name+' removed');
+}
+async function loadRecurringPayments(){
+  try{
+    const r=await window.storage.get(RECURRING_PAYMENTS_KEY,false);
+    if(r&&r.value) recurringPayments=JSON.parse(r.value);
+  }catch(e){recurringPayments=[];}
+  if(!Array.isArray(recurringPayments)) recurringPayments=[];
+}
+async function saveRecurringPayments(){
+  try{await window.storage.set(RECURRING_PAYMENTS_KEY,JSON.stringify(recurringPayments),false);await writeAutoBackup();return true;}
+  catch(e){showToast('Could not save recurring payments');return false;}
+}
+function nextRecurringDate(p){
+  const day=Number(p.day)||1, now=new Date();
+  let d=new Date(now.getFullYear(),now.getMonth(),Math.min(day,daysInMonth(now.getFullYear(),now.getMonth())));
+  if(d<new Date(now.getFullYear(),now.getMonth(),now.getDate())) d=new Date(now.getFullYear(),now.getMonth()+1,Math.min(day,daysInMonth(now.getFullYear(),now.getMonth()+1)));
+  return d.toISOString().slice(0,10);
+}
+async function saveRecurringPaymentForm(id){
+  const p=id?recurringPayments.find(x=>x.id===id):null;
+  const name=(document.getElementById((id?'edit-rec-name-':'new-rec-name'))?.value||'').trim();
+  const amount=Number(document.getElementById((id?'edit-rec-amount-':'new-rec-amount'))?.value)||0;
+  const day=Number(document.getElementById((id?'edit-rec-day-':'new-rec-day'))?.value)||0;
+  const cardId=document.getElementById((id?'edit-rec-card-':'new-rec-card'))?.value||'';
+  const category=(document.getElementById((id?'edit-rec-cat-':'new-rec-cat'))?.value||'').trim();
+  const platform=(document.getElementById((id?'edit-rec-platform-':'new-rec-platform'))?.value||'').trim();
+  if(!name||amount<=0||day<1||day>31){showToast('Enter name, amount and a valid day');return;}
+  const card=cards.find(c=>c.id===cardId);
+  const obj=p||{id:uid(),active:true};
+  Object.assign(obj,{name,amount,day,cardId,cardName:card?card.name:'',category,platform,active:true});
+  if(!p) recurringPayments.push(obj);
+  await saveRecurringPayments();editingRecurringId=null;render();showToast(p?'Recurring payment updated':'Recurring payment added');
+}
+async function deleteRecurringPayment(id,evt){
+  if(evt)evt.stopPropagation();
+  if(!confirm('Remove this recurring payment?'))return;
+  recurringPayments=recurringPayments.filter(x=>x.id!==id);
+  await saveRecurringPayments();editingRecurringId=null;render();showToast('Recurring payment removed');
+}
+function recurringFormHTML(p){
+  const edit=!!p, pre=p||{};
+  const prefix=edit?'edit-rec-':'new-rec-';
+  return `
+    <div class="entry-form">
+      <div class="field"><label>Name</label><input id="${prefix}name${edit?'-'+p.id:''}" value="${String(pre.name||'').replace(/"/g,'&quot;')}" placeholder="Netflix / SIP / insurance"></div>
+      <div class="field"><label>Amount ₹</label><input id="${prefix}amount${edit?'-'+p.id:''}" type="number" value="${pre.amount||''}"></div>
+      <div class="field"><label>Day of month</label><input id="${prefix}day${edit?'-'+p.id:''}" type="number" min="1" max="31" value="${pre.day||''}"></div>
+      <div class="field"><label>Card / account</label><select id="${prefix}card${edit?'-'+p.id:''}"><option value="">Not linked</option>${cards.map(c=>'<option value="'+c.id+'" '+(c.id===pre.cardId?'selected':'')+'>'+c.name+'</option>').join('')}</select></div>
+      <div class="field"><label>Category</label><input id="${prefix}cat${edit?'-'+p.id:''}" value="${String(pre.category||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field"><label>Platform / merchant</label><input id="${prefix}platform${edit?'-'+p.id:''}" value="${String(pre.platform||'').replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="chat-actions" style="margin-top:8px;"><button class="tab-btn" onclick="saveRecurringPaymentForm('${edit?p.id:''}')">Save</button><button class="tab-btn" onclick="editingRecurringId=null;render()">Cancel</button></div>`;
+}
+function renderRecurringPaymentManager(){
+  let html='<div class="panel"><h2>Recurring payments</h2><div class="sub">Add, edit or remove monthly recurring payments. Linked cards use the same card record as Ledger, Card Fees, Rewards and Account Ageing.</div>';
+  if(!recurringPayments.length) html+='<div class="empty-analysis">No recurring payments added yet.</div>';
+  recurringPayments.forEach(p=>{
+    html+='<div class="recur-row"><div class="recur-head"><div><div class="recur-name">'+p.name+'<span class="share-tag">'+(p.cardName||'Unlinked')+'</span></div><div class="row-sub">'+inr(p.amount)+' on the '+p.day+'th · '+(p.platform||p.category||'Recurring payment')+'</div></div><div class="chat-actions"><button class="tab-btn" onclick="editingRecurringId=\''+p.id+'\';render()">Edit</button><button class="tab-btn" onclick="deleteRecurringPayment(\''+p.id+'\',event)">Remove</button></div></div>';
+    if(editingRecurringId===p.id) html+=recurringFormHTML(p);
+    html+='</div>';
+  });
+  html+='<div class="breakeven-box" style="margin-top:12px;">'+recurringFormHTML(null)+'</div></div>';
+  return html;
+}
 async function loadData(){
   await loadDeletedEntries();
+  await loadRemovedCardNames();
+  await loadRecurringPayments();
   await loadChatUpdates();
   await reconcileChatKeyStores();
   try{
@@ -1449,7 +1676,7 @@ async function loadData(){
 
   // Add any newly-introduced cards that aren't in the saved list yet.
   DEFAULT_CARDS.forEach(name => {
-    if(!cards.some(c => c.name === name)){
+    if(!removedCardNames.has(name) && !cards.some(c => c.name === name)){
       cards.push({ id: uid(), name, limit: 0, billingDate: '', limitGroup: null, isDebit:false, entries: [], fee: null });
     }
   });
@@ -1461,7 +1688,7 @@ async function loadData(){
 
   // Ensure the fee-only debit cards / insurance placeholders exist.
   FEE_ONLY_ITEMS.forEach(item => {
-    if(!cards.some(c => c.name === item.name)){
+    if(!removedCardNames.has(item.name) && !cards.some(c => c.name === item.name)){
       cards.push({ id: uid(), name: item.name, limit: 0, billingDate: '', limitGroup: null, isDebit: item.isDebit, feeOnly: true, isInsurance: !!item.isInsurance, entries: [], fee: null });
     }
   });
@@ -1654,7 +1881,7 @@ async function loadCashback(){
 
 async function writeAutoBackup(){
   try{
-    await window.storage.set(BACKUP_KEY, JSON.stringify({version:1,savedAt:new Date().toISOString(),cards,dueBills,cashbackLog}), false);
+    await window.storage.set(BACKUP_KEY, JSON.stringify({version:2,savedAt:new Date().toISOString(),cards,dueBills,cashbackLog,recurringPayments,removedCardNames:[...removedCardNames]}), false);
     const el=document.getElementById('saveStatus'); if(el) el.textContent='Saved locally · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     return true;
   }catch(e){ const el=document.getElementById('saveStatus'); if(el) el.textContent='Local save error'; return false; }
@@ -1922,6 +2149,7 @@ function renderLedger(){
   if(!filterText){
     html += `<div class="section-label">Tracked for analysis only</div><div class="ledger">${debitCards.map(c=>renderRow(c)).join('')}</div>`;
   }
+  html += addCardFormHTML('ledger');
 
   document.getElementById('app').innerHTML = html;
 }
@@ -1952,6 +2180,8 @@ function renderRow(card){
 
 function renderDetail(card){
   const entries = [...card.entries].sort((a,b)=> b.date.localeCompare(a.date));
+  const editor = editingCardId===card.id ? cardEditorHTML(card,'ledger') : '';
+
   let rows = entries.map(e => `
     <tr class="${e._fresh ? 'fresh' : ''}">
       <td>${e.date}</td>
@@ -1976,6 +2206,7 @@ function renderDetail(card){
     </div>`;
 
   return `
+    ${editingCardId===card.id ? editor : `<div class="chat-actions" style="margin-bottom:10px;"><button class="tab-btn" onclick="editCardDetails('${card.id}')">Edit card</button><button class="tab-btn" onclick="removeCardUI('${card.id}',event)">Remove card</button></div>`}
     ${limitFields}
     <div class="card-entry-form">
       <div class="field"><label>Type</label><select id="type-${card.id}"><option value="txn">Expense</option><option value="repay">Card repayment</option></select></div>
@@ -2400,7 +2631,7 @@ function renderFees(){
     return {card:c, total, due, status, statusLabel, waived, hasRealFee};
   }).sort((a,b)=> a.due.localeCompare(b.due));
 
-  let html = `<div class="panel"><h2>Annual fees</h2><div class="sub">Fee shown includes GST where applicable · tap a card for payment history and the break-even calculation</div>`;
+  let html = addCardFormHTML('fees') + `<div class="panel"><h2>Annual fees</h2><div class="sub">Fee shown includes GST where applicable · tap a card for payment history and the break-even calculation</div>`;
   html += '<div class="ledger">';
   rows.forEach(r => {
     const isOpen = openFeeId === r.card.id;
@@ -2494,6 +2725,7 @@ function renderFeeDetail(card){
   `).join('');
 
   return `
+    ${editingCardId===card.id ? cardEditorHTML(card,'fees') : `<div class="chat-actions" style="margin-bottom:10px;"><button class="tab-btn" onclick="editCardDetails('${card.id}')">Edit card</button><button class="tab-btn" onclick="removeCardUI('${card.id}',event)">Remove card</button></div>`}
     <div class="fee-grid">
       <div class="field"><label>${card.isInsurance ? 'Premium (₹)' : 'Base fee (₹)'}</label><input type="number" value="${fee.baseAmount||''}" onchange="updateFeeField('${card.id}','baseAmount', this.value)"></div>
       <div class="field"><label>GST %</label><input type="number" value="${fee.gstPct}" onchange="updateFeeField('${card.id}','gstPct', this.value)"></div>
@@ -2774,12 +3006,13 @@ function monthStripHTML(dueMonths, amount){
 
 function renderRecurring(){
   const app = document.getElementById('app');
+  let html = renderRecurringPaymentManager();
   const now = new Date();
 
   const feeCards = cards.filter(c => c.name!==DEBIT_CARD_NAME && !c.isInsurance && feeApplicable(c.fee));
   const insuranceCards = cards.filter(c => c.isInsurance && feeApplicable(c.fee));
 
-  let html = `<div class="panel">
+  html += `<div class="panel">
     <h2>Card annual fees</h2>
     <div class="sub">Credit and debit card fees, Jan–Dec ${now.getFullYear()} · green = already paid this year, gold = still upcoming, red = due this month</div>`;
 
@@ -2898,7 +3131,8 @@ function renderCashback(){
   const totalCharges = combinedLog.filter(e=>e.type==='charge').reduce((s,e)=>s+e.amount,0);
   const net = totalCashback - totalCharges;
 
-  let html = `<div class="cover">
+  let html = renderRewardTrackingManager();
+  html += `<div class="cover">
     <div class="cover-figures">
       <div class="cover-line"><span class="cover-label">Total cashback</span><span class="cover-amt" style="color:var(--ok)">${inr(totalCashback)}</span></div>
       <div class="cover-line"><span class="cover-label">Total charges</span><span class="cover-amt" style="color:var(--danger)">${inr(totalCharges)}</span></div>
@@ -3056,6 +3290,31 @@ function computeCardRewardEntries(card){
     }
     return { entry:e, monthKey, rate, reward };
   });
+}
+
+function renderRewardTrackingManager(){
+  const rewardCards=cards.filter(c=>c.name!==DEBIT_CARD_NAME&&!c.isInsurance);
+  let html='<div class="panel"><h2>Manage reward tracking</h2><div class="sub">Add a card from here, or edit/remove the reward tracking settings attached to an existing card.</div>';
+  rewardCards.forEach(c=>{
+    const f=c.fee||blankFeeForCard(c.name);
+    html+='<div class="recur-row"><div class="recur-head"><div><div class="recur-name">'+c.name+'<span class="share-tag">'+(f.rewardRateConfirmed?'Confirmed':'Unconfirmed')+'</span></div><div class="row-sub">General rate '+(Number(f.rewardRatePct)||0)+'% · '+(f.bestCategory||'No best category')+'</div></div><div class="chat-actions"><button class="tab-btn" onclick="editingRewardCardId=\''+c.id+'\';render()">Edit</button><button class="tab-btn" onclick="removeCardUI(\''+c.id+'\',event)">Remove</button></div></div>';
+    if(editingRewardCardId===c.id){
+      html+='<div class="entry-form" style="margin-top:8px;"><div class="field"><label>Reward rate %</label><input id="reward-track-rate-'+c.id+'" type="number" step="0.01" value="'+(Number(f.rewardRatePct)||0)+'"></div><div class="field"><label>Best-return category</label><input id="reward-track-cat-'+c.id+'" value="'+String(f.bestCategory||'').replace(/"/g,'&quot;')+'"></div><div class="field"><label>Monthly cap ₹</label><input id="reward-track-cap-'+c.id+'" type="number" value="'+(Number(f.monthlyRewardCap)||0)+'"></div><div class="field"><label>Cap reset</label><select id="reward-track-reset-'+c.id+'"><option value="calendar" '+(f.capResetBasis==='calendar'?'selected':'')+'>Calendar month</option><option value="statement" '+(f.capResetBasis==='statement'?'selected':'')+'>Statement cycle</option></select></div><div class="field"><label>Confirmed</label><select id="reward-track-confirmed-'+c.id+'"><option value="true" '+(f.rewardRateConfirmed?'selected':'')+'>Yes</option><option value="false" '+(!f.rewardRateConfirmed?'selected':'')+'>No</option></select></div></div><div class="chat-actions" style="margin-top:8px;"><button class="tab-btn" onclick="saveRewardTracking(\''+c.id+'\')">Save</button><button class="tab-btn" onclick="editingRewardCardId=null;render()">Cancel</button></div>';
+    }
+    html+='</div>';
+  });
+  html+=addCardFormHTML('rewards')+'</div>';
+  return html;
+}
+async function saveRewardTracking(id){
+  const c=findCard(id);if(!c)return;
+  c.fee=c.fee||blankFeeForCard(c.name);
+  c.fee.rewardRatePct=Number(document.getElementById('reward-track-rate-'+id)?.value)||0;
+  c.fee.bestCategory=(document.getElementById('reward-track-cat-'+id)?.value||'').trim();
+  c.fee.monthlyRewardCap=Number(document.getElementById('reward-track-cap-'+id)?.value)||0;
+  c.fee.capResetBasis=document.getElementById('reward-track-reset-'+id)?.value||'calendar';
+  c.fee.rewardRateConfirmed=document.getElementById('reward-track-confirmed-'+id)?.value==='true';
+  await saveData();editingRewardCardId=null;render();showToast('Reward tracking updated');
 }
 
 function renderRewards(){
@@ -3291,7 +3550,7 @@ function renderAccounts(){
         <div class="detail-wrap ${isOpen?'open':''}">
           <div class="detail-inner"><div class="detail">
             <table class="statement"><tbody>
-              ${groups[key].map(c=>`<tr><td>${c.name}</td><td>${c.isDebit?'Debit':'Credit'}</td><td>${c.network||''}${c.tier?' '+c.tier:''}</td><td>${c.bin||''}</td></tr>`).join('')}
+              ${groups[key].map(c=>`<tr><td>${c.name}</td><td>${c.isDebit?'Debit':'Credit'}</td><td>${c.network||''}${c.tier?' '+c.tier:''}</td><td>${c.bin||''}</td><td><button class="del" onclick="editCardDetails('${c.id}');event.stopPropagation()">edit</button><button class="del" onclick="removeCardUI('${c.id}',event)">remove</button></td></tr>`).join('')}
             </tbody></table>
           </div></div>
         </div>
@@ -3300,6 +3559,9 @@ function renderAccounts(){
     html += '</div>';
   }
   html += `</div>`;
+
+  if(editingCardId){ const ec=findCard(editingCardId); if(ec) html += '<div class="panel"><h2>Edit card</h2>'+cardEditorHTML(ec,'accounts')+'</div>'; }
+  html += addCardFormHTML('accounts');
 
   html += `<div class="panel">
     <h2>Set opening dates</h2>
