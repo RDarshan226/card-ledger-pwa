@@ -400,6 +400,7 @@
 
 <script src="./github-sync-core.js?v=v95"></script>
 <script>
+const APP_VERSION='v95';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2029,12 +2030,6 @@ function renderRewards(){
   app.innerHTML = html;
 }
 
-/* PROTECTED ARCHITECTURE
- * security-core.js = Chat encryption/key management. Do not alter for unrelated changes.
- * github-sync-core.js = GitHub token/sync transport. Do not alter for unrelated changes.
- * Unrelated UI/data changes must stay in this file and must not clear, rotate, migrate,
- * or replace encryption keys, recovery material, or GitHub credentials.
- */
 /* ---------------- Notification samples ---------------- */
 function schedulePowerPlusTestNotification(){
   const now=new Date();
