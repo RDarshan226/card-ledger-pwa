@@ -10,9 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <title>Card Ledger</title>
 <style>
-  /* Startup failsafe: the app must never remain on the splash screen if a later script throws. */
-  #startup-splash{animation:startupFailsafe 2.6s ease forwards;}
-  @keyframes startupFailsafe{0%,75%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden;pointer-events:none}}
+  #startup-splash{animation:startupFailsafe 2.6s ease forwards;} @keyframes startupFailsafe{0%,75%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden;pointer-events:none}}
   :root{
     --paper:#080B12; --paper-card:#101622; --line:#26344A; --line-soft:#1B2739;
     --margin:#00F5FF; --ink:#F2F7FF; --ink-soft:#93A4BD;
@@ -396,7 +394,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v71 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v94 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -1092,6 +1090,847 @@ function showToast(msg){
 
 async function verifyChatEncryptionKey(){return {ok:true,reason:'local-file'};}
 async function inspectChatKeyHistory(){await refreshLocalDataStatus();}
+
+async function inspectCredentialVaultChatKey(){
+  const out=document.getElementById('chatKeyDiagnostic');
+  if(!out) return;
+  out.style.color='var(--ink-soft)';
+  out.textContent='Credential Vault check: reading the stored Chat key without changing anything…';
+  try{
+    let jwk=null;
+    if(window.cardLedgerCredentialVault && window.cardLedgerCredentialVault.getChatJwk){
+      jwk=await window.cardLedgerCredentialVault.getChatJwk();
+    }else{
+      const db=await new Promise((resolve,reject)=>{
+        const req=indexedDB.open('card-ledger-credentials-v1');
+        req.onsuccess=()=>resolve(req.result);
+        req.onerror=()=>reject(req.error);
+      });
+      if(!db.objectStoreNames.contains('credentials')) throw new Error('Credential store unavailable');
+      jwk=await new Promise((resolve,reject)=>{
+        const req=db.transaction('credentials','readonly').objectStore('credentials').get('chatJwk');
+        req.onsuccess=()=>resolve(req.result==null?null:req.result);
+        req.onerror=()=>reject(req.error);
+      });
+    }
+    if(!jwk){
+      out.textContent='Credential Vault check: no Chat key is stored there. No key was changed.';
+      return;
+    }
+    const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+    const payloads=feed.map(x=>x&&typeof x.payload==='string'?x.payload:'').filter(x=>x.startsWith('CL1.'));
+    if(!payloads.length){
+      out.textContent='Credential Vault check: a Chat key is present, but GitHub has no encrypted entries to verify. No key was changed.';
+      return;
+    }
+    const key=await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+    let matched=0;
+    for(const token of payloads){
+      const parts=token.split('.');
+      if(parts.length!==3) continue;
+      try{
+        await crypto.subtle.decrypt({name:'AES-GCM',iv:b64ToBytes(parts[1])},key,b64ToBytes(parts[2]));
+        matched++;
+      }catch(e){}
+    }
+    if(matched===payloads.length) out.textContent='✓ Credential Vault Chat key MATCHES ALL '+matched+'/'+payloads.length+' GitHub entries. No key was changed.';
+    else if(matched>0) out.textContent='⚠ Credential Vault Chat key decrypts '+matched+'/'+payloads.length+' GitHub entries. No key was changed.';
+    else out.textContent='⚠ Credential Vault Chat key is readable, but decrypts 0/'+payloads.length+' GitHub entries. It does not match the current GitHub feed. No key was changed.';
+  }catch(e){
+    out.textContent='Credential Vault check could not complete: '+(e&&e.message?e.message:'unknown error')+'. No key was changed.';
+  }
+}
+
+async function diagnoseChatKey(){
+  const out=document.getElementById('chatKeyDiagnostic');
+  const set=(msg)=>{if(out) out.textContent=msg;};
+  set('Chat key check: checking…');
+  let saved;
+  try{
+    saved=await window.storage.get(CHAT_KEY_STORAGE_KEY,false);
+  }catch(e){
+    set('⚠ A Chat encryption key record exists, but this device cannot open it with the current local encryption key. The Chat key itself was not changed or recreated. This points to a local-key/recovery-key mismatch. Keep this device data intact.');
+    return;
+  }
+  if(!saved || !saved.value){
+    set('⚠ No saved Chat encryption key was found on this device. No new key was created.');
+    return;
+  }
+  let jwk;
+  try{ jwk=JSON.parse(saved.value); }catch(e){
+    set('⚠ A saved Chat key record exists, but its stored value is invalid. No key was changed.');
+    return;
+  }
+  let key;
+  try{
+    key=await crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']);
+  }catch(e){
+    set('⚠ The saved Chat key record was opened, but the stored Chat key could not be imported as a valid AES-GCM key. No key was changed.');
+    return;
+  }
+  await loadChatUpdates();
+  const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+  if(!feed.length){
+    set('✓ A Chat encryption key is present and readable on this device, but GitHub has no encrypted transaction entries to verify.');
+    return;
+  }
+  let valid=0, matched=0, failed=0;
+  for(const entry of feed){
+    const token=String(entry&&entry.payload||'');
+    const parts=token.split('.');
+    if(parts.length!==3 || parts[0]!=='CL1'){ failed++; continue; }
+    valid++;
+    try{
+      await crypto.subtle.decrypt({name:'AES-GCM',iv:b64ToBytes(parts[1])},key,b64ToBytes(parts[2]));
+      matched++;
+    }catch(e){ failed++; }
+  }
+  if(matched===feed.length){
+    set('✓ Chat key is readable and MATCHES ALL '+matched+'/'+feed.length+' encrypted GitHub entries. The original Chat key appears to be intact on this device.');
+  }else if(matched>0){
+    set('⚠ Chat key is readable and decrypts '+matched+'/'+feed.length+' GitHub entries. Some entries do not match this key. No key was changed. Do not export a new recovery package yet.');
+  }else{
+    set('⚠ Chat key record is readable and contains a valid AES key, but it decrypts 0/'+feed.length+' GitHub entries. The stored Chat key does NOT match the key used for the current GitHub transaction feed. No key was changed or created.');
+  }
+}
+async function backupChatKeyUI(){ showToast('The encryption key is the selected local .txt file; no key backup is generated by the PWA.'); }
+async function verifyRecoveryPackageUI(){ showToast('Recovery packages are no longer used for the text-file encryption key. Keep your selected key .txt file safe.'); }
+async function importRecoveryPackageUI(){ showToast('Recovery packages are no longer used for the text-file encryption key. Select the original key .txt file instead.'); }
+async function resetChatEncryptionUI(){ showToast('The PWA no longer generates or resets encryption keys. Select a local key .txt file instead.'); }
+function clearEncryptedEntryFields(){
+  const dateEl=document.getElementById('chat-date');
+  const amountEl=document.getElementById('chat-amount');
+  const categoryEl=document.getElementById('chat-category');
+  const platformEl=document.getElementById('chat-platform');
+  const noteEl=document.getElementById('chat-note');
+  const typeEl=document.getElementById('chat-entry-type');
+  const subtypeEl=document.getElementById('chat-entry-subtype');
+  if(dateEl) dateEl.value=todayStr();
+  if(amountEl) amountEl.value='';
+  if(categoryEl) categoryEl.value='';
+  if(platformEl) platformEl.value='';
+  if(noteEl) noteEl.value='';
+  if(typeEl) typeEl.value='expense';
+  if(subtypeEl) subtypeEl.value='txn';
+}
+async function encryptChatEntry(){
+  try{
+    const mainType=document.getElementById('chat-entry-type').value;
+    const subtype=document.getElementById('chat-entry-subtype').value;
+    const entryType=mainType==='expense' ? (subtype==='cashback'?'cashback':'txn') : (subtype==='charge'?'charge':'repay');
+    const date=document.getElementById('chat-date').value || todayStr();
+    const amount=Number(document.getElementById('chat-amount').value);
+    const category=document.getElementById('chat-category').value.trim();
+    const platform=document.getElementById('chat-platform').value.trim();
+    const note=document.getElementById('chat-note').value.trim();
+    if(!amount || amount<=0){ showToast('Enter a valid amount'); return; }
+    const card=document.getElementById('chat-card').value;
+    if(!card){ showToast('Choose a card'); return; }
+    const id=(crypto.randomUUID?crypto.randomUUID():uid());
+    const isLedger=entryType==='txn' || entryType==='repay';
+    const payload=isLedger
+      ? {v:1,id,kind:'ledger',card,type:entryType,date,amount,category,platform,note}
+      : {v:2,id,kind:'cashback',card,type:entryType,date,amount,category,platform,note};
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await getChatCryptoKey();
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));
+    const token='CL1.'+b64(iv)+'.'+b64(new Uint8Array(ct));
+    document.getElementById('chat-encrypted').value=token;
+    clearEncryptedEntryFields();
+    try{ await navigator.clipboard.writeText(token); showToast('Encrypted entry copied'); }catch(e){ showToast('Encrypted entry created — tap Copy'); }
+  }catch(e){ showToast('Could not encrypt entry'); }
+}
+async function copyEncryptedChat(){
+  const el=document.getElementById('chat-encrypted');
+  if(!el || !el.value) return;
+  await navigator.clipboard.writeText(el.value);
+  showToast('Encrypted transaction copied');
+}
+async function loadChatUpdates(){
+  try{
+    const token=await getGitHubToken();
+    if(token){
+      const remote=await getGitHubChatFile(token);
+      const data=remote.data||{};
+      chatUpdates={version:2,entries:Array.isArray(data.entries)?data.entries:[],cashback:Array.isArray(data.cashback)?data.cashback:[]};
+      window.chatUpdatesForSecurity=chatUpdates.entries;
+      window.__chatFeedSource='github-api';
+      return chatUpdates;
+    }
+  }catch(e){ console.warn('Direct GitHub feed read failed; using published feed.',e); }
+  try{
+    const res=await fetch(CHAT_UPDATES_URL + '?v=' + Date.now(), {cache:'reload'});
+    if(res.ok){
+      const data=await res.json();
+      chatUpdates={version:2,entries:Array.isArray(data.entries)?data.entries:[],cashback:Array.isArray(data.cashback)?data.cashback:[]};
+      window.chatUpdatesForSecurity=chatUpdates.entries;
+      window.__chatFeedSource='published';
+    }
+  }catch(e){}
+  return chatUpdates;
+}
+async function loadDeletedEntries(){try{const res=await window.storage.get(DELETED_ENTRIES_KEY,false);const ids=res&&res.value?JSON.parse(res.value):[];deletedEntryIds=new Set(Array.isArray(ids)?ids:[]);}catch(e){deletedEntryIds=new Set();}}
+async function saveDeletedEntries(){try{await window.storage.set(DELETED_ENTRIES_KEY,JSON.stringify([...deletedEntryIds]),false);return true;}catch(e){return false;}}
+async function mergeChatEntries(){
+  let changed=false,failed=0,added=0,skipped=0;
+  const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
+  const normalizeName=name=>String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
+  const findLedgerCard=name=>{const exact=cards.find(c=>c.name===name);if(exact)return exact;const n=normalizeName(name);return cards.find(c=>normalizeName(c.name)===n);};
+  for(const p of feed){
+    if(!p||!p.id)continue;
+    try{
+      if(deletedEntryIds.has(p.id)){skipped++;continue;}
+      if(p.kind==='cashback'){
+        if(!cashbackLog.some(e=>e.id===p.id)){cashbackLog.push({id:p.id,type:p.type==='charge'?'charge':'cashback',date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',_fresh:true});changed=true;added++;}
+        continue;
+      }
+      if(p.kind!=='transaction'&&p.kind!=='ledger'){skipped++;continue;}
+      const card=findLedgerCard(p.card);if(!card){skipped++;continue;}
+      card.entries=Array.isArray(card.entries)?card.entries:[];
+      if(card.entries.some(e=>e.id===p.id)){skipped++;continue;}
+      const rawType=p.type||p.mainType,entryType=(rawType==='repay'||rawType==='repayment')?'repay':'txn';
+      const entry={id:p.id,type:entryType,date:p.date||todayStr(),amount:Number(p.amount)||0,category:p.category||'',platform:p.platform||'',note:p.note||'',cashback:Number(p.cashback)||0,charge:Number(p.charge)||0,_fresh:true};
+      card.entries.push(entry);
+      if(entry.cashback>0)cashbackLog.push({id:p.id+'-cashback',card:p.card,type:'cashback',date:entry.date,amount:entry.cashback,category:'Cashback',platform:entry.platform,note:entry.note});
+      if(entry.charge>0)cashbackLog.push({id:p.id+'-charge',card:p.card,type:'charge',date:entry.date,amount:entry.charge,category:'Charge paid',platform:entry.platform,note:entry.note});
+      changed=true;added++;
+    }catch(e){failed++;}
+  }
+  window.__chatSyncStatus={feedCount:feed.length,added,failed,skipped};
+  return {changed,added,failed,feedCount:feed.length};
+}
+async function syncEncryptedChatUpdates(showResult){
+  try{
+    await loadChatUpdates();
+    const result=await mergeChatEntries();
+    if(result.added>0){
+      await saveData();
+      await saveCashback();
+      render();
+      refreshChatCardOptions();
+      if(showResult) showToast(result.added+' new transaction'+(result.added===1?'':'s')+' synced');
+    }else if(showResult){
+      if(result.feedCount===0) showToast('Encrypted feed is empty');
+      else if(result.failed===result.feedCount) showToast('Encrypted data found, but this device does not have the matching Chat encryption key. Import the recovery package that includes the Chat key.');
+      else if(result.failed>0) showToast(result.decrypted+' encrypted entries read; '+result.failed+' could not be decrypted');
+      else if(result.skipped===result.feedCount) showToast('Encrypted entries already synced');
+      else showToast('No new encrypted transactions');
+    }
+    return result.added>0;
+  }catch(e){
+    if(showResult) showToast('Could not refresh encrypted transactions');
+    return false;
+  }
+}
+function refreshChatCardOptions(){
+  const sel=document.getElementById('entry-card');
+  if(!sel) return;
+  const current=sel.value;
+  const usable=cards.filter(c=>!c.isInsurance);
+  sel.innerHTML=usable.map(c=>'<option value="'+String(c.name).replace(/"/g,'&quot;')+'">'+c.name+'</option>').join('');
+  if(current && usable.some(c=>c.name===current)) sel.value=current;
+}
+async function loadRemovedCardNames(){
+  try{
+    const r=await window.storage.get(REMOVED_CARDS_KEY,false);
+    if(r&&r.value){ const a=JSON.parse(r.value); removedCardNames=new Set(Array.isArray(a)?a:[]); }
+  }catch(e){ removedCardNames=new Set(); }
+}
+async function saveRemovedCardNames(){
+  try{ await window.storage.set(REMOVED_CARDS_KEY,JSON.stringify([...removedCardNames]),false); return true; }catch(e){ return false; }
+}
+function blankFeeForCard(name){
+  const fd=FEE_DEFAULTS[name];
+  return {
+    baseAmount:fd?fd.baseAmount:0,
+    gstPct:fd&&fd.gstPct!=null?fd.gstPct:GST_PCT,
+    rewardRatePct:fd&&fd.rewardRatePct!=null?fd.rewardRatePct:1,
+    rewardRateConfirmed:!!(fd&&fd.rewardRatePct!=null),
+    perTxnCapAmount:fd&&fd.perTxnCapAmount?fd.perTxnCapAmount:0,
+    voucherSurchargePct:fd&&fd.voucherSurchargePct?fd.voucherSurchargePct:0,
+    redemptionFeeAmount:fd&&fd.redemptionFeeAmount?fd.redemptionFeeAmount:0,
+    capResetBasis:fd&&fd.capResetBasis?fd.capResetBasis:'calendar',
+    surchargeRules:fd&&fd.surchargeRules?fd.surchargeRules.map(r=>({...r})) : [],
+    rewardRules:fd&&fd.rewardRules?fd.rewardRules.map(r=>({...r})) : [],
+    monthlyRewardCap:fd&&fd.monthlyRewardCap?fd.monthlyRewardCap:0,
+    bestCategory:'',
+    nextDueOverride:fd&&fd.nextDueOverride?fd.nextDueOverride:null,
+    waiver:fd&&fd.waiver?fd.waiver:null,
+    payments:fd&&fd.payments?fd.payments.map(p=>({id:uid(),...p})):[],
+    tracked:false
+  };
+}
+function newCardObject(data){
+  const name=String(data.name||'').trim();
+  const d=DEFAULTS[name]||{};
+  return {
+    id:uid(), name, limit:Number(data.limit)||0, billingDate:String(data.billingDate||d.billingDate||'').trim(),
+    limitGroup:String(data.limitGroup||d.limitGroup||'').trim()||null,
+    isDebit:data.isDebit==='true'||data.isDebit===true,
+    feeOnly:false, isInsurance:false, entries:[],
+    network:String(data.network||'').trim(), tier:String(data.tier||'').trim(), bin:String(data.bin||'').trim(),
+    openedMonth:Number(data.openedMonth)||0, openedYear:Number(data.openedYear)||0,
+    fee:blankFeeForCard(name)
+  };
+}
+function cardEditorHTML(card, context){
+  if(!card) return '';
+  const months=MONTH_NAMES.map((mn,i)=>'<option value="'+(i+1)+'" '+(Number(card.openedMonth)===i+1?'selected':'')+'>'+mn+'</option>').join('');
+  return `
+    <div class="breakeven-box" style="margin-top:10px;">
+      <div class="entry-form">
+        <div class="field"><label>Card name</label><input id="edit-card-name-${card.id}" value="${String(card.name||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Type</label><select id="edit-card-debit-${card.id}"><option value="false" ${!card.isDebit?'selected':''}>Credit</option><option value="true" ${card.isDebit?'selected':''}>Debit</option></select></div>
+        <div class="field"><label>Credit limit ₹</label><input id="edit-card-limit-${card.id}" type="number" value="${Number(card.limit)||0}"></div>
+        <div class="field"><label>Billing / statement date</label><input id="edit-card-billing-${card.id}" value="${String(card.billingDate||'').replace(/"/g,'&quot;')}" placeholder="e.g. 22nd"></div>
+        <div class="field"><label>Shared limit group</label><input id="edit-card-group-${card.id}" value="${String(card.limitGroup||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Network</label><input id="edit-card-network-${card.id}" value="${String(card.network||'').replace(/"/g,'&quot;')}" placeholder="Visa / RuPay / Mastercard"></div>
+        <div class="field"><label>Tier</label><input id="edit-card-tier-${card.id}" value="${String(card.tier||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>BIN</label><input id="edit-card-bin-${card.id}" value="${String(card.bin||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Opening month</label><select id="edit-card-month-${card.id}"><option value="">Not set</option>${months}</select></div>
+        <div class="field"><label>Opening year</label><input id="edit-card-year-${card.id}" type="number" min="2000" max="2100" value="${card.openedYear||''}"></div>
+      </div>
+      <div class="chat-actions" style="margin-top:10px;">
+        <button class="tab-btn" onclick="saveCardDetails('${card.id}','${context||'card'}')">Save card details</button>
+        <button class="tab-btn" onclick="cancelCardEdit()">Cancel</button>
+        <button class="tab-btn" onclick="removeCardUI('${card.id}', event)">Remove card</button>
+      </div>
+    </div>`;
+}
+function addCardFormHTML(context){
+  return `
+    <div class="panel">
+      <h2>Add card</h2>
+      <div class="sub">Add it once here and the same card immediately becomes available wherever relevant — Ledger, Card Fees, Rewards and Account Ageing.</div>
+      <div class="entry-form">
+        <div class="field"><label>Card name</label><input id="new-card-name" placeholder="e.g. HDFC Regalia Gold"></div>
+        <div class="field"><label>Type</label><select id="new-card-debit"><option value="false">Credit</option><option value="true">Debit</option></select></div>
+        <div class="field"><label>Credit limit ₹</label><input id="new-card-limit" type="number" placeholder="0"></div>
+        <div class="field"><label>Billing / statement date</label><input id="new-card-billing" placeholder="e.g. 22nd"></div>
+        <div class="field"><label>Shared limit group</label><input id="new-card-group" placeholder="Optional"></div>
+        <div class="field"><label>Network</label><input id="new-card-network" placeholder="Visa / RuPay / Mastercard"></div>
+        <div class="field"><label>Tier</label><input id="new-card-tier" placeholder="Optional"></div>
+        <div class="field"><label>BIN</label><input id="new-card-bin" placeholder="First 6 digits"></div>
+        <div class="field"><label>Opening month</label><select id="new-card-month"><option value="">Not set</option>${MONTH_NAMES.map((mn,i)=>'<option value="'+(i+1)+'">'+mn+'</option>').join('')}</select></div>
+        <div class="field"><label>Opening year</label><input id="new-card-year" type="number" placeholder="2026"></div>
+        <div class="field"><label>Base annual fee ₹</label><input id="new-card-fee" type="number" placeholder="0"></div>
+        <div class="field"><label>General reward rate %</label><input id="new-card-rate" type="number" step="0.01" placeholder="1"></div>
+      </div>
+      <button class="chat-primary" onclick="addCardFromForm('${context||'card'}')">＋ Add card</button>
+    </div>`;
+}
+async function addCardFromForm(context){
+  const name=(document.getElementById('new-card-name')?.value||'').trim();
+  if(!name){showToast('Enter a card name');return;}
+  if(cards.some(c=>c.name.toLowerCase()===name.toLowerCase())){showToast('A card with this name already exists');return;}
+  const data={
+    name,
+    isDebit:document.getElementById('new-card-debit')?.value||'false',
+    limit:document.getElementById('new-card-limit')?.value||0,
+    billingDate:document.getElementById('new-card-billing')?.value||'',
+    limitGroup:document.getElementById('new-card-group')?.value||'',
+    network:document.getElementById('new-card-network')?.value||'',
+    tier:document.getElementById('new-card-tier')?.value||'',
+    bin:document.getElementById('new-card-bin')?.value||'',
+    openedMonth:document.getElementById('new-card-month')?.value||0,
+    openedYear:document.getElementById('new-card-year')?.value||0
+  };
+  const card=newCardObject(data);
+  const fee=Number(document.getElementById('new-card-fee')?.value)||0;
+  const rate=Number(document.getElementById('new-card-rate')?.value);
+  if(fee>0) card.fee.baseAmount=fee;
+  if(Number.isFinite(rate)&&rate>0){card.fee.rewardRatePct=rate;card.fee.rewardRateConfirmed=true;}
+  cards.push(card);
+  removedCardNames.delete(name);
+  await saveRemovedCardNames();
+  await saveData();
+  editingCardId=null;
+  editingRewardCardId=null;
+  render();
+  showToast(name+' added');
+}
+async function saveCardDetails(id, context){
+  const c=findCard(id); if(!c) return;
+  const oldName=c.name;
+  const name=(document.getElementById('edit-card-name-'+id)?.value||'').trim();
+  if(!name){showToast('Card name cannot be empty');return;}
+  if(cards.some(x=>x.id!==id && x.name.toLowerCase()===name.toLowerCase())){showToast('Another card already has this name');return;}
+  c.name=name;
+  c.isDebit=document.getElementById('edit-card-debit-'+id)?.value==='true';
+  c.limit=Number(document.getElementById('edit-card-limit-'+id)?.value)||0;
+  c.billingDate=(document.getElementById('edit-card-billing-'+id)?.value||'').trim();
+  c.limitGroup=(document.getElementById('edit-card-group-'+id)?.value||'').trim()||null;
+  c.network=(document.getElementById('edit-card-network-'+id)?.value||'').trim();
+  c.tier=(document.getElementById('edit-card-tier-'+id)?.value||'').trim();
+  c.bin=(document.getElementById('edit-card-bin-'+id)?.value||'').trim();
+  c.openedMonth=Number(document.getElementById('edit-card-month-'+id)?.value)||0;
+  c.openedYear=Number(document.getElementById('edit-card-year-'+id)?.value)||0;
+  dueBills.forEach(b=>{if(b.cardId===id||b.cardName===oldName){b.cardId=id;b.cardName=name;}});
+  if(oldName!==name){removedCardNames.delete(name);if(removedCardNames.has(oldName))removedCardNames.add(oldName);}
+  await saveRemovedCardNames(); await saveData(); await saveDues();
+  editingCardId=null; editingRewardCardId=null;
+  render(); showToast('Card details updated');
+}
+function editCardDetails(id){editingCardId=id;editingRewardCardId=null;render();}
+function cancelCardEdit(){editingCardId=null;editingRewardCardId=null;render();}
+async function removeCardUI(id,evt){
+  if(evt) evt.stopPropagation();
+  const c=findCard(id); if(!c) return;
+  const ok=confirm('Remove '+c.name+' from Card Ledger? This removes the card from Ledger, Card Fees, Rewards and Account Ageing. Its saved transactions will also be removed from the active tracker.');
+  if(!ok)return;
+  removedCardNames.add(c.name);
+  cards=cards.filter(x=>x.id!==id);
+  dueBills=dueBills.filter(b=>b.cardId!==id);
+  await saveRemovedCardNames(); await saveData(); await saveDues();
+  editingCardId=null;editingRewardCardId=null;
+  render();showToast(c.name+' removed');
+}
+async function loadRecurringPayments(){
+  try{
+    const r=await window.storage.get(RECURRING_PAYMENTS_KEY,false);
+    if(r&&r.value) recurringPayments=JSON.parse(r.value);
+  }catch(e){recurringPayments=[];}
+  if(!Array.isArray(recurringPayments)) recurringPayments=[];
+}
+async function saveRecurringPayments(){
+  try{await window.storage.set(RECURRING_PAYMENTS_KEY,JSON.stringify(recurringPayments),false);await writeAutoBackup();return true;}
+  catch(e){showToast('Could not save recurring payments');return false;}
+}
+function nextRecurringDate(p){
+  const day=Number(p.day)||1, now=new Date();
+  let d=new Date(now.getFullYear(),now.getMonth(),Math.min(day,daysInMonth(now.getFullYear(),now.getMonth())));
+  if(d<new Date(now.getFullYear(),now.getMonth(),now.getDate())) d=new Date(now.getFullYear(),now.getMonth()+1,Math.min(day,daysInMonth(now.getFullYear(),now.getMonth()+1)));
+  return d.toISOString().slice(0,10);
+}
+async function saveRecurringPaymentForm(id){
+  const p=id?recurringPayments.find(x=>x.id===id):null;
+  const name=(document.getElementById((id?'edit-rec-name-':'new-rec-name'))?.value||'').trim();
+  const amount=Number(document.getElementById((id?'edit-rec-amount-':'new-rec-amount'))?.value)||0;
+  const day=Number(document.getElementById((id?'edit-rec-day-':'new-rec-day'))?.value)||0;
+  const cardId=document.getElementById((id?'edit-rec-card-':'new-rec-card'))?.value||'';
+  const category=(document.getElementById((id?'edit-rec-cat-':'new-rec-cat'))?.value||'').trim();
+  const platform=(document.getElementById((id?'edit-rec-platform-':'new-rec-platform'))?.value||'').trim();
+  if(!name||amount<=0||day<1||day>31){showToast('Enter name, amount and a valid day');return;}
+  const card=cards.find(c=>c.id===cardId);
+  const obj=p||{id:uid(),active:true};
+  Object.assign(obj,{name,amount,day,cardId,cardName:card?card.name:'',category,platform,active:true});
+  if(!p) recurringPayments.push(obj);
+  await saveRecurringPayments();editingRecurringId=null;render();showToast(p?'Recurring payment updated':'Recurring payment added');
+}
+async function deleteRecurringPayment(id,evt){
+  if(evt)evt.stopPropagation();
+  if(!confirm('Remove this recurring payment?'))return;
+  recurringPayments=recurringPayments.filter(x=>x.id!==id);
+  await saveRecurringPayments();editingRecurringId=null;render();showToast('Recurring payment removed');
+}
+function recurringFormHTML(p){
+  const edit=!!p, pre=p||{};
+  const prefix=edit?'edit-rec-':'new-rec-';
+  return `
+    <div class="entry-form">
+      <div class="field"><label>Name</label><input id="${prefix}name${edit?'-'+p.id:''}" value="${String(pre.name||'').replace(/"/g,'&quot;')}" placeholder="Netflix / SIP / insurance"></div>
+      <div class="field"><label>Amount ₹</label><input id="${prefix}amount${edit?'-'+p.id:''}" type="number" value="${pre.amount||''}"></div>
+      <div class="field"><label>Day of month</label><input id="${prefix}day${edit?'-'+p.id:''}" type="number" min="1" max="31" value="${pre.day||''}"></div>
+      <div class="field"><label>Card / account</label><select id="${prefix}card${edit?'-'+p.id:''}"><option value="">Not linked</option>${cards.map(c=>'<option value="'+c.id+'" '+(c.id===pre.cardId?'selected':'')+'>'+c.name+'</option>').join('')}</select></div>
+      <div class="field"><label>Category</label><input id="${prefix}cat${edit?'-'+p.id:''}" value="${String(pre.category||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field"><label>Platform / merchant</label><input id="${prefix}platform${edit?'-'+p.id:''}" value="${String(pre.platform||'').replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="chat-actions" style="margin-top:8px;"><button class="tab-btn" onclick="saveRecurringPaymentForm('${edit?p.id:''}')">Save</button><button class="tab-btn" onclick="editingRecurringId=null;render()">Cancel</button></div>`;
+}
+function renderRecurringPaymentManager(){
+  let html='<div class="panel"><h2>Recurring payments</h2><div class="sub">Add, edit or remove monthly recurring payments. Linked cards use the same card record as Ledger, Card Fees, Rewards and Account Ageing.</div>';
+  if(!recurringPayments.length) html+='<div class="empty-analysis">No recurring payments added yet.</div>';
+  recurringPayments.forEach(p=>{
+    html+='<div class="recur-row"><div class="recur-head"><div><div class="recur-name">'+p.name+'<span class="share-tag">'+(p.cardName||'Unlinked')+'</span></div><div class="row-sub">'+inr(p.amount)+' on the '+p.day+'th · '+(p.platform||p.category||'Recurring payment')+'</div></div><div class="chat-actions"><button class="tab-btn" onclick="editingRecurringId=\''+p.id+'\';render()">Edit</button><button class="tab-btn" onclick="deleteRecurringPayment(\''+p.id+'\',event)">Remove</button></div></div>';
+    if(editingRecurringId===p.id) html+=recurringFormHTML(p);
+    html+='</div>';
+  });
+  html+='<div class="breakeven-box" style="margin-top:12px;">'+recurringFormHTML(null)+'</div></div>';
+  return html;
+}
+async function loadData(){
+  await loadDeletedEntries();
+  await loadRemovedCardNames();
+  await loadRecurringPayments();
+  await loadChatUpdates();
+  await reconcileChatKeyStores();
+  try{
+    if(window.storage && typeof window.storage.get === 'function'){
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){ cards = JSON.parse(res.value); }
+    }
+  }catch(e){ /* no data yet, or storage unavailable */ }
+
+  if(!cards || !cards.length){
+    cards = DEFAULT_CARDS.map(name => ({ id: uid(), name, limit: 0, billingDate: '', limitGroup: null, isDebit:false, entries: [], fee: null }));
+  }
+
+  // Drop Super Money FD if it's still sitting in older saved data.
+  cards = cards.filter(c => c.name !== "Super Money FD");
+
+  // Add any newly-introduced cards that aren't in the saved list yet.
+  DEFAULT_CARDS.forEach(name => {
+    if(!removedCardNames.has(name) && !cards.some(c => c.name === name)){
+      cards.push({ id: uid(), name, limit: 0, billingDate: '', limitGroup: null, isDebit:false, entries: [], fee: null });
+    }
+  });
+
+  // Ensure the debit/other tracking card exists.
+  if(!cards.some(c => c.name === DEBIT_CARD_NAME)){
+    cards.push({ id: uid(), name: DEBIT_CARD_NAME, limit: 0, billingDate: '', limitGroup: null, isDebit:true, entries: [], fee: null });
+  }
+
+  // Ensure the fee-only debit cards / insurance placeholders exist.
+  FEE_ONLY_ITEMS.forEach(item => {
+    if(!removedCardNames.has(item.name) && !cards.some(c => c.name === item.name)){
+      cards.push({ id: uid(), name: item.name, limit: 0, billingDate: '', limitGroup: null, isDebit: item.isDebit, feeOnly: true, isInsurance: !!item.isInsurance, entries: [], fee: null });
+    }
+  });
+
+  cards.forEach(c => {
+    const d = DEFAULTS[c.name];
+    if(!d) return;
+    if(!c.limit) c.limit = d.limit;
+    if(d.billingDate) c.billingDate = d.billingDate;
+    if(d.limitGroup && !c.limitGroup) c.limitGroup = d.limitGroup;
+  });
+
+  // Account opening month/year, network, tier, BIN — fills in blanks only, never overwrites edits.
+  cards.forEach(c => {
+    const info = ACCOUNT_INFO[c.name];
+    if(!info) return;
+    if(!c.openedMonth) c.openedMonth = info.openedMonth;
+    if(!c.openedYear) c.openedYear = info.openedYear;
+    if(!c.network) c.network = info.network;
+    if(!c.tier) c.tier = info.tier;
+    if(!c.bin) c.bin = info.bin;
+  });
+
+  // Seed known fee history once per card (never overwrites existing fee data).
+  cards.forEach(c => {
+    if(c.fee) return;
+    const fd = FEE_DEFAULTS[c.name];
+    c.fee = {
+      baseAmount: fd ? fd.baseAmount : 0,
+      gstPct: fd && fd.gstPct!=null ? fd.gstPct : GST_PCT,
+      rewardRatePct: fd && fd.rewardRatePct!=null ? fd.rewardRatePct : 1,
+      rewardRateConfirmed: !!(fd && fd.rewardRatePct!=null),
+      perTxnCapAmount: fd && fd.perTxnCapAmount ? fd.perTxnCapAmount : 0,
+      voucherSurchargePct: fd && fd.voucherSurchargePct ? fd.voucherSurchargePct : 0,
+      redemptionFeeAmount: fd && fd.redemptionFeeAmount ? fd.redemptionFeeAmount : 0,
+      capResetBasis: fd && fd.capResetBasis ? fd.capResetBasis : 'calendar',
+      surchargeRules: fd && fd.surchargeRules ? fd.surchargeRules.map(r=>({...r})) : [],
+      rewardRules: fd && fd.rewardRules ? fd.rewardRules.map(r=>({...r})) : [],
+      monthlyRewardCap: fd && fd.monthlyRewardCap ? fd.monthlyRewardCap : 0,
+      bestCategory: '',
+      nextDueOverride: fd && fd.nextDueOverride ? fd.nextDueOverride : null,
+      waiver: fd && fd.waiver ? fd.waiver : null,
+      payments: fd && fd.payments ? fd.payments.map(p=>({id:uid(), ...p})) : []
+    };
+  });
+  // Migrate any already-saved cards that predate rewardRules/monthlyRewardCap/perTxnCapAmount/
+  // voucherSurchargePct, or whose rule set has grown since it was first seeded (matched by rule id,
+  // so hand-added custom rules from the UI are preserved).
+  cards.forEach(c => {
+    if(!c.fee) return;
+    const fd = FEE_DEFAULTS[c.name];
+    if(c.fee.rewardRules == null) c.fee.rewardRules = [];
+    if(c.fee.surchargeRules == null) c.fee.surchargeRules = [];
+    if(fd && fd.surchargeRules){
+      fd.surchargeRules.forEach(r => {
+        if(!c.fee.surchargeRules.some(existing => existing.platform && r.platform && existing.platform.toLowerCase()===r.platform.toLowerCase())){
+          c.fee.surchargeRules.push({...r});
+        }
+      });
+    }
+    if(fd && fd.rewardRules){
+      fd.rewardRules.forEach(r => {
+        if(!c.fee.rewardRules.some(existing => existing.id === r.id)){
+          c.fee.rewardRules.push({...r});
+        }
+      });
+    }
+    if(c.fee.monthlyRewardCap == null) c.fee.monthlyRewardCap = (fd && fd.monthlyRewardCap) || 0;
+    if(c.fee.perTxnCapAmount == null) c.fee.perTxnCapAmount = (fd && fd.perTxnCapAmount) || 0;
+    if(c.fee.voucherSurchargePct == null) c.fee.voucherSurchargePct = (fd && fd.voucherSurchargePct) || 0;
+    if(c.fee.redemptionFeeAmount == null) c.fee.redemptionFeeAmount = (fd && fd.redemptionFeeAmount) || 0;
+    if(c.fee.capResetBasis == null) c.fee.capResetBasis = (fd && fd.capResetBasis) || 'calendar';
+    if(!c.fee.rewardRateConfirmed && fd && fd.rewardRatePct!=null){
+      c.fee.rewardRatePct = fd.rewardRatePct;
+      c.fee.rewardRateConfirmed = true;
+    }
+  });
+
+  // IDFC Power+ renews every 2 years, not annually — pin its next due date
+  // to 2028 (won't touch it again once you've set/edited it yourself).
+  const powerPlus = cards.find(c => c.name === "IDFC Power+");
+  if(powerPlus && powerPlus.fee && !powerPlus.fee.nextDueOverride){
+    powerPlus.fee.nextDueOverride = "2028-08-20";
+  }
+
+  // Both SBI cards' annual fee actually falls on 7 September every year, not 8 August —
+  // and both have now been paid this cycle (8 Sept 2026).
+  const tataNeuFee = cards.find(c => c.name === "SBI Tata Neu Plus");
+  if(tataNeuFee && tataNeuFee.fee){
+    tataNeuFee.fee.nextDueOverride = "2027-09-07";
+    if(!tataNeuFee.fee.payments.some(p => p.date === "2026-09-08")){
+      tataNeuFee.fee.payments.push({ id: uid(), date: "2026-09-08", amount: 588.82 });
+    }
+  }
+  const simplyClickFee = cards.find(c => c.name === "SBI SimplyClick");
+  if(simplyClickFee && simplyClickFee.fee){
+    simplyClickFee.fee.nextDueOverride = "2027-09-07";
+    if(!simplyClickFee.fee.payments.some(p => p.date === "2026-09-08")){
+      simplyClickFee.fee.payments.push({ id: uid(), date: "2026-09-08", amount: 589 });
+    }
+  }
+
+  // DCB Niyo Credit's billing date corrected to 21st.
+  const niyoCredit = cards.find(c => c.name === "DCB Niyo Credit");
+  if(niyoCredit && niyoCredit.billingDate === "18th"){
+    niyoCredit.billingDate = "21st";
+  }
+
+  // SBI SimplyClick and both BOB Uni GoldX variants actually bill on the 7th, not the 8th.
+  cards.forEach(c => {
+    if((c.name === "SBI SimplyClick" || c.name === "BOB Uni GoldX (Visa)" || c.name === "BOB Uni GoldX (RuPay)") && c.billingDate === "8th"){
+      c.billingDate = "7th";
+    }
+  });
+
+  // SBI SimplyClick and SBI Tata Neu Plus share one ₹74,000 limit.
+  const simplyClick = cards.find(c => c.name === "SBI SimplyClick");
+  const tataNeu = cards.find(c => c.name === "SBI Tata Neu Plus");
+  if(simplyClick && !simplyClick.limitGroup){
+    simplyClick.limitGroup = "sbi-shared";
+    simplyClick.limit = 74000;
+  }
+  if(tataNeu && !tataNeu.limitGroup){
+    tataNeu.limitGroup = "sbi-shared";
+    tataNeu.limit = 74000;
+  }
+
+  // One-time cleanup: strip any leftover demo/trial entries from before.
+  cards.forEach(c => { c.entries = c.entries.filter(e => e.note !== 'demo'); });
+
+  // Cancelled: Union Bank entries for 29 Aug – 1 Sept — remove any of those
+  // that already merged in before this correction, so they don't linger.
+  const CANCELLED_UNION_DAILY_FROM = '2026-08-29', CANCELLED_UNION_DAILY_TO = '2026-09-01';
+  cards.forEach(c => {
+    if(c.name !== 'Union Bank Rupay Platinum') return;
+    c.entries = c.entries.filter(e => !(e.id.indexOf('union-plat-2026') === 0 && e.date >= CANCELLED_UNION_DAILY_FROM && e.date <= CANCELLED_UNION_DAILY_TO));
+  });
+
+  let addedAny = await mergeChatEntries();
+  SEED_ENTRIES.forEach(seed => {
+    const card = cards.find(c => c.name === seed.card);
+    if(!card || deletedEntryIds.has(seed.id)) return;
+    const existing = card.entries.find(e => e.id === seed.id);
+    if(!existing){
+      card.entries.push({ id: seed.id, type: seed.type, date: seed.date, amount: seed.amount, note: seed.note || '', category: seed.category || '', platform: seed.platform || '', rewardRatePct: seed.rewardRatePct!=null ? seed.rewardRatePct : null, rewardAmountOverride: seed.rewardAmountOverride!=null ? seed.rewardAmountOverride : null, surchargeAmount: seed.surchargeAmount!=null ? seed.surchargeAmount : null });
+      addedAny = true;
+    } else {
+      if(seed.rewardRatePct!=null && existing.rewardRatePct !== seed.rewardRatePct){ existing.rewardRatePct = seed.rewardRatePct; addedAny = true; }
+      if(seed.rewardAmountOverride!=null && existing.rewardAmountOverride !== seed.rewardAmountOverride){ existing.rewardAmountOverride = seed.rewardAmountOverride; addedAny = true; }
+      if(seed.surchargeAmount!=null && existing.surchargeAmount !== seed.surchargeAmount){ existing.surchargeAmount = seed.surchargeAmount; addedAny = true; }
+      if(seed.date && existing.date !== seed.date){ existing.date = seed.date; addedAny = true; }
+      if(seed.amount!=null && existing.amount !== seed.amount){ existing.amount = seed.amount; addedAny = true; }
+    }
+  });
+
+  await saveData();
+  return addedAny;
+}
+
+async function loadCashback(){
+  try{
+    if(window.storage && typeof window.storage.get === 'function'){
+      const res = await window.storage.get(CASHBACK_KEY, false);
+      if(res && res.value){ cashbackLog = JSON.parse(res.value); }
+    }
+  }catch(e){ /* no data yet, or storage unavailable */ }
+
+  if(!cashbackLog || !cashbackLog.length){
+    cashbackLog = [{
+      id: 'opening-net', type: 'cashback', category: 'Opening Balance',
+      amount: 3940.36, date: todayStr(),
+      note: 'Net cashback position as provided'
+    }];
+  }
+
+  // Cancelled: the Union Bank daily auto-log's fee entries beyond 1 Sept.
+  const beforeLen = cashbackLog.length;
+  cashbackLog = cashbackLog.filter(e => !(e.id.indexOf('cb-union-plat-fee-2026') === 0 && e.date >= '2026-08-29' && e.date <= '2026-09-01'));
+  let changed = cashbackLog.length !== beforeLen;
+
+  SEED_CASHBACK.forEach(seed => {
+    if(!cashbackLog.some(e => e.id === seed.id)){
+      cashbackLog.push({ ...seed });
+      changed = true;
+    }
+  });
+
+  if(changed) await saveCashback();
+}
+
+async function writeAutoBackup(){
+  try{
+    await window.storage.set(BACKUP_KEY, JSON.stringify({version:2,savedAt:new Date().toISOString(),cards,dueBills,cashbackLog,recurringPayments,removedCardNames:[...removedCardNames]}), false);
+    const el=document.getElementById('saveStatus'); if(el) el.textContent='Saved locally · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    return true;
+  }catch(e){ const el=document.getElementById('saveStatus'); if(el) el.textContent='Local save error'; return false; }
+}
+
+async function saveCashback(){
+  if(!window.storage || typeof window.storage.set !== 'function') return false;
+  for(let attempt=0; attempt<2; attempt++){
+    try{ await window.storage.set(CASHBACK_KEY, JSON.stringify(cashbackLog), false); await writeAutoBackup(); return true; }
+    catch(e){ if(attempt===1) showToast('Could not save — changes kept for this session only'); }
+  }
+  return false;
+}
+
+async function saveData(){
+  if(!window.storage || typeof window.storage.set !== 'function'){
+    showToast('Storage unavailable — changes kept for this session only');
+    return false;
+  }
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(cards), false);
+      // Rolling backup: latest complete card data, refreshed on every successful change.
+      try{ await writeAutoBackup(); }catch(_e){}
+      return true;
+    }
+    catch(e){ if(attempt===1) showToast('Could not save — changes kept for this session only'); }
+  }
+  return false;
+}
+
+function utilised(card){ return card.entries.reduce((sum,e)=> sum + (e.type==='txn' ? e.amount : -e.amount), 0); }
+
+function applyTheme(theme){
+  const chosen=theme==='light'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',chosen);
+  try{localStorage.setItem('card-ledger-theme-v1',chosen);}catch(e){}
+  const b=document.getElementById('themeToggleBtn');
+  if(b) b.textContent=chosen==='dark'?'☀️ Light':'🌙 Dark';
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content=chosen==='dark'?'#080B12':'#F5F8FF';
+}
+function toggleTheme(){
+  const current=document.documentElement.getAttribute('data-theme')||'dark';
+  applyTheme(current==='dark'?'light':'dark');
+}
+function initTheme(){
+  let saved='dark';
+  try{saved=localStorage.getItem('card-ledger-theme-v1')||'dark';}catch(e){}
+  applyTheme(saved);
+}
+
+function setTab(t){ activeTab = t; render(); if(t==='secure') setTimeout(refreshKeyFileStatus,0); }
+
+function render(){
+  document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+  document.getElementById('tab-ledger').classList.toggle('active', activeTab==='ledger');
+  document.getElementById('tab-entry').classList.toggle('active', activeTab==='entry');
+  document.getElementById('tab-analysis').classList.toggle('active', activeTab==='analysis');
+  document.getElementById('tab-fees').classList.toggle('active', activeTab==='fees');
+  document.getElementById('tab-dues').classList.toggle('active', activeTab==='dues');
+  document.getElementById('tab-recurring').classList.toggle('active', activeTab==='recurring');
+  document.getElementById('tab-cashback').classList.toggle('active', activeTab==='cashback');
+  document.getElementById('tab-rewards').classList.toggle('active', activeTab==='rewards');
+  document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
+  const alertTab=document.getElementById('tab-alerts'); if(alertTab) alertTab.classList.toggle('active', activeTab==='alerts');
+  if(activeTab === 'ledger') renderLedger();
+  else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); }
+  else if(activeTab === 'analysis') renderAnalysis();
+  else if(activeTab === 'fees') renderFees();
+  else if(activeTab === 'dues') renderDues();
+  else if(activeTab === 'recurring') renderRecurring();
+  else if(activeTab === 'cashback') renderCashback();
+  else if(activeTab === 'rewards') renderRewards();
+  else if(activeTab === 'accounts') renderAccounts();
+  else if(activeTab === 'alerts') renderAlerts();
+  else if(activeTab === 'secure') { document.getElementById('app').innerHTML = renderSecureUpdate(); refreshLocalDataStatus(); refreshGitHubStatus(); }
+  refreshChatCardOptions();
+  if(activeTab === 'entry') { refreshChatCardOptions(); updateTransactionEntryFields(); }
+}
+
+function renderSecureUpdate(){return `
+<div class="panel secure-update-panel">
+<div class="chat-head"><div><div class="chat-kicker">LOCAL DATA</div><div class="tab-heading-row"><h2>📁 Card Ledger Data File</h2></div><div class="sub">Choose where your Card Ledger transactions should be stored. The PWA reads and writes the plain JSON file directly on your device.</div></div><div class="secure-badge">LOCAL ONLY</div></div>
+<div class="chat-section"><div class="chat-section-title"><span class="chat-icon">📄</span><div><strong>Transaction data file</strong><small>No transaction encryption, decryption, GitHub upload, or remote feed is used.</small></div></div>
+<div class="chat-actions"><button class="tab-btn" onclick="createLocalDataFileUI()">＋ Create data file</button><button class="tab-btn" onclick="selectLocalDataFileUI()">📂 Select existing file</button><button class="tab-btn" onclick="disconnectLocalDataFileUI()">Remove selection</button></div>
+<div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div></div>
+<div class="disclaimer">Your transaction details stay in the local JSON file you choose. The PWA remembers the file location on this device.</div>
+</div>`;}
+async function createLocalDataFileUI(){try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}}
+async function selectLocalDataFileUI(){try{await selectLocalDataFile();}catch(e){showToast(e.message||'Could not select data file');}}
+async function disconnectLocalDataFileUI(){await disconnectGitHub();}
+async function refreshKeyFileStatus(){
+  const el=document.getElementById('keyFileStatus');
+  if(!el) return;
+  try{
+    // Use a bounded status read so a browser/IndexedDB permission operation
+    // can never leave the UI stuck forever on "Key file: checking…".
+    const result=await Promise.race([
+      window.cardLedgerKeyFile.getStatus(),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Key file status timed out')),2500))
+    ]);
+    if(!result || !result.selected){
+      el.textContent='⚠ No key file selected';
+      el.style.color='var(--danger)';el.style.background='var(--danger-soft)';return;
+    }
+    const granted=result.permission==='granted';
+    el.textContent=(granted?'✓ ':'⚠ ')+result.name+
+      (granted?' · ready for automatic encryption/decryption':' · permission needs to be granted');
+    el.style.color=granted?'var(--ok)':'var(--danger)';
+    el.style.background=granted?'var(--ok-soft)':'var(--danger-soft)';
+  }catch(e){
+    el.textContent='⚠ Key file status unavailable · select it again';
+    el.style.color='var(--danger)';el.style.background='var(--danger-soft)';
+  }
+}
+async function selectChatKeyFileUI(){
+  try{
+    const result=await window.cardLedgerKeyFile.select();
+    const out=document.getElementById('chatKeyDiagnostic');
+    if(out){out.style.color='var(--ok)';out.textContent='✓ Key file selected · '+result.name+' · '+(result.persistent?'saved file reference':'session-only file access; select again after reopening')+' · key contents are not stored by the PWA';}
+    await refreshLocalDataStatus();
+    const merged=await syncEncryptedChatUpdates(false);
+    render();
+    refreshChatCardOptions();
+    if(merged) showToast('Key file selected · encrypted GitHub transactions synced');
+    else showToast('Key file selected');
+  }catch(e){showToast(e.message||'Could not select the key file');}
+}
+async function clearChatKeyFileUI(){
+  await window.cardLedgerKeyFile.clear();
+  await refreshKeyFileStatus();
+  showToast('Saved key-file reference removed');
+}
+function refreshRecoveryStatus(){ return refreshKeyFileStatus(); }
+
+function setTab(t){activeTab=t;render();if(t==='secure')setTimeout(refreshLocalDataStatus,0);}
+
+function render(){
+const d=document.getElementById('dateline');if(d)d.textContent='Card Ledger — '+new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+['ledger','entry','analysis','fees','dues','recurring','cashback','rewards','accounts','alerts'].forEach(x=>{const e=document.getElementById('tab-'+x);if(e)e.classList.toggle('active',activeTab===x);});
+const app=document.getElementById('app');
+if(activeTab==='ledger')renderLedger();
+else if(activeTab==='entry'){app.innerHTML=renderQuickEntryPanel();refreshChatCardOptions();updateTransactionEntryFields();}
+else if(activeTab==='analysis')renderAnalysis();
+else if(activeTab==='fees')renderFees();
+else if(activeTab==='dues')renderDues();
+else if(activeTab==='recurring')renderRecurring();
+else if(activeTab==='cashback')renderCashback();
+else if(activeTab==='rewards')renderRewards();
+else if(activeTab==='accounts')renderAccounts();
+else if(activeTab==='alerts')renderAlerts();
+else if(activeTab==='secure'){app.innerHTML=renderSecureUpdate();refreshLocalDataStatus();}
+}
+
 function renderQuickEntryPanel(){
   return `
     <div class="panel chat-panel" id="chatSyncPanel">
@@ -1317,7 +2156,7 @@ async function init(){
     await loadDues();
     render();
     refreshChatCardOptions();
-    refreshLocalDataStatus();
+    refreshKeyFileStatus();
     refreshGitHubStatus();
     registerNotificationBackgroundCheck();
     setTimeout(checkStatementNotifications,1200);
@@ -2504,9 +3343,7 @@ if('serviceWorker' in navigator){
 }
 initTheme();
 const startupSplash=document.getElementById('startup-splash');
-setTimeout(()=>{ if(startupSplash) startupSplash.classList.add('hide'); },2000);
-// v94 startup failsafe: also hide the splash even if another initialization block errors.
-setTimeout(()=>{ if(startupSplash){startupSplash.classList.add('hide');startupSplash.style.display='none';} },2600);
+setTimeout(()=>{ if(startupSplash) startupSplash.classList.add('hide'); },2000);setTimeout(()=>{if(startupSplash){startupSplash.classList.add('hide');startupSplash.style.display='none';}},2600);
 </script>
 <datalist id="cat-list">
   <option value="Grocery"><option value="Food & Dining"><option value="Shopping">
