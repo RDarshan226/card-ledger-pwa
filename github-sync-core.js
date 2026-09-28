@@ -176,17 +176,20 @@ async function selectLocalDataFile(){
   if(!text.trim()) data=normaliseLocalData(null);
   else{try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}}
   await saveLocalDataHandle(handle);
-  // Import the file into the live app immediately. If it is an old v3
-  // transaction-only file, the existing card master remains available and
-  // its flat entries are merged by the normal Ledger migration path.
+  // Import immediately. Old v3 files may contain flat transaction entries but
+  // no cards; preserve those entries instead of replacing them with a blank
+  // card snapshot. The normal Ledger migration then attaches them to cards.
+  const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
   await applyLocalDataState(data);
-  if(!data.cards.length && typeof cards!=='undefined' && Array.isArray(cards) && cards.length){
-    data=buildUnifiedLocalData();
-  }else{
-    data=normaliseLocalData(data);
+  if(!hadCards && typeof cards!=='undefined' && Array.isArray(cards) && cards.length){
+    const current=buildUnifiedLocalData();
+    data={...data,cards:current.cards};
   }
+  data=normaliseLocalData(data);
   await writeLocalDataFile(data);
-  if(typeof window.applyLocalDataState==='function') await window.applyLocalDataState(data);
+  if(typeof window.__reloadAfterLocalFileSelection==='function'){
+    await window.__reloadAfterLocalFileSelection();
+  }
   await refreshLocalDataStatus('✓ Unified local data file selected · '+handle.name);
   showToast('Unified Card Ledger data file selected');
   return data;
