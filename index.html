@@ -2660,7 +2660,6 @@ async function encryptTransactionEntry(){
     chatUpdates=targetFile;
     window.__localDataUsingFallback=false;
     await mergeChatEntries();
-    await saveData();
     ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     render(); refreshChatCardOptions(); updateTransactionEntryFields();
     showToast('Transaction saved to local data file');
