@@ -132,14 +132,19 @@ async function readLocalDataFile(){
 async function writeLocalDataFile(data){
   const handle=await loadLocalDataHandle();
   if(!handle){
-    const normal=await writeLocalDataFallback(data);
-    window.__localDataUsingFallback=true;
-    return normal;
+    const fallback=await readLocalDataFallback();
+    if(fallback){
+      const normal=await writeLocalDataFallback(data);
+      window.__localDataUsingFallback=true;
+      return normal;
+    }
+    throw new Error('No writable Card Ledger data file is selected. Please select the original JSON file again.');
   }
   if(!(await localFilePermission(handle,true))) throw new Error('Permission to write the selected Card Ledger file was not granted.');
   const normal=normaliseLocalData(data);
   normal.updatedAt=new Date().toISOString();
   const json=JSON.stringify(normal,null,2)+'\\n';
+  if(typeof handle.createWritable!=='function') throw new Error('This browser cannot directly edit the selected JSON file. Please use a browser with file editing support.');
   const writable=await handle.createWritable();
   await writable.write(json);
   await writable.close();
@@ -413,7 +418,6 @@ async function saveTransactionToLocalFile(payload){
   if(typeof recurringPayments!=='undefined') data.recurringPayments=recurringPayments;
   await writeLocalDataFile(data);
   const savedHandle=await loadLocalDataHandle();
-  if(!savedHandle) await downloadLocalDataSnapshot(data,'Saved to device storage. Latest JSON file exported.');
-  await refreshLocalDataStatus(savedHandle?'✓ Saved locally · '+savedHandle.name:'✓ Saved to device storage · latest JSON exported');
+  await refreshLocalDataStatus(savedHandle?'✓ Updated original file · '+savedHandle.name:'✓ Saved to local storage');
   return true;
 }
