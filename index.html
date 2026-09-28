@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v114</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v115</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v114"></script>
+<script src="./github-sync-core.js?v=v115"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v114';
+const APP_VERSION='v115';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1532,6 +1532,13 @@ function initTheme(){
 
 function renderLedger(){
   const app = document.getElementById('app');
+  if(!app) return;
+  // Ledger owns its own data hydration. A failure in another tab/data feed
+  // must never prevent the core card list from being displayed.
+  try{
+    if(!Array.isArray(cards)) cards=[];
+    cards=cards.filter(c=>c&&typeof c==='object');
+  }catch(_e){ cards=[]; }
   const creditCards = cards.filter(c=>!c.isDebit && !c.feeOnly && !removedCardNames.has(c.name));
   const debitCards = cards.filter(c=>c.name===DEBIT_CARD_NAME && !removedCardNames.has(c.name));
 
@@ -1996,7 +2003,15 @@ function renderActiveTab(){
       setTimeout(()=>{try{refreshLocalDataStatus();}catch(e){}},0);
       return;
     }
-  }catch(e){tabFailure(name,e);}
+  }catch(e){
+    if(activeTab==='ledger'){
+      const app=document.getElementById('app');
+      if(app) app.innerHTML='<div class="panel"><h2>Ledger data could not be rendered</h2><div class="sub">Your saved card data is protected. Retry the Ledger without loading the other tabs.</div><button class="tab-btn" onclick="renderLedger()">Retry Ledger</button></div>';
+      console.error('Card Ledger Ledger tab error',e);
+      return;
+    }
+    tabFailure(name,e);
+  }
 }
 
 function render(){
