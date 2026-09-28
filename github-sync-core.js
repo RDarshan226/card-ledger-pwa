@@ -398,6 +398,30 @@ async function loadChatUpdates(){
     return chatUpdates;
   }
 }
+function findFirstJsonValueEnd(text){
+  const s=String(text||'').replace(/^\\uFEFF/,'').trimStart();
+  if(!s) return -1;
+  const offset=text.indexOf(s);
+  let depth=0,inString=false,escaped=false;
+  for(let i=0;i<s.length;i++){
+    const ch=s[i];
+    if(inString){
+      if(escaped) escaped=false;
+      else if(ch==='\\\\') escaped=true;
+      else if(ch==='"') inString=false;
+      continue;
+    }
+    if(ch==='"'){inString=true;continue;}
+    if(ch==='{'||ch==='['){depth++;continue;}
+    if(ch==='}'||ch===']'){
+      depth--;
+      if(depth===0) return offset+i+1;
+      if(depth<0) return -1;
+    }
+  }
+  return -1;
+}
+
 async function saveEntryToChosenLocalFile(payload){
   if(!window.showOpenFilePicker){
     throw new Error('This browser does not support direct editing of a user-selected JSON file. Open Card Ledger in Chrome or another browser with File System Access support.');
@@ -415,7 +439,14 @@ async function saveEntryToChosenLocalFile(payload){
   if(!text.trim()) throw new Error('The selected JSON file is empty.');
   let data;
   try{
-    const parsed=JSON.parse(text);
+    let parsed;
+    try{
+      parsed=JSON.parse(text);
+    }catch(parseError){
+      const firstEnd=findFirstJsonValueEnd(text);
+      if(firstEnd<0) throw parseError;
+      parsed=JSON.parse(text.slice(0,firstEnd));
+    }
     if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)) throw new Error('JSON root must be an object.');
     const hasLedgerShape=Array.isArray(parsed.cards)||Array.isArray(parsed.entries)||Array.isArray(parsed.dueBills)||Array.isArray(parsed.cashback)||Array.isArray(parsed.cashbackLog)||Array.isArray(parsed.recurringPayments);
     if(!hasLedgerShape) throw new Error('This JSON does not contain Card Ledger data.');
