@@ -2603,15 +2603,15 @@ function updateTransactionEntryFields(){}
 
 async function encryptTransactionEntry(){
   try{
-    const mainType=document.getElementById('entry-main-type').value;
-    const card=document.getElementById('entry-card').value;
-    const date=document.getElementById('entry-date').value||todayStr();
-    const amount=Number(document.getElementById('entry-amount').value);
-    const category=document.getElementById('entry-category').value.trim();
-    const platform=document.getElementById('entry-platform').value.trim();
-    const cashback=Number(document.getElementById('entry-cashback').value)||0;
-    const charge=Number(document.getElementById('entry-charge').value)||0;
-    const note=document.getElementById('entry-note').value.trim();
+    const mainTypeEl=document.getElementById('entry-main-type'); const cardEl=document.getElementById('entry-card'); const dateEl=document.getElementById('entry-date'); const amountEl=document.getElementById('entry-amount'); const categoryEl=document.getElementById('entry-category'); const platformEl=document.getElementById('entry-platform'); const cashbackEl=document.getElementById('entry-cashback'); const chargeEl=document.getElementById('entry-charge'); const noteEl=document.getElementById('entry-note'); if(!mainTypeEl||!cardEl||!dateEl||!amountEl||!categoryEl||!platformEl||!cashbackEl||!chargeEl||!noteEl){showToast('Transaction form is not ready. Please open +Entry again.');return;} const mainType=mainTypeEl.value;
+    const card=cardEl.value;
+    const date=dateEl.value||todayStr();
+    const amount=Number(amountEl.value);
+    const category=categoryEl.value.trim();
+    const platform=platformEl.value.trim();
+    const cashback=Number(cashbackEl.value)||0;
+    const charge=Number(chargeEl.value)||0;
+    const note=noteEl.value.trim();
     if(!card){showToast('Choose a card');return;}
     if(!amount||amount<=0){showToast('Enter a valid amount');return;}
     const payload={v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type:mainType==='repayment'?'repay':'txn',date,amount,category,platform,note,cashback,charge};
