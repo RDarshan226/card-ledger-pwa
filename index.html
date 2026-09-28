@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v111</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v112</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v111</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v112</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v111"></script>
+<script src="./github-sync-core.js?v=v112"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -860,7 +860,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v111';
+const APP_VERSION='v112';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1231,7 +1231,11 @@ async function loadData(){
   }
 
   // Drop Super Money FD if it's still sitting in older saved data.
-  cards = cards.filter(c => c.name !== "Super Money FD");
+  cards = (Array.isArray(cards)?cards:[]).filter(c => c && c.name !== "Super Money FD");
+  cards.forEach(c => {
+    if(!c.id) c.id=uid();
+    if(!Array.isArray(c.entries)) c.entries=[];
+  });
 
   // Add any newly-introduced cards that aren't in the saved list yet.
   DEFAULT_CARDS.forEach(name => {
@@ -1400,14 +1404,19 @@ async function loadData(){
   }
 
   // One-time cleanup: strip any leftover demo/trial entries from before.
-  cards.forEach(c => { c.entries = c.entries.filter(e => e.note !== 'demo'); });
+  cards.forEach(c => {
+    c.entries=(Array.isArray(c.entries)?c.entries:[]).filter(e => e && e.note !== 'demo');
+  });
 
   // Cancelled: Union Bank entries for 29 Aug – 1 Sept — remove any of those
   // that already merged in before this correction, so they don't linger.
   const CANCELLED_UNION_DAILY_FROM = '2026-08-29', CANCELLED_UNION_DAILY_TO = '2026-09-01';
   cards.forEach(c => {
     if(c.name !== 'Union Bank Rupay Platinum') return;
-    c.entries = c.entries.filter(e => !(e.id.indexOf('union-plat-2026') === 0 && e.date >= CANCELLED_UNION_DAILY_FROM && e.date <= CANCELLED_UNION_DAILY_TO));
+    c.entries=(Array.isArray(c.entries)?c.entries:[]).filter(e => {
+      const id=String(e&&e.id||'');
+      return !(id.indexOf('union-plat-2026') === 0 && e.date >= CANCELLED_UNION_DAILY_FROM && e.date <= CANCELLED_UNION_DAILY_TO);
+    });
   });
 
   let addedAny = await mergeChatEntries();
@@ -1449,7 +1458,10 @@ async function loadCashback(){
 
   // Cancelled: the Union Bank daily auto-log's fee entries beyond 1 Sept.
   const beforeLen = cashbackLog.length;
-  cashbackLog = cashbackLog.filter(e => !(e.id.indexOf('cb-union-plat-fee-2026') === 0 && e.date >= '2026-08-29' && e.date <= '2026-09-01'));
+  cashbackLog = (Array.isArray(cashbackLog)?cashbackLog:[]).filter(e => {
+    const id=String(e&&e.id||'');
+    return !(id.indexOf('cb-union-plat-fee-2026') === 0 && e.date >= '2026-08-29' && e.date <= '2026-09-01');
+  });
   let changed = cashbackLog.length !== beforeLen;
 
   SEED_CASHBACK.forEach(seed => {
@@ -2068,34 +2080,19 @@ function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleStri
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
 async function init(){
-  // Render the shell first so a slow/failing local or encrypted-data operation
-  // can never leave the PWA permanently stuck on "opening the ledger…".
-  try{
-    initTheme();
-    setVersionUI();
-    render();
-  }catch(e){}
-  try{
-    const merged = await loadData();
-    await loadCashback();
-    await loadDues();
-    render();
-    refreshChatCardOptions();
-    refreshLocalDataStatus();
-    registerNotificationBackgroundCheck();
-    setTimeout(checkStatementNotifications,1200);
-    setInterval(checkStatementNotifications,15*60*1000);
-    schedulePowerPlusTestNotification();
-    if(merged) showToast('New encrypted entries synced from chat');
-  }catch(e){
-    // Keep the already-rendered interface usable even if one startup data source fails.
-    try{
-      render();
-      refreshChatCardOptions();
-      refreshLocalDataStatus();
-    }catch(_e){}
-    try{ showToast('Ledger opened · some background data could not be loaded'); }catch(_e){}
-  }
+  try{ initTheme(); setVersionUI(); render(); }catch(e){ console.error('Initial render error',e); }
+  let merged=false;
+  try{ merged=await loadData(); }catch(e){ console.error('Card data load failed',e); }
+  try{ await loadCashback(); }catch(e){ console.error('Cashback load failed',e); }
+  try{ await loadDues(); }catch(e){ console.error('Dues load failed',e); }
+  try{ render(); }catch(e){ console.error('Final render error',e); }
+  try{ refreshChatCardOptions(); }catch(e){}
+  try{ refreshLocalDataStatus(); }catch(e){}
+  try{ registerNotificationBackgroundCheck(); }catch(e){}
+  setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},1200);
+  setInterval(()=>{try{checkStatementNotifications();}catch(e){}},15*60*1000);
+  try{ schedulePowerPlusTestNotification(); }catch(e){}
+  if(merged) try{ showToast('Ledger data loaded'); }catch(e){}
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>init(),{once:true}); else init();
 
