@@ -2528,7 +2528,7 @@ function renderActiveTab(epoch=renderEpoch){
   const guard=()=>epoch===renderEpoch && activeTab===name.toLowerCase();
   try{
     if(activeTab==='ledger'){ try{ renderLedger(); }catch(e){ console.error('Card Ledger Ledger render error',e); if(guard()) tabFailure('Ledger',e); } return Promise.resolve(); }
-    if(activeTab==='entry'){ document.getElementById('app').innerHTML=renderQuickEntryPanel(); populateEntryCardDropdown(); return; }
+    if(activeTab==='entry'){ document.getElementById('app').innerHTML=renderQuickEntryPanel(); populateEntryCardDropdown(); updateTransactionEntryFields(); return; }
     if(activeTab==='analysis') return renderAnalysis();
     if(activeTab==='fees') return renderFees();
     if(activeTab==='dues') return renderCoreTabData('dues').then(()=>{if(guard()) renderDues();}).catch(e=>{if(guard()){console.error(e);tabFailure('Dues',e);}});
@@ -2557,7 +2557,6 @@ function render(){
 function updateLocalDataFileDetails(){
   const el=document.getElementById('localDataFileDetails');
   if(!el)return;
-  const h=typeof loadLocalDataHandle==='function'?null:null;
   if(window.__localDataFileName) el.innerHTML='📄 File: '+String(window.__localDataFileName).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(window.__localDataFileLocation||'Device file storage').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 }
 async function loadLocalDataFileDetails(){
@@ -2602,7 +2601,7 @@ function updateLocalDataFileDetails(){
   const location=window.__localDataFileLocation||'Not available';
   el.innerHTML='📄 File: '+String(name).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(location).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 }
-async function createLocalDataFileUI(){
+async async function createLocalDataFileUI(){
   try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}
 }
 async function selectLocalDataFileUI(){try{await selectLocalDataFile(); updateLocalDataFileDetails();}catch(e){showToast(e.message||'Could not select data file');}}
@@ -2669,8 +2668,12 @@ function populateEntryCardDropdown(){
   if(!sel) return;
   const current=sel.value;
   const list=(Array.isArray(cards)?cards:[]).filter(c=>c&&c.name&&!c.isInsurance);
-  sel.innerHTML='<option value="">Select card</option>'+list.map(c=>'<option value="'+String(c.id).replace(/"/g,"&quot;")+'">'+String(c.name).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")+'</option>').join("");
-  if(current && list.some(c=>String(c.id)===current)) sel.value=current;
+  sel.innerHTML='<option value="">Select card</option>'+list.map(c=>{
+    const value=String(c.name||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+    const label=String(c.name||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    return '<option value="'+value+'">'+label+'</option>';
+  }).join("");
+  if(current && list.some(c=>String(c.name)===current)) sel.value=current;
 }
 function renderQuickEntryPanel(){
   return `
