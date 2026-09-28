@@ -1284,7 +1284,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v126';
+const APP_VERSION='v127';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1962,18 +1962,11 @@ function renderLedger(){
     if(!Array.isArray(cards)) cards=[];
     cards=cards.filter(c=>c&&typeof c==='object');
   }catch(_e){ cards=[]; }
-  // Never allow a stale/empty data source to make the Ledger disappear.
-  // DEFAULT_CARDS is the emergency display source; saved records are preferred.
-  const safeRemoved = removedCardNames instanceof Set ? removedCardNames : new Set();
+  // Ledger is a pure consumer of the unified GitHub card master.
   if(!Array.isArray(cards) || !cards.length){
-    cards=DEFAULT_CARDS.map(name=>({id:uid(),name,limit:Number((DEFAULTS[name]||{}).limit)||0,billingDate:(DEFAULTS[name]||{}).billingDate||'',limitGroup:(DEFAULTS[name]||{}).limitGroup||null,isDebit:false,entries:[],fee:null}));
+    app.innerHTML='<div class="panel"><h2>Card master unavailable</h2><div class="sub">Ledger is linked to GitHub card-master.json. Reload when the repository is reachable.</div></div>';
+    return;
   }
-  DEFAULT_CARDS.forEach(name=>{
-    if(!safeRemoved.has(name) && !cards.some(c=>c&&c.name===name)){
-      const d=DEFAULTS[name]||{};
-      cards.push({id:uid(),name,limit:Number(d.limit)||0,billingDate:d.billingDate||'',limitGroup:d.limitGroup||null,isDebit:false,entries:[],fee:null});
-    }
-  });
   const creditCards = cards.filter(c=>c&&!c.isDebit&&!c.feeOnly&&(!safeRemoved.has(c.name)||DEFAULT_CARDS.includes(c.name)));
   const debitCards = cards.filter(c=>c&&c.name===DEBIT_CARD_NAME&&!safeRemoved.has(c.name));
 
@@ -2601,7 +2594,7 @@ async function loadLedgerSource(){
 
   window.__cardMasterSource='github:card-master.json';
   window.__cardMasterLoaded=true;
-  window.__cardMasterVersion='v126';
+  window.__cardMasterVersion='v127';
   return {cardCount:cards.length,fileLoaded:!!localData,source:'github:card-master.json'};
 }
 
