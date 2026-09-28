@@ -496,13 +496,9 @@ async function connectGitHub(){
   }catch(e){throw e;}
 }
 async function disconnectGitHub(){
-  await clearLocalDataHandle();
-  const db=await openLocalDataDB();
-  await new Promise((resolve,reject)=>{const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).delete(LOCAL_DATA_FALLBACK_ID);r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);});
-  chatUpdates=normaliseLocalData(null);
-  window.__localUnifiedDataLoaded=false;
-  await refreshLocalDataStatus('○ Local data file disconnected');
-  showToast('Local data file disconnected');
+  clearGitHubToken();
+  await refreshLocalDataStatus('○ GitHub data connection cleared');
+  showToast('GitHub token cleared from this browser session');
 }
 async function uploadEncryptedPayload(payload){
   const p=typeof payload==='string'?JSON.parse(payload):payload;
