@@ -1284,7 +1284,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v124';
+const APP_VERSION='v125';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2532,6 +2532,8 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0}); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
+async function init(){try{setVersionUI();await loadDeletedEntries();await loadRemovedCardNames();await loadRecurringPayments();await loadChatUpdates();await loadDues();await loadCashback();await loadLedgerSource();initTheme();render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and local transaction sources could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
+
 async function loadLedgerSource(){
   // GitHub card master is the ONLY source of card details.
   // The master is embedded in this GitHub-served release so the installed PWA
@@ -2597,7 +2599,7 @@ async function loadLedgerSource(){
 
   window.__cardMasterSource='github';
   window.__cardMasterLoaded=validSource.length>0;
-  window.__cardMasterVersion='v124';
+  window.__cardMasterVersion='v125';
   return {cardCount:cards.length,fileLoaded:!!localData,source:'github'};
 }if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>init(),{once:true}); else init();
 
