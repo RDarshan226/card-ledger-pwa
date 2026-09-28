@@ -179,6 +179,12 @@ async function applyLocalDataState(data){
   // those entries by cardId/card name so the Ledger is not empty.
   if(typeof cards!=='undefined' && Array.isArray(d.cards) && d.cards.length){
     cards=attachFlatEntriesToCards(d.cards,d.entries);
+    // Make the normalized object itself canonical too. This is important on
+    // Brave/Android fallback import: otherwise the imported transactions are
+    // attached to the live cards only, while the fallback copy still contains
+    // empty cards[].entries and becomes empty again after reopening.
+    d.cards=cloneJson(cards,[]);
+    d.entries=flattenCardEntries(cards);
   }
   if(typeof dueBills!=='undefined' && Array.isArray(d.dueBills)) dueBills=cloneJson(d.dueBills,[]);
   if(typeof cashbackLog!=='undefined' && Array.isArray(d.cashback)) cashbackLog=cloneJson(d.cashback,[]);
