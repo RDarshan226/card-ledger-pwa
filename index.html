@@ -1286,7 +1286,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v139';
+const APP_VERSION='v140';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2632,7 +2632,7 @@ async function loadLedgerSource(){
       const master=await res.json();
       if(master && Array.isArray(master.cards) && master.cards.length) GITHUB_CARD_MASTER=master.cards;
     }
-  }catch(e){ console.warn('Could not refresh card-master.json; using embedded master snapshot.',e); }
+  }catch(e){ GITHUB_CARD_MASTER=[]; console.warn('Could not load card-master.json.',e); }
 
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
