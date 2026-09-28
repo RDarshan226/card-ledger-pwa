@@ -1319,7 +1319,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v153';
+const APP_VERSION='v154';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2707,14 +2707,14 @@ function renderRecoveryScreen(){
   const app=document.getElementById('app'); if(!app)return;
   const reason=String(window.__localDataRecoveryReason||'Your previous local data file is unavailable.');
   app.innerHTML='<div class="panel" style="max-width:720px;margin:20px auto;">'+
-    '<h2>⚠️ Your Card Ledger data needs recovery</h2>'+\
-    '<div class="sub" style="margin:10px 0 16px;">The app could not safely open the local JSON data source. <strong>Your transaction data has NOT been replaced with a blank ledger.</strong></div>'+\
-    '<div class="sub" style="margin-bottom:16px;">Reason: '+reason.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'+\
-    '<div class="chat-actions" style="display:flex;flex-wrap:wrap;gap:10px;">'+\
-    '<button class="tab-btn" onclick="selectLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not open data file\'))">📂 Select / recover JSON file</button>'+\
-    '<button class="tab-btn" onclick="document.getElementById(\'recovery-backup-input\').click()">↩ Import backup</button>'+\
-    '<button class="tab-btn" onclick="if(confirm(\'No previous data will be recovered. Start a new empty Card Ledger?\')){window.__localDataRecoveryRequired=false;createLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not create data file\'))}">＋ Start new ledger</button>'+\
-    '</div><input id="recovery-backup-input" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">'+\
+    '<h2>⚠️ Your Card Ledger data needs recovery</h2>'+
+    '<div class="sub" style="margin:10px 0 16px;">The app could not safely open the local JSON data source. <strong>Your transaction data has NOT been replaced with a blank ledger.</strong></div>'+
+    '<div class="sub" style="margin-bottom:16px;">Reason: '+reason.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'+
+    '<div class="chat-actions" style="display:flex;flex-wrap:wrap;gap:10px;">'+
+    '<button class="tab-btn" onclick="selectLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not open data file\'))">📂 Select / recover JSON file</button>'+
+    '<button class="tab-btn" onclick="document.getElementById(\'recovery-backup-input\').click()">↩ Import backup</button>'+
+    '<button class="tab-btn" onclick="if(confirm(\'No previous data will be recovered. Start a new empty Card Ledger?\')){window.__localDataRecoveryRequired=false;createLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not create data file\'))}">＋ Start new ledger</button>'+
+    '</div><input id="recovery-backup-input" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">'+
     '<div class="sub" style="margin-top:18px;">Do not choose “Start new ledger” if you are trying to recover previous transactions.</div></div>';
 }
 
