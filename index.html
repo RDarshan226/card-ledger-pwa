@@ -426,7 +426,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v163 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v164 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -2674,7 +2674,7 @@ async function encryptTransactionEntry(){
     await mergeChatEntries();
     ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     render(); refreshChatCardOptions(); updateTransactionEntryFields();
-    showToast('Transaction saved to local data file');
+    showToast('Transaction saved to GitHub');
   }catch(e){showToast(e.message||'Could not save transaction');}
 }
 
@@ -2693,7 +2693,7 @@ function populateEntryCardDropdown(){
 function renderQuickEntryPanel(){
   return `
     <div class="panel chat-panel" id="chatSyncPanel">
-      <div class="chat-head"><div><div class="chat-kicker">LOCAL ENTRY</div><div class="tab-heading-row"><h2>🧾 Add transaction</h2></div><div class="sub">One transaction can be an Expense or Card repayment, with Cashback and Charge paid recorded as additional fields.</div></div><div class="secure-badge">LOCAL JSON</div></div>
+      <div class="chat-head"><div><div class="chat-kicker">GITHUB ENTRY</div><div class="tab-heading-row"><h2>🧾 Add transaction</h2></div><div class="sub">One transaction can be an Expense or Card repayment, with Cashback and Charge paid recorded as additional fields.</div></div><div class="secure-badge">GITHUB</div></div>
       <div class="chat-section entry-section">
         <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details are stored together in the selected local JSON file</small></div></div>
         <div class="chat-form chat-form-stacked">
@@ -2707,7 +2707,7 @@ function renderQuickEntryPanel(){
           <div class="field"><label>Charge paid ₹ <em>optional</em></label><input id="entry-charge" type="number" inputmode="decimal" min="0" placeholder="0"></div>
           <div class="field"><label>Note <em>optional</em></label><input id="entry-note" type="text" placeholder="Optional note"></div>
         </div>
-        <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry(true)">💾 Save to local data file</button>
+        <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry(true)">☁️ Save to GitHub</button>
       </div>
       <div class="chat-output"><div class="chat-output-head"><div><strong>Local data storage</strong><small>The transaction is written directly to the selected JSON file. Nothing is encrypted or uploaded.</small></div><span>JSON</span></div></div>
     </div>`;
