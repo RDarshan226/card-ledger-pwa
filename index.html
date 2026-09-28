@@ -2626,6 +2626,14 @@ async function loadLedgerSource(){
   // every tab sees exactly the same card objects on the next render.
   await loadData();
 
+  try{
+    const res=await fetch('./card-master.json?ts='+Date.now(),{cache:'no-store'});
+    if(res.ok){
+      const master=await res.json();
+      if(master && Array.isArray(master.cards) && master.cards.length) GITHUB_CARD_MASTER=master.cards;
+    }
+  }catch(e){ console.warn('Could not refresh card-master.json; using embedded master snapshot.',e); }
+
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
   const existing=Array.isArray(cards)?cards:[];
@@ -3105,13 +3113,28 @@ async function saveDues(){
 }
 function billFor(cardId, dueDate){ return dueBills.find(b=>b.cardId===cardId && b.dueDate===dueDate); }
 function nextBillingDateFor(card){
-  const day=parseDay(STATEMENT_DAY_OVERRIDES[card.name] || card.billingDate); if(!day) return null;
+  const day=parseDay(masterBillingDate(card)); if(!day) return null;
   const now=new Date(); let y=now.getFullYear(),m=now.getMonth();
   let candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));
   if(candidate<new Date(now.getFullYear(),now.getMonth(),now.getDate())){m++;if(m>11){m=0;y++;}candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));}
   return candidate.toISOString().slice(0,10);
 }
 function projectedLedgerDues(){return cards.filter(c=>!c.isDebit&&!c.feeOnly).map(c=>({card:c,amount:Math.max(0,utilised(c)),billDate:nextBillingDateFor(c)})).filter(x=>x.amount>0&&x.billDate).sort((a,b)=>a.billDate.localeCompare(b.billDate));}
+function githubMasterCards(){
+  return Array.isArray(GITHUB_CARD_MASTER) ? GITHUB_CARD_MASTER.filter(c=>c&&typeof c==='object'&&c.name) : [];
+}
+function githubMasterCardByName(name){
+  const key=String(name||'').trim().toLowerCase();
+  return githubMasterCards().find(c=>String(c.name||'').trim().toLowerCase()===key)||null;
+}
+function masterBillingDate(card){
+  const master=githubMasterCardByName(card&&card.name);
+  return master ? String(master.billingDate||'').trim() : '';
+}
+function masterCardIdByName(name){
+  const master=githubMasterCardByName(name);
+  return master ? String(master.id||'') : '';
+}
 function renderDues(){
   const app=document.getElementById('app'); if(!app) return;
   if(!Array.isArray(cards)) cards=[];
@@ -3120,7 +3143,7 @@ function renderDues(){
   const monthVal=window._dueMonth||now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const [y,m]=monthVal.split('-').map(Number);
   const monthStart=y+'-'+String(m).padStart(2,'0')+'-01',monthEnd=y+'-'+String(m).padStart(2,'0')+'-'+String(daysInMonth(y,m-1)).padStart(2,'0');
-  const cardsForDues=cards.filter(c=>!c.isDebit&&!c.feeOnly);
+  const cardsForDues=githubMasterCards().filter(c=>!c.isDebit&&!c.feeOnly);
   const monthBills=dueBills.filter(b=>b.dueDate>=monthStart&&b.dueDate<=monthEnd).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
   const outstanding=monthBills.reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0),total=monthBills.reduce((s,b)=>s+b.totalDue,0),paid=monthBills.reduce((s,b)=>s+Math.min(b.totalDue,b.paidAmount),0);
   const overdue=monthBills.filter(b=>dueStatus(b).cls==='overdue').reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0);
@@ -3141,7 +3164,10 @@ function setDueMonth(v){ window._dueMonth=v; render(); }
 function changeDueMonth(delta){ const [y,m]=(window._dueMonth||`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`).split('-').map(Number); const d=new Date(y,m-1+delta,1); setDueMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
 async function addBill(evt){
   evt.stopPropagation();
-  const card=findCard(document.getElementById('new-bill-card').value); if(!card)return;
+  const selectedMaster=githubMasterCards().find(c=>String(c.id)===String(document.getElementById('new-bill-card').value));
+  if(!selectedMaster)return;
+  const card=findCard(masterCardIdByName(selectedMaster.name)) || findCard(selectedMaster.name);
+  if(!card)return;
   const statementDate=document.getElementById('new-bill-stmt').value;
   const dueDate=document.getElementById('new-bill-due').value;
   const total=Number(document.getElementById('new-bill-total').value)||0;
@@ -3658,8 +3684,8 @@ function toggleAccountMonth(key){ openAccountMonth = (openAccountMonth===key) ? 
 function renderAccounts(){
   const app = document.getElementById('app');
   if(!app) return;
-  if(!Array.isArray(cards)) cards=[];
-  const trackable = cards.filter(c => !c.isDebit && !c.isInsurance);
+  // Account Ages reads card identity and opening dates exclusively from card-master.json.
+  const trackable = githubMasterCards().filter(c => !c.isDebit && !c.isInsurance);
   const unset = trackable.filter(c => !c.openedMonth || !c.openedYear);
   const set = trackable.filter(c => c.openedMonth && c.openedYear);
 
@@ -3691,7 +3717,7 @@ function renderAccounts(){
         <div class="detail-wrap ${isOpen?'open':''}">
           <div class="detail-inner"><div class="detail">
             <table class="statement"><tbody>
-              ${groups[key].map(c=>`<tr><td>${c.name}</td><td>${c.isDebit?'Debit':'Credit'}</td><td>${c.network||''}${c.tier?' '+c.tier:''}</td><td>${c.bin||''}</td><td><button class="del" onclick="editCardDetails('${c.id}');event.stopPropagation()">edit</button><button class="del" onclick="removeCardUI('${c.id}',event)">remove</button></td></tr>`).join('')}
+              ${groups[key].map(c=>`<tr><td>${c.name}</td><td>${c.isDebit?'Debit':'Credit'}</td><td>${c.network||''}${c.tier?' '+c.tier:''}</td><td>${c.bin||''}</td><td><span class="row-sub">GitHub master</span></td></tr>`).join('')}
             </tbody></table>
           </div></div>
         </div>
@@ -3701,43 +3727,14 @@ function renderAccounts(){
   }
   html += `</div>`;
 
-  if(editingCardId){ const ec=findCard(editingCardId); if(ec) html += '<div class="panel"><h2>Edit card</h2>'+cardEditorHTML(ec,'accounts')+'</div>'; }
+  html += '<div class="panel"><h2>GitHub card master</h2><div class="sub">Card information and opening dates are read directly from card-master.json. Update that file to change them.</div></div>';
   html += addCardFormHTML('accounts');
-
-  html += `<div class="panel">
-    <h2>Set opening dates</h2>
-    <div class="sub">${unset.length ? 'Cards without a date yet' : 'All cards have a date set'}</div>`;
-  if(unset.length){
-    html += '<div>';
-    unset.forEach(c => {
-      html += `<div class="dues-row" style="grid-template-columns:1fr auto auto;">
-        <div class="dues-name">${c.name}</div>
-        <select id="om-${c.id}">
-          <option value="">Month</option>
-          ${MONTH_NAMES.map((mn,i)=>`<option value="${i+1}">${mn}</option>`).join('')}
-        </select>
-        <select id="oy-${c.id}" onchange="setOpenedDate('${c.id}')">
-          <option value="">Year</option>
-          ${Array.from({length: 15}, (_,i)=> new Date().getFullYear()-i).map(y=>`<option value="${y}">${y}</option>`).join('')}
-        </select>
-      </div>`;
-    });
-    html += '</div>';
-  }
-  html += `</div>`;
 
   app.innerHTML = html;
 }
 
-async function setOpenedDate(id){
-  const c = findCard(id);
-  const m = Number(document.getElementById('om-'+id).value);
-  const y = Number(document.getElementById('oy-'+id).value);
-  if(!m || !y) return;
-  c.openedMonth = m; c.openedYear = y;
-  await saveData(); render();
-  showToast('Opening date saved');
-}
+async function setOpenedDate(){ showToast('Opening dates are managed in card-master.json'); }
+
 async function hasRecoveryPackage(){return true;}
 async function downloadBackup(){
   try{
