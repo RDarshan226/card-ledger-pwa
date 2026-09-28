@@ -1319,7 +1319,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v145';
+const APP_VERSION='v146';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2633,7 +2633,7 @@ function renderQuickEntryPanel(){
         <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details are stored together in the selected local JSON file</small></div></div>
         <div class="chat-form chat-form-stacked">
           <div class="field"><label>Main type</label><select id="entry-main-type" onchange="updateTransactionEntryFields()"><option value="expense">Expense</option><option value="repayment">Card repayment</option></select></div>
-          <div class="field"><label>Card</label><select id="entry-card" class="entry-card"></select></div>
+          <div class="field"><label>Card</label><select id="entry-card" class="entry-card" onchange="updateTransactionEntryFields()">(Array.isArray(cards)?cards:[]).filter(c=>c&&c.name&&!c.isInsurance).map(c=>'<option value="'+String(c.name).replace(/"/g,"&quot;")+'">'+c.name+'</option>').join('')}</select></div>
           <div class="field"><label>Date</label><input id="entry-date" type="date" value="${todayStr()}"></div>
           <div class="field"><label>Amount ₹</label><input id="entry-amount" type="number" inputmode="decimal" placeholder="2500"></div>
           <div class="field"><label>Category</label><input id="entry-category" type="text" list="cat-list" placeholder="Shopping / Bills"></div>
