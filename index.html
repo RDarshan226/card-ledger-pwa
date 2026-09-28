@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v97</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v98</g/div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v97</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v97"></script>
+<script src="./github-sync-core.js?v=v98"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -860,7 +860,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v97';
+const APP_VERSION='v98';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1494,17 +1494,173 @@ function initTheme(){
 }
 
 function renderLedger(){
-  const app=document.getElementById('app');
-  if(!app)return;
-  const visible=cards.filter(c=>!removedCardNames.has(c.name));
-  let html='<div class="cover"><div class="cover-figures"><div class="cover-line"><span class="cover-label">Outstanding</span><span class="cover-amt total">'+inr(visible.reduce((s,c)=>s+Math.max(0,utilised(c)),0))+'</span></div><div class="cover-line"><span class="cover-label">Cards tracked</span><span class="cover-amt">'+visible.filter(c=>!c.isDebit&&!c.feeOnly).length+'</span></div></div><div class="stamp"><span class="pct">'+(visible.filter(c=>!c.isDebit&&!c.feeOnly).length)+'</span><span class="cap">cards</span></div></div>';
-  html+='<div class="toolbar"><input type="text" placeholder="Search cards..." value="'+String(filterText||"").replace(/"/g,"&quot;")+'" oninput="filterText=this.value;renderLedger()"><button class="sort-btn '+(sortByUtil?'active':'')+'" onclick="sortByUtil=!sortByUtil;renderLedger()">Sort by utilisation</button></div><div class="ledger">';
-  let list=visible.filter(c=>!c.feeOnly);
-  if(filterText)list=list.filter(c=>String(c.name).toLowerCase().includes(String(filterText).toLowerCase()));
-  if(sortByUtil)list=list.slice().sort((a,b)=>utilised(b)-utilised(a));
-  list.forEach(c=>{const used=Math.max(0,utilised(c)),limit=Number(c.limit)||0,pct=limit?Math.min(100,used/limit*100):0;html+='<div class="row '+(c.isDebit?'debit-row':'')+'"><div class="row-main"><div><div class="row-name">'+c.name+'</div><div class="row-sub">'+(c.billingDate?'Statement '+c.billingDate:'')+'</div></div><div class="row-amts"><div class="row-used">'+inr(used)+'</div><div class="row-limit">'+(limit?inr(limit)+' limit':'Debit / tracking')+'</div></div><div class="bar-track"><div class="bar-fill '+(pct>=90?'over':pct>=70?'warn':'')+'" style="width:'+pct+'%"></div></div></div></div>';});
-  if(!list.length)html+='<div class="empty-analysis">No cards match the current search.</div>';
-  html+='</div>';app.innerHTML=html;
+  const app = document.getElementById('app');
+  const creditCards = cards.filter(c=>!c.isDebit && !c.feeOnly && !removedCardNames.has(c.name));
+  const debitCards = cards.filter(c=>c.name===DEBIT_CARD_NAME && !removedCardNames.has(c.name));
+
+  const seenGroups = new Set();
+  let totalLimit = 0;
+  creditCards.forEach(c=>{
+    if(c.limitGroup){ if(seenGroups.has(c.limitGroup)) return; seenGroups.add(c.limitGroup); }
+    totalLimit += Number(c.limit)||0;
+  });
+  const totalUsed = creditCards.reduce((sum,c)=>sum + Math.max(0,utilised(c)),0);
+  const pct = totalLimit > 0 ? Math.round((totalUsed/totalLimit)*100) : 0;
+  const over = pct >= 90;
+
+  let html = `<div class="cover">
+    <div class="cover-figures">
+      <div class="cover-line"><span class="cover-label">Total utilised</span><span class="cover-amt total">${inr(totalUsed)}</span></div>
+      <div class="cover-line"><span class="cover-label">Combined limit</span><span class="cover-amt">${inr(totalLimit)}</span></div>
+      <div class="cover-line"><span class="cover-label">Headroom left</span><span class="cover-amt">${inr(Math.max(0,totalLimit-totalUsed))}</span></div>
+    </div>
+    <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
+  </div>`;
+
+  html += `<div class="toolbar">
+    <input type="text" id="search" placeholder="Find a card…" value="${String(filterText||'').replace(/"/g,'&quot;')}" oninput="onSearch(this.value)">
+    <button class="sort-btn ${sortByUtil?'active':''}" onclick="toggleSort()">${sortByUtil ? '⇅ Sorted by usage' : '⇅ Sort by usage'}</button>
+  </div>`;
+
+  let list = creditCards.filter(c=>c.name.toLowerCase().includes(String(filterText||'').toLowerCase()));
+  if(sortByUtil){
+    list=[...list].sort((a,b)=>{
+      const pa=(Number(a.limit)||0)>0?utilised(a)/Number(a.limit):-1;
+      const pb=(Number(b.limit)||0)>0?utilised(b)/Number(b.limit):-1;
+      return pb-pa;
+    });
+  }
+
+  html += '<div class="ledger">';
+  if(!list.length) html += '<div class="no-match">No card matches that search.</div>';
+  list.forEach(card=>{ html += renderRow(card); });
+  html += '</div>';
+
+  if(!filterText){
+    html += `<div class="section-label">Tracked for analysis only</div><div class="ledger">${debitCards.map(c=>renderRow(c)).join('')}</div>`;
+  }
+
+  app.innerHTML=html;
+}
+
+function renderRow(card){
+  const used=utilised(card);
+  const limit=Number(card.limit)||0;
+  const cardPct=(!card.isDebit && limit>0)?Math.min(100,Math.max(0,(used/limit)*100)):0;
+  const barClass=cardPct>=90?'over':cardPct>=70?'warn':'';
+  const isOpen=openId===card.id;
+  return `<div class="row ${card.isDebit?'debit-row':''}" data-id="${card.id}">
+    <div class="row-main" onclick="toggleCard('${card.id}')">
+      <div>
+        <div class="row-name">${card.name}${card.limitGroup?'<span class="share-tag">shared limit</span>':''}</div>
+        <div class="row-sub">${card.isDebit?'Not counted in credit utilisation':(card.billingDate?'Bill date · '+card.billingDate:'Bill date not set')}</div>
+      </div>
+      <div class="row-amts">
+        <div class="row-used">${inr(Math.max(0,used))}<span class="chevron ${isOpen?'open':''}">▼</span></div>
+        <div class="row-limit">${card.isDebit?'lifetime logged':'of '+(limit>0?inr(limit):'limit not set')}</div>
+      </div>
+      ${card.isDebit?'':`<div class="bar-track"><div class="bar-fill ${barClass}" style="width:${cardPct}%"></div></div>`}
+    </div>
+    <div class="detail-wrap ${isOpen?'open':''}">
+      <div class="detail-inner"><div class="detail">${renderDetail(card)}</div></div>
+    </div>
+  </div>`;
+}
+
+function renderDetail(card){
+  const entries=[...(card.entries||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  let rows=entries.map(e=>{
+    const isEditing=editingEntry && editingEntry.cardId===card.id && editingEntry.entryId===e.id;
+    if(isEditing){
+      return `<tr class="editing-entry">
+        <td><input type="date" id="edit-date-${card.id}-${e.id}" value="${e.date}"></td>
+        <td><select id="edit-type-${card.id}-${e.id}" onchange="toggleEditEntryFields('${card.id}','${e.id}')"><option value="txn" ${e.type==='txn'?'selected':''}>Spend</option>${card.isDebit?'':`<option value="repay" ${e.type==='repay'?'selected':''}>Repayment</option>`}</select></td>
+        <td><input type="number" id="edit-amt-${card.id}-${e.id}" value="${e.amount}" min="0" step="0.01"></td>
+        <td><input list="cat-list" id="edit-cat-${card.id}-${e.id}" value="${e.category||''}" placeholder="Category"><input type="text" id="edit-plat-${card.id}-${e.id}" value="${e.platform||''}" placeholder="Platform"></td>
+        <td><input type="text" id="edit-note-${card.id}-${e.id}" value="${e.note||''}" placeholder="Note"></td>
+        <td><button class="edit-btn" onclick="saveEditedEntry('${card.id}','${e.id}',event)">save</button><button class="del" onclick="cancelEditEntry(event)">cancel</button></td>
+      </tr>`;
+    }
+    return `<tr class="${e._fresh?'fresh':''}">
+      <td>${e.date}</td><td><span class="tag ${e.type}">${e.type==='txn'?'Spend':'Repaid'}</span></td>
+      <td class="${e.type==='txn'?'amt-txn':'amt-repay'}">${e.type==='txn'?'+':'−'}${inr(e.amount)}</td>
+      <td>${e.type==='txn'&&e.category?`<span class="cat-chip">${e.category}</span>`:''}${e.platform?` <span class="plat-chip">${e.platform}</span>`:''}</td>
+      <td>${e.note||''}</td>
+      <td><button class="edit-btn" onclick="startEditEntry('${card.id}','${e.id}',event)">edit</button><button class="del" onclick="deleteEntry('${card.id}','${e.id}',event)">remove</button></td>
+    </tr>`;
+  }).join('');
+
+  const limitFields=card.isDebit?'':`<div class="detail-grid">
+    <div class="field"><label>Credit limit (₹)</label><input type="number" value="${card.limit||''}" placeholder="e.g. 50000" onchange="updateLimit('${card.id}',this.value)">${card.limitGroup?'<div class="share-note">Shared limit — editing this updates both cards.</div>':''}</div>
+    <div class="field"><label>Billing date</label><input type="text" value="${card.billingDate||''}" placeholder="e.g. 5th of month" onchange="updateBillingDate('${card.id}',this.value)"></div>
+  </div>`;
+
+  return `${limitFields}
+    <div class="entry-form">
+      <select id="type-${card.id}" onchange="toggleEntryFields('${card.id}')"><option value="txn">Spend</option>${card.isDebit?'':'<option value="repay">Repayment</option>'}</select>
+      <input type="date" id="date-${card.id}" value="${todayStr()}"><input type="number" id="amt-${card.id}" placeholder="Amount ₹">
+      <input list="cat-list" id="cat-${card.id}" placeholder="Category"><input type="text" id="plat-${card.id}" placeholder="Platform (optional)"><input type="text" id="note-${card.id}" placeholder="Note (optional)">
+      <button onclick="addEntry('${card.id}',event)">Log</button>
+    </div>
+    ${entries.length?`<table class="statement"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Category / Platform</th><th>Note</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty-stmt">No entries logged yet for this card.</div>'}`;
+}
+
+function toggleEntryFields(id){
+  const type=document.getElementById('type-'+id).value;
+  const catEl=document.getElementById('cat-'+id), platEl=document.getElementById('plat-'+id);
+  const disabled=type==='repay';
+  if(catEl){catEl.disabled=disabled;catEl.style.opacity=disabled?.4:1;}
+  if(platEl){platEl.disabled=disabled;platEl.style.opacity=disabled?.4:1;}
+}
+function toggleCard(id){openId=(openId===id)?null:id;render();}
+function onSearch(v){filterText=v;render();const el=document.getElementById('search');if(el){el.focus();el.setSelectionRange(v.length,v.length);}}
+function toggleSort(){sortByUtil=!sortByUtil;render();}
+function findCard(id){return cards.find(c=>c.id===id);}
+
+async function updateLimit(id,val){
+  const c=findCard(id); if(!c)return;
+  const newLimit=Number(val)||0;
+  if(c.limitGroup) cards.forEach(x=>{if(x.limitGroup===c.limitGroup)x.limit=newLimit;}); else c.limit=newLimit;
+  await saveData(); render(); showToast('Limit updated');
+}
+async function updateBillingDate(id,val){
+  const c=findCard(id); if(!c)return;
+  c.billingDate=val; await saveData(); render(); showToast('Billing date updated');
+}
+async function addEntry(id,evt){
+  if(evt)evt.stopPropagation();
+  const type=document.getElementById('type-'+id).value;
+  const date=document.getElementById('date-'+id).value||todayStr();
+  const amtInput=document.getElementById('amt-'+id);
+  const amount=Number(amtInput.value);
+  const category=document.getElementById('cat-'+id).value.trim();
+  const platform=document.getElementById('plat-'+id).value.trim();
+  const note=document.getElementById('note-'+id).value.trim();
+  if(!amount||amount<=0){amtInput.focus();return;}
+  const c=findCard(id); if(!c)return;
+  c.entries=c.entries||[];
+  c.entries.push({id:uid(),type,date,amount,note,category:type==='txn'?category:'',platform:type==='txn'?platform:'',_fresh:true});
+  await saveData(); render(); showToast(type==='txn'?'Spend logged':'Repayment logged');
+}
+async function deleteEntry(cardId,entryId,evt){
+  if(evt)evt.stopPropagation();
+  const c=findCard(cardId); if(!c)return;
+  c.entries=c.entries.filter(e=>e.id!==entryId); await saveData(); render(); showToast('Entry removed');
+}
+function startEditEntry(cardId,entryId,evt){if(evt)evt.stopPropagation();editingEntry={cardId,entryId};render();}
+function cancelEditEntry(evt){if(evt)evt.stopPropagation();editingEntry=null;render();}
+async function saveEditedEntry(cardId,entryId,evt){
+  if(evt)evt.stopPropagation();
+  const c=findCard(cardId); if(!c)return;
+  const e=c.entries.find(x=>x.id===entryId); if(!e)return;
+  e.date=document.getElementById('edit-date-'+cardId+'-'+entryId).value||e.date;
+  e.type=document.getElementById('edit-type-'+cardId+'-'+entryId).value;
+  e.amount=Number(document.getElementById('edit-amt-'+cardId+'-'+entryId).value)||0;
+  e.category=document.getElementById('edit-cat-'+cardId+'-'+entryId).value.trim();
+  e.platform=document.getElementById('edit-plat-'+cardId+'-'+entryId).value.trim();
+  e.note=document.getElementById('edit-note-'+cardId+'-'+entryId).value.trim();
+  e._fresh=false;
+  editingEntry=null; await saveData(); render(); showToast('Entry updated');
 }
 function renderAnalysis(){
   const app=document.getElementById('app'); if(!app)return;
