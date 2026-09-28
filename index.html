@@ -394,7 +394,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v124 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v134 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -1286,7 +1286,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v133';
+const APP_VERSION='v134';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1579,12 +1579,17 @@ async function removeCardUI(id,evt){
 }
 async function loadRecurringPayments(){
   try{
+    const local=await readLocalDataFile();
+    if(local && Array.isArray(local.recurringPayments)){ recurringPayments=local.recurringPayments; return; }
+  }catch(e){}
+  try{
     const r=await window.storage.get(RECURRING_PAYMENTS_KEY,false);
     if(r&&r.value) recurringPayments=JSON.parse(r.value);
   }catch(e){recurringPayments=[];}
   if(!Array.isArray(recurringPayments)) recurringPayments=[];
 }
 async function saveRecurringPayments(){
+  try{ if(await saveUnifiedLocalData()){ try{await writeAutoBackup();}catch(_e){} return true; } }catch(e){}
   try{await window.storage.set(RECURRING_PAYMENTS_KEY,JSON.stringify(recurringPayments),false);await writeAutoBackup();return true;}
   catch(e){showToast('Could not save recurring payments');return false;}
 }
@@ -1868,11 +1873,17 @@ async function loadData(){
 
 async function loadCashback(){
   try{
-    if(window.storage && typeof window.storage.get === 'function'){
-      const res = await window.storage.get(CASHBACK_KEY, false);
-      if(res && res.value){ cashbackLog = JSON.parse(res.value); }
-    }
-  }catch(e){ /* no data yet, or storage unavailable */ }
+    const local=await readLocalDataFile();
+    if(local && Array.isArray(local.cashback)){ cashbackLog=local.cashback; }
+    else throw new Error('no local cashback');
+  }catch(e){
+    try{
+      if(window.storage && typeof window.storage.get === 'function'){
+        const res = await window.storage.get(CASHBACK_KEY, false);
+        if(res && res.value){ cashbackLog = JSON.parse(res.value); }
+      }
+    }catch(_e){ /* no data yet, or storage unavailable */ }
+  }
 
   if(!cashbackLog || !cashbackLog.length){
     cashbackLog = [{
@@ -1909,7 +1920,7 @@ async function writeAutoBackup(){
 }
 
 async function saveCashback(){
-  if(!window.storage || typeof window.storage.set !== 'function') return false;
+  try{ if(await saveUnifiedLocalData()){ try{await writeAutoBackup();}catch(_e){} return true; } }catch(e){}
   for(let attempt=0; attempt<2; attempt++){
     try{ await window.storage.set(CASHBACK_KEY, JSON.stringify(cashbackLog), false); await writeAutoBackup(); return true; }
     catch(e){ if(attempt===1) showToast('Could not save — changes kept for this session only'); }
@@ -1918,19 +1929,17 @@ async function saveCashback(){
 }
 
 async function saveData(){
-  if(!window.storage || typeof window.storage.set !== 'function'){
-    showToast('Storage unavailable — changes kept for this session only');
-    return false;
-  }
-  for(let attempt=0; attempt<2; attempt++){
-    try{
+  let localSaved=false;
+  try{ localSaved=await saveUnifiedLocalData(); }catch(e){}
+  try{
+    if(window.storage && typeof window.storage.set === 'function'){
       await window.storage.set(STORAGE_KEY, JSON.stringify(cards), false);
-      // Rolling backup: latest complete card data, refreshed on every successful change.
       try{ await writeAutoBackup(); }catch(_e){}
       return true;
     }
-    catch(e){ if(attempt===1) showToast('Could not save — changes kept for this session only'); }
-  }
+  }catch(e){}
+  if(localSaved) return true;
+  showToast('Could not save — changes kept for this session only');
   return false;
 }
 
@@ -3020,6 +3029,10 @@ function normaliseBills(){
 }
 async function loadDues(){
   try{
+    const local=await readLocalDataFile();
+    if(local && Array.isArray(local.dueBills)){ dueBills=local.dueBills; normaliseBills(); return; }
+  }catch(e){}
+  try{
     if(window.storage && typeof window.storage.get === 'function'){
       const r=await window.storage.get(DUES_KEY,false);
       if(r&&r.value) dueBills=JSON.parse(r.value);
@@ -3028,8 +3041,15 @@ async function loadDues(){
   normaliseBills();
 }
 async function saveDues(){
-  if(!window.storage || typeof window.storage.set !== 'function') return false;
-  try{ await window.storage.set(DUES_KEY,JSON.stringify(dueBills),false); try{ await writeAutoBackup(); }catch(_e){} return true; }catch(e){ showToast('Could not save dues'); return false; }
+  try{ if(await saveUnifiedLocalData()){ try{await writeAutoBackup();}catch(_e){} return true; } }catch(e){}
+  try{
+    if(window.storage && typeof window.storage.set === 'function'){
+      await window.storage.set(DUES_KEY,JSON.stringify(dueBills),false);
+      try{await writeAutoBackup();}catch(_e){}
+      return true;
+    }
+  }catch(e){}
+  showToast('Could not save dues'); return false;
 }
 function billFor(cardId, dueDate){ return dueBills.find(b=>b.cardId===cardId && b.dueDate===dueDate); }
 function nextBillingDateFor(card){
@@ -3669,7 +3689,7 @@ async function setOpenedDate(id){
 async function hasRecoveryPackage(){return true;}
 async function downloadBackup(){
   try{
-    const payload={version:3,app:'Card Ledger PWA',savedAt:new Date().toISOString(),cards,dueBills,cashbackLog};
+    const payload={version:4,app:'Card Ledger PWA',savedAt:new Date().toISOString(),cards,dueBills,cashbackLog,recurringPayments};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='card-ledger-backup-'+todayStr()+'.json';a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),1000);showToast('Plain backup downloaded');
