@@ -265,8 +265,16 @@ async function selectLocalDataFile(){
     const file=await handle.getFile();
     const text=await file.text();
     let data;
-    if(!text.trim()) data=normaliseLocalData(null);
-    else{try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}}
+    if(!text.trim()) throw new Error('The selected file is empty.');
+    try{
+      const parsed=JSON.parse(text);
+      if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)) throw new Error('JSON root must be an object.');
+      const hasLedgerShape=Array.isArray(parsed.cards)||Array.isArray(parsed.entries)||Array.isArray(parsed.dueBills)||Array.isArray(parsed.cashback)||Array.isArray(parsed.cashbackLog)||Array.isArray(parsed.recurringPayments);
+      if(!hasLedgerShape) throw new Error('This JSON does not contain Card Ledger data.');
+      data=normaliseLocalData(parsed);
+    }catch(e){
+      throw new Error(e&&e.message?e.message:'The selected file is not valid Card Ledger JSON.');
+    }
     await saveLocalDataHandle(handle);
     const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
     await applyLocalDataState(data);
@@ -293,8 +301,16 @@ async function selectLocalDataFile(){
         if(!file) throw new Error('No data file selected.');
         const text=await file.text();
         let data;
-        if(!text.trim()) data=normaliseLocalData(null);
-        else{try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}}
+        if(!text.trim()) throw new Error('The selected file is empty.');
+        try{
+          const parsed=JSON.parse(text);
+          if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)) throw new Error('JSON root must be an object.');
+          const hasLedgerShape=Array.isArray(parsed.cards)||Array.isArray(parsed.entries)||Array.isArray(parsed.dueBills)||Array.isArray(parsed.cashback)||Array.isArray(parsed.cashbackLog)||Array.isArray(parsed.recurringPayments);
+          if(!hasLedgerShape) throw new Error('This JSON does not contain Card Ledger data.');
+          data=normaliseLocalData(parsed);
+        }catch(e){
+          throw new Error(e&&e.message?e.message:'The selected file is not valid Card Ledger JSON.');
+        }
         await clearLocalDataHandle();
         const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
         await applyLocalDataState(data);
