@@ -1399,8 +1399,8 @@ async function mergeChatEntries(){
   const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
   const normalizeName=name=>String(name||'').trim().toLowerCase().replace(/\s+/g,' ');
   const findLedgerCard=name=>{
-    const exact=cards.find(c=>c.name===name); if(exact)return exact;
-    const n=normalizeName(name); return cards.find(c=>normalizeName(c.name)===n);
+    const exact=(Array.isArray(cards)?cards:[]).find(c=>c&&c.name===name); if(exact)return exact;
+    const n=normalizeName(name); return (Array.isArray(cards)?cards:[]).find(c=>c&&normalizeName(c.name)===n);
   };
   for(const p of feed){
     if(!p||!p.id)continue;
@@ -2725,7 +2725,7 @@ async function loadLedgerSource(){
 
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
-  const existing=Array.isArray(cards)?cards:[];
+  const existing=(Array.isArray(cards)?cards:[]).filter(c=>c&&typeof c==='object');
   const byName=new Map(existing.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
 
   const merged=validSource.map((src,i)=>{
@@ -2756,6 +2756,7 @@ async function loadLedgerSource(){
 
   // Keep locally-created cards that are not yet in the GitHub master.
   existing.forEach(old=>{
+    if(!old||typeof old!=='object') return;
     const key=String(old.name||'').trim().toLowerCase();
     if(!merged.some(c=>String(c.name||'').trim().toLowerCase()===key)) merged.push(old);
   });
@@ -2763,7 +2764,7 @@ async function loadLedgerSource(){
 
   // Re-link saved statements to the current card IDs after the metadata merge.
   try{
-    const cardByName=new Map(cards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
+    const cardByName=new Map((Array.isArray(cards)?cards:[]).filter(c=>c&&typeof c==='object').map(c=>[String(c.name||'').trim().toLowerCase(),c]));
     if(Array.isArray(dueBills)) dueBills.forEach(b=>{
       const card=cardByName.get(String(b.cardName||'').trim().toLowerCase());
       if(card)b.cardId=card.id;
