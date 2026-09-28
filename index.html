@@ -142,7 +142,10 @@
     color:#FFFFFF!important;
     box-shadow:0 0 16px rgba(0,191,255,.38)!important;
   }
-  .tab-btn.active{ background:linear-gradient(135deg,#00E5FF,#008CFF); color:#FFFFFF; border-color:rgba(0,207,255,.9); box-shadow:0 0 16px rgba(0,191,255,.38); }
+  /* Navigation tabs: inactive and active states are deliberately different. */
+  .tabs > .tab-btn{ background:linear-gradient(135deg,#172231,#26364A)!important; color:#B8C7D9!important; border:1px solid rgba(0,207,255,.22)!important; box-shadow:none!important; }
+  .tabs > .tab-btn:hover{ background:linear-gradient(135deg,#203247,#30475F)!important; color:#EAF8FF!important; border-color:rgba(0,207,255,.48)!important; }
+  .tabs > .tab-btn.active{ background:linear-gradient(135deg,#00E5FF,#008CFF)!important; color:#FFFFFF!important; border-color:rgba(0,207,255,.95)!important; box-shadow:0 0 16px rgba(0,191,255,.38)!important; }
 
   /* ---- Hero / cover ---- */
   .cover{
