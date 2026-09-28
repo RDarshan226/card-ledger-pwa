@@ -1,5 +1,5 @@
 {
-  "version": "v126",
+  "version": "v127",
   "source": "GitHub unified card master — single authoritative source for card details used by all card-related tabs",
   "cards": [
     {
@@ -35,7 +35,7 @@
     {
       "id": "github-card-2-idfc-power",
       "name": "IDFC Power+",
-      "limit": 30000,
+      "limit": 40000,
       "billingDate": "19th",
       "limitGroup": null,
       "network": "RuPay",
@@ -66,7 +66,7 @@
       "id": "github-card-4-au-ixigo",
       "name": "AU Ixigo",
       "limit": 15000,
-      "billingDate": "18th",
+      "billingDate": "19th",
       "limitGroup": null,
       "network": "Visa",
       "tier": "",
@@ -171,7 +171,7 @@
       "id": "github-card-11-rbl-duet",
       "name": "RBL Duet",
       "limit": 46000,
-      "billingDate": "",
+      "billingDate": "1st",
       "limitGroup": null,
       "network": "Mastercard",
       "tier": "World",
@@ -201,7 +201,7 @@
       "id": "github-card-13-axis-neo",
       "name": "Axis Neo",
       "limit": 69000,
-      "billingDate": "10th",
+      "billingDate": "22nd",
       "limitGroup": null,
       "network": "RuPay",
       "tier": "Platinum",
@@ -260,7 +260,7 @@
     {
       "id": "github-card-17-hdfc-moneyback",
       "name": "HDFC MoneyBack+",
-      "limit": 0,
+      "limit": 45000,
       "billingDate": "22nd",
       "limitGroup": null,
       "network": "",
