@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v124</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v136</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v124</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v136</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -394,11 +394,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v135 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v136 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v135"></script>
+<script src="./github-sync-core.js?v=v136"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -1286,7 +1286,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v135';
+const APP_VERSION='v136';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2519,7 +2519,8 @@ function renderSecureUpdate(){return `
 <div class="panel secure-update-panel">
 <div class="chat-head"><div><div class="chat-kicker">LOCAL DATA</div><div class="tab-heading-row"><h2>📁 Card Ledger Data File</h2></div><div class="sub">Choose the single local file that stores your Card Ledger private data. Cards, transactions, repayments, fees, upcoming dues, cashback/charges, recurring payments and account details use this same file.</div></div><div class="secure-badge">LOCAL ONLY</div></div>
 <div class="chat-section"><div class="chat-section-title"><span class="chat-icon">📄</span><div><strong>Unified Card Ledger data file</strong><small>One plain JSON file is used locally for the complete private tracker. No GitHub upload or remote data feed is used.</small></div></div>
-<div class="chat-actions"><button class="tab-btn" onclick="createLocalDataFileUI()">＋ Create data file</button><button class="tab-btn" onclick="selectLocalDataFileUI()">📂 Select existing file</button><button class="tab-btn" onclick="disconnectLocalDataFileUI()">Remove selection</button></div>
+<div class="chat-actions"><button class="tab-btn" onclick="createLocalDataFileUI()">＋ Create data file</button><button class="tab-btn" onclick="selectLocalDataFileUI()">📂 Select existing file</button><button class="tab-btn" onclick="document.getElementById('braveDataImport').click()">📥 Import JSON</button><button class="tab-btn" onclick="disconnectLocalDataFileUI()">Remove selection</button></div>
+<input id="braveDataImport" type="file" accept="application/json,.json" style="display:none" onchange="importBraveDataFile(event)">
 <div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div></div>
 <div class="disclaimer">Your Card Ledger private data stays in the local JSON file you choose. The PWA remembers the file location on this device.</div>
 </div>`;}
@@ -2527,6 +2528,30 @@ async function createLocalDataFileUI(){
   try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}
 }
 async function selectLocalDataFileUI(){try{await selectLocalDataFile();}catch(e){showToast(e.message||'Could not select data file');}}
+async function importBraveDataFile(event){
+  try{
+    const file=event&&event.target&&event.target.files&&event.target.files[0];
+    if(!file){showToast('No JSON file selected');return;}
+    const text=await file.text();
+    let data;
+    try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}
+    await clearLocalDataHandle();
+    await applyLocalDataState(data);
+    if(!Array.isArray(data.cards)||!data.cards.length){
+      data={...data,cards:buildUnifiedLocalData().cards};
+    }
+    data=normaliseLocalData(data);
+    await writeLocalDataFallback(data);
+    window.__localUnifiedDataLoaded=Array.isArray(data.cards)&&data.cards.length>0;
+    if(typeof loadDues==='function') await loadDues();
+    if(typeof loadCashback==='function') await loadCashback();
+    if(typeof loadRecurringPayments==='function') await loadRecurringPayments();
+    if(typeof render==='function') await render();
+    await refreshLocalDataStatus('✓ Imported '+file.name+' · '+data.cards.length+' cards · '+data.entries.length+' entries');
+    showToast('Imported '+data.cards.length+' cards and '+data.entries.length+' entries from '+file.name);
+  }catch(e){showToast(e.message||'Could not import JSON file');}
+  finally{if(event&&event.target)event.target.value='';}
+}
 async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect data file');}}
 async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
 
