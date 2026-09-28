@@ -13,6 +13,8 @@ const LOCAL_DATA_FALLBACK_ID='fallback-data';
 const LOCAL_DATA_VERSION=4;
 let localDataDbPromise;
 let chatUpdates={version:LOCAL_DATA_VERSION,entries:[],cashback:[]};
+window.__localDataRecoveryRequired=false;
+window.__localDataRecoveryReason='';
 
 function openLocalDataDB(){
   if(localDataDbPromise) return localDataDbPromise;
@@ -209,9 +211,13 @@ async function loadLocalDataState(){
   try{
     const d=await readLocalDataFile();
     await applyLocalDataState(d);
+    window.__localDataRecoveryRequired=false;
+    window.__localDataRecoveryReason='';
     return d;
   }catch(e){
     window.__localUnifiedDataLoaded=false;
+    window.__localDataRecoveryRequired=true;
+    window.__localDataRecoveryReason=e&&e.message?e.message:'The local Card Ledger data could not be opened.';
     return null;
   }
 }
