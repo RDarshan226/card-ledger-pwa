@@ -2068,8 +2068,6 @@ function renderLedger(){
     <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
   </div>`;
 
-  html += addCardFormHTML('ledger');
-
   html += `<div class="toolbar">
     <input type="text" id="search" placeholder="Find a card…" value="${String(filterText||'').replace(/"/g,'&quot;')}" oninput="onSearch(this.value)">
     <button class="sort-btn ${sortByUtil?'active':''}" onclick="toggleSort()">${sortByUtil ? '⇅ Sorted by usage' : '⇅ Sort by usage'}</button>
@@ -2092,6 +2090,8 @@ function renderLedger(){
   if(!filterText){
     html += `<div class="section-label">Tracked for analysis only</div><div class="ledger">${debitCards.map(c=>renderRow(c)).join('')}</div>`;
   }
+
+  html += addCardFormHTML('ledger');
 
   app.innerHTML=html;
   }catch(error){
