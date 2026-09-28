@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v109</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v110</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v109</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v110</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v109"></script>
+<script src="./github-sync-core.js?v=v110"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -860,7 +860,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v109';
+const APP_VERSION='v110';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1627,8 +1627,7 @@ function renderDetail(card){
   </div>`;
   return `${editingCardId===card.id ? cardEditorHTML(card,'ledger') : cardEditActions}
     ${limitFields}
-    <div class="entry-form">`);
-
+    <div class="entry-form">
       <select id="type-${card.id}" onchange="toggleEntryFields('${card.id}')"><option value="txn">Spend</option>${card.isDebit?'':'<option value="repay">Repayment</option>'}</select>
       <input type="date" id="date-${card.id}" value="${todayStr()}"><input type="number" id="amt-${card.id}" placeholder="Amount ₹">
       <input list="cat-list" id="cat-${card.id}" placeholder="Category"><input type="text" id="plat-${card.id}" placeholder="Platform (optional)"><input type="text" id="note-${card.id}" placeholder="Note (optional)">
