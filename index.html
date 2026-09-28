@@ -2592,7 +2592,7 @@ function renderSecureUpdate(){return `
 <div class="panel secure-update-panel">
 <div class="chat-head"><div><div class="chat-kicker">GITHUB DATA</div><div class="tab-heading-row"><h2>☁️ Card Ledger GitHub Data</h2></div><div class="sub">Transactions and the unified Card Ledger data are stored directly in the repository.</div></div><div class="secure-badge">GITHUB</div></div>
 <div class="chat-section"><div class="chat-section-title"><span class="chat-icon">☁️</span><div><strong>Repository data file</strong><small>Plain JSON at card-ledger-data.json</small></div></div>
-<div class="chat-actions"><button class="tab-btn" onclick="connectGitHubDataUI()">🔗 Connect GitHub</button><button class="tab-btn" onclick="refreshGitHubDataUI()">↻ Refresh from GitHub</button><button class="tab-btn" onclick="clearGitHubConnectionUI()">Remove GitHub connection</button></div>
+<div class="chat-actions"><button class="tab-btn" onclick="connectGitHub().then(()=>location.reload()).catch(e=>showToast(e.message||'Could not connect GitHub'))">🔗 Connect GitHub</button><button class="tab-btn" onclick="connectGitHub().then(()=>location.reload()).catch(e=>showToast(e.message||'Could not refresh GitHub'))">↻ Refresh from GitHub</button><button class="tab-btn" onclick="disconnectGitHub().then(()=>location.reload()).catch(e=>showToast(e.message||'Could not clear GitHub connection'))">Remove GitHub connection</button></div>
 <div id="githubStatus" class="github-status" style="margin-top:10px;">○ GitHub data not connected</div>
 <div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 Data: card-ledger-data.json<br>📍 Repository: RDarshan226/card-ledger-pwa</div></div>
 <div class="disclaimer">The ledger data is plain JSON in GitHub. It is not encrypted.</div>
