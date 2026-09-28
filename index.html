@@ -426,7 +426,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v160 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v161 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -2590,12 +2590,12 @@ async function loadLocalDataFileDetails(){
 }
 function renderSecureUpdate(){return `
 <div class="panel secure-update-panel">
-<div class="chat-head"><div><div class="chat-kicker">LOCAL DATA</div><div class="tab-heading-row"><h2>📁 Card Ledger Data File</h2></div><div class="sub">Choose the single local file that stores your Card Ledger private data. Cards, transactions, repayments, fees, upcoming dues, cashback/charges, recurring payments and account details use this same file.</div></div><div class="secure-badge">LOCAL ONLY</div></div>
-<div class="chat-section"><div class="chat-section-title"><span class="chat-icon">📄</span><div><strong>Unified Card Ledger data file</strong><small>One plain JSON file is used locally for the complete private tracker. No GitHub upload or remote data feed is used.</small></div></div>
-<div class="chat-actions"><button class="tab-btn" onclick="createLocalDataFileUI()">＋ Create data file</button><button class="tab-btn" onclick="selectLocalDataFileUI()">📂 Select existing file</button><button class="tab-btn" onclick="document.getElementById('braveDataImport').click()">📥 Import JSON</button><button class="tab-btn" onclick="disconnectLocalDataFileUI()">Remove selection</button></div>
-<input id="braveDataImport" type="file" accept="application/json,.json" style="display:none" onchange="importBraveDataFile(event)">
-<div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div><div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 File: Not selected<br>📍 Location: Not available</div></div>
-<div class="disclaimer">Your Card Ledger private data stays in the local JSON file you choose. The PWA remembers the file location on this device.</div>
+<div class="chat-head"><div><div class="chat-kicker">GITHUB DATA</div><div class="tab-heading-row"><h2>☁️ Card Ledger GitHub Data</h2></div><div class="sub">Transactions and the unified Card Ledger data are stored directly in the repository.</div></div><div class="secure-badge">GITHUB</div></div>
+<div class="chat-section"><div class="chat-section-title"><span class="chat-icon">☁️</span><div><strong>Repository data file</strong><small>Plain JSON at card-ledger-data.json</small></div></div>
+<div class="chat-actions"><button class="tab-btn" onclick="connectGitHubDataUI()">🔗 Connect GitHub</button><button class="tab-btn" onclick="refreshGitHubDataUI()">↻ Refresh from GitHub</button><button class="tab-btn" onclick="clearGitHubConnectionUI()">Remove GitHub connection</button></div>
+<div id="githubStatus" class="github-status" style="margin-top:10px;">○ GitHub data not connected</div>
+<div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 Data: card-ledger-data.json<br>📍 Repository: RDarshan226/card-ledger-pwa</div></div>
+<div class="disclaimer">The ledger data is plain JSON in GitHub. It is not encrypted.</div>
 </div>`;}
 function updateLocalDataFileDetails(){
   const el=document.getElementById('localDataFileDetails');
