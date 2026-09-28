@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v123</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v124</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v123</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v124</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -394,11 +394,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v123 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v124 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v123"></script>
+<script src="./github-sync-core.js?v=v124"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,430 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v123';
+const GITHUB_CARD_MASTER = [
+  {
+    "id": "github-card-0-sbi-simplyclick",
+    "name": "SBI SimplyClick",
+    "limit": 74000,
+    "billingDate": "7th",
+    "limitGroup": "sbi-shared",
+    "network": "Visa",
+    "tier": "Platinum",
+    "bin": "433588",
+    "openedMonth": 8,
+    "openedYear": 2025,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-1-idfc-millenia",
+    "name": "IDFC Millenia",
+    "limit": 30000,
+    "billingDate": "1st",
+    "limitGroup": null,
+    "network": "Visa",
+    "tier": "",
+    "bin": "439992",
+    "openedMonth": 7,
+    "openedYear": 2025,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-2-idfc-power",
+    "name": "IDFC Power+",
+    "limit": 30000,
+    "billingDate": "19th",
+    "limitGroup": null,
+    "network": "RuPay",
+    "tier": "Select",
+    "bin": "653019",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-3-slice-credit-card",
+    "name": "Slice Credit Card",
+    "limit": 127500,
+    "billingDate": "21st",
+    "limitGroup": null,
+    "network": "RuPay",
+    "tier": "Select",
+    "bin": "653097",
+    "openedMonth": 7,
+    "openedYear": 2025,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-4-au-ixigo",
+    "name": "AU Ixigo",
+    "limit": 15000,
+    "billingDate": "18th",
+    "limitGroup": null,
+    "network": "Visa",
+    "tier": "",
+    "bin": "406977",
+    "openedMonth": 12,
+    "openedYear": 2025,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-5-kotak-811-dd",
+    "name": "Kotak 811 DD",
+    "limit": 9000,
+    "billingDate": "6th",
+    "limitGroup": null,
+    "network": "RuPay",
+    "tier": "Platinum",
+    "bin": "356115",
+    "openedMonth": 7,
+    "openedYear": 2025,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-6-amazon-icici",
+    "name": "Amazon ICICI",
+    "limit": 150000,
+    "billingDate": "12th",
+    "limitGroup": null,
+    "network": "Visa",
+    "tier": "",
+    "bin": "431581",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-7-yes-bank-finbooster",
+    "name": "Yes Bank Finbooster",
+    "limit": 115000,
+    "billingDate": "20th",
+    "limitGroup": null,
+    "network": "Visa",
+    "tier": "Platinum",
+    "bin": "404638",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-8-jupiter-edge",
+    "name": "Jupiter Edge+",
+    "limit": 30000,
+    "billingDate": "27th",
+    "limitGroup": null,
+    "network": "RuPay",
+    "tier": "",
+    "bin": "652998",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-9-bob-uni-goldx-visa",
+    "name": "BOB Uni GoldX (Visa)",
+    "limit": 65000,
+    "billingDate": "7th",
+    "limitGroup": "bob-unigoldx",
+    "network": "Visa",
+    "tier": "",
+    "bin": "406584",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-10-bob-uni-goldx-rupay",
+    "name": "BOB Uni GoldX (RuPay)",
+    "limit": 65000,
+    "billingDate": "7th",
+    "limitGroup": "bob-unigoldx",
+    "network": "RuPay",
+    "tier": "",
+    "bin": "406584",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-11-rbl-duet",
+    "name": "RBL Duet",
+    "limit": 46000,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "Mastercard",
+    "tier": "World",
+    "bin": "524373",
+    "openedMonth": 4,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-12-roar-bank",
+    "name": "Roar Bank",
+    "limit": 100000,
+    "billingDate": "1st",
+    "limitGroup": null,
+    "network": "RuPay",
+    "tier": "Platinum",
+    "bin": "652974",
+    "openedMonth": 8,
+    "openedYear": 2025,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-13-axis-neo",
+    "name": "Axis Neo",
+    "limit": 69000,
+    "billingDate": "10th",
+    "limitGroup": null,
+    "network": "RuPay",
+    "tier": "Platinum",
+    "bin": "653047",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-14-dcb-niyo-credit",
+    "name": "DCB Niyo Credit",
+    "limit": 5000,
+    "billingDate": "21st",
+    "limitGroup": null,
+    "network": "Visa",
+    "tier": "Platinum",
+    "bin": "453159",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-15-sbi-tata-neu-plus",
+    "name": "SBI Tata Neu Plus",
+    "limit": 74000,
+    "billingDate": "7th",
+    "limitGroup": "sbi-shared",
+    "network": "Visa",
+    "tier": "Signature",
+    "bin": "480251",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-16-indusind-visa-platinum",
+    "name": "IndusInd Visa Platinum",
+    "limit": 59000,
+    "billingDate": "22nd",
+    "limitGroup": null,
+    "network": "Visa",
+    "tier": "Platinum",
+    "bin": "490819",
+    "openedMonth": 8,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-17-hdfc-moneyback",
+    "name": "HDFC MoneyBack+",
+    "limit": 0,
+    "billingDate": "22nd",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 9,
+    "openedYear": 2026,
+    "isDebit": false,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-18-debit-other-spends",
+    "name": "Debit / Other Spends",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": false,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-19-kotak-811-super-card",
+    "name": "Kotak 811 Super Card",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-20-dbs-visa-classic",
+    "name": "DBS Visa Classic",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-21-au-rupay-platinum",
+    "name": "AU Rupay Platinum",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-22-pnb-rupay-platinum",
+    "name": "PNB Rupay Platinum",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-23-karnataka-bank-visa-debit",
+    "name": "Karnataka Bank Visa Debit",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-24-idfc-visa-classic",
+    "name": "IDFC Visa Classic",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-25-union-bank-rupay-platinum",
+    "name": "Union Bank Rupay Platinum",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-26-dcb-niyo-debit",
+    "name": "DCB Niyo Debit",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": false
+  },
+  {
+    "id": "github-card-27-health-insurance",
+    "name": "Health Insurance",
+    "limit": 0,
+    "billingDate": "",
+    "limitGroup": null,
+    "network": "",
+    "tier": "",
+    "bin": "",
+    "openedMonth": 0,
+    "openedYear": 0,
+    "isDebit": true,
+    "feeOnly": true,
+    "isInsurance": true
+  }
+];
+
+const APP_VERSION='v124';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2110,41 +2533,26 @@ function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleStri
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
 async function loadLedgerSource(){
-  // GitHub is the single authoritative source for card master data.
-  // The selected local JSON file is used ONLY for transactions/cashback.
-  let master=null;
-  try{
-    const res=await fetch('./card-master.json?v='+encodeURIComponent(APP_VERSION),{cache:'no-store'});
-    if(!res.ok) throw new Error('card-master.json HTTP '+res.status);
-    master=await res.json();
-  }catch(e){
-    console.error('GitHub card master could not be loaded',e);
-  }
-
-  const sourceCards=master&&Array.isArray(master.cards)?master.cards:[];
+  // GitHub card master is the ONLY source of card details.
+  // The master is embedded in this GitHub-served release so the installed PWA
+  // cannot fall back to the old local IndexedDB card database.
+  const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
+  const names=validSource.map(c=>String(c.name));
 
-  // Never read card records from IndexedDB here. IndexedDB is not a card-data source.
-  // The fallback below uses the card definitions shipped in this GitHub release only.
-  const sourceNames=validSource.map(c=>String(c.name));
-  const names=sourceNames.length?sourceNames:[...DEFAULT_CARDS,DEBIT_CARD_NAME];
-
-  cards=names.map((name,i)=>{
-    const src=validSource.find(c=>String(c.name)===name)||{};
-    const d=DEFAULTS[name]||{};
-    const info=ACCOUNT_INFO[name]||{};
-    const feeOnly=!!src.feeOnly;
-    const isDebit=src.isDebit!=null?!!src.isDebit:feeOnly||name===DEBIT_CARD_NAME;
-    const id=String(src.id||('github-card-'+i+'-'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')));
+  cards=validSource.map((src,i)=>{
+    const d=DEFAULTS[src.name]||{};
+    const info=ACCOUNT_INFO[src.name]||{};
+    const id=String(src.id||('github-card-'+i));
     return {
       ...src,
       id,
-      name,
-      limit:Number(src.limit)!=null?Number(src.limit):Number(d.limit)||0,
+      name:String(src.name),
+      limit:Number(src.limit)||0,
       billingDate:String(src.billingDate||d.billingDate||''),
       limitGroup:src.limitGroup||d.limitGroup||null,
-      isDebit,
-      feeOnly,
+      isDebit:!!src.isDebit,
+      feeOnly:!!src.feeOnly,
       isInsurance:!!src.isInsurance,
       network:String(src.network!=null?src.network:info.network||''),
       tier:String(src.tier!=null?src.tier:info.tier||''),
@@ -2152,17 +2560,11 @@ async function loadLedgerSource(){
       openedMonth:Number(src.openedMonth||info.openedMonth)||0,
       openedYear:Number(src.openedYear||info.openedYear)||0,
       entries:[],
-      fee:blankFeeForCard(name)
+      fee:blankFeeForCard(src.name)
     };
   });
 
-  // Preserve the dedicated "Debit / Other Spends" account if the master file
-  // does not contain it, without using any local card database.
-  if(!cards.some(c=>c.name===DEBIT_CARD_NAME)){
-    cards.push({id:'github-card-debit-other-spends',name:DEBIT_CARD_NAME,limit:0,billingDate:'',limitGroup:null,isDebit:true,feeOnly:false,isInsurance:false,entries:[],fee:blankFeeForCard(DEBIT_CARD_NAME)});
-  }
-
-  // Local file is transaction-only. It cannot create, modify or remove cards.
+  // The only local data read here is the transaction JSON file.
   let localData=null;
   try{ localData=await readLocalDataFile(); }catch(e){ console.warn('Ledger transaction file unavailable',e); }
 
@@ -2173,15 +2575,10 @@ async function loadLedgerSource(){
       const card=cardByName.get(String(e.card).trim().toLowerCase());
       if(!card)return;
       card.entries.push({
-        id:e.id||uid(),
-        type:e.type==='repay'?'repay':'txn',
-        date:e.date||todayStr(),
-        amount:Number(e.amount)||0,
-        category:e.category||'',
-        platform:e.platform||'',
-        note:e.note||'',
-        cashback:Number(e.cashback)||0,
-        charge:Number(e.charge)||0,
+        id:e.id||uid(), type:e.type==='repay'?'repay':'txn',
+        date:e.date||todayStr(), amount:Number(e.amount)||0,
+        category:e.category||'', platform:e.platform||'', note:e.note||'',
+        cashback:Number(e.cashback)||0, charge:Number(e.charge)||0,
         rewardRatePct:e.rewardRatePct!=null?e.rewardRatePct:null,
         rewardAmountOverride:e.rewardAmountOverride!=null?e.rewardAmountOverride:null,
         surchargeAmount:e.surchargeAmount!=null?e.surchargeAmount:null
@@ -2189,49 +2586,20 @@ async function loadLedgerSource(){
     });
   }
 
-  // Local due records may contain old card IDs. Re-link them by card name,
-  // but never use local records to populate or alter card master data.
+  // Due records remain local, but are linked to the GitHub card IDs by name.
   try{
-    const byOldName=new Map(cards.map(c=>[String(c.name).trim().toLowerCase(),c.id]));
-    dueBills.forEach(b=>{
-      const name=String(b.cardName||'').trim().toLowerCase();
-      if(name&&byOldName.has(name)) b.cardId=byOldName.get(name);
+    const byName=new Map(cards.map(c=>[String(c.name).trim().toLowerCase(),c.id]));
+    if(Array.isArray(dueBills)) dueBills.forEach(b=>{
+      const id=byName.get(String(b.cardName||'').trim().toLowerCase());
+      if(id)b.cardId=id;
     });
   }catch(e){}
 
   window.__cardMasterSource='github';
-  window.__cardMasterVersion=master&&master.version?master.version:APP_VERSION;
   window.__cardMasterLoaded=validSource.length>0;
+  window.__cardMasterVersion='v124';
   return {cardCount:cards.length,fileLoaded:!!localData,source:'github'};
-}async function init(){
-  // Ledger is bootstrapped from its two authoritative sources. Do not call
-  // loadData() afterwards because that legacy routine can rebuild/overwrite cards.
-  try{ initTheme(); setVersionUI(); await loadRemovedCardNames(); await loadLedgerSource(); render(); }
-  catch(e){
-    console.error('Ledger source initialization failed',e);
-    try{
-      if(!Array.isArray(cards)||!cards.length){
-        cards=DEFAULT_CARDS.map(name=>({id:uid(),name,limit:Number((DEFAULTS[name]||{}).limit)||0,billingDate:(DEFAULTS[name]||{}).billingDate||'',limitGroup:(DEFAULTS[name]||{}).limitGroup||null,isDebit:false,entries:[],fee:null}));
-      }
-      render();
-    }catch(_e){ console.error('Ledger fallback render failed',_e); }
-  }
-
-  // Auxiliary datasets load independently and never replace Ledger card records.
-  try{ await loadRecurringPayments(); }catch(e){ console.error('Recurring data load failed',e); }
-  try{ await loadChatUpdates(); }catch(e){ console.error('Chat data load failed',e); }
-  try{ await loadCashback(); }catch(e){ console.error('Cashback load failed',e); }
-  try{ await loadDues(); }catch(e){ console.error('Dues load failed',e); }
-
-  try{ updateTabSelection(); renderActiveTab(); }catch(e){ console.error('Final tab render failed',e); }
-  try{ refreshChatCardOptions(); }catch(e){}
-  try{ refreshLocalDataStatus(); }catch(e){}
-  try{ registerNotificationBackgroundCheck(); }catch(e){}
-  setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},1200);
-  setInterval(()=>{try{checkStatementNotifications();}catch(e){}},15*60*1000);
-  try{ schedulePowerPlusTestNotification(); }catch(e){}
-}
-if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>init(),{once:true}); else init();
+}if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>init(),{once:true}); else init();
 
 /* One-time PWA notification test: IDFC Power+ and SBI SimplyClick at the next 01:44 local time. */
 function schedulePowerPlusTestNotification(){
