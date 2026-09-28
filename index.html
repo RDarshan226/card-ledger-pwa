@@ -1650,12 +1650,16 @@ async function loadData(){
   await loadRemovedCardNames();
   await loadRecurringPayments();
   await loadChatUpdates();
-  try{
-    if(window.storage && typeof window.storage.get === 'function'){
-      const res = await window.storage.get(STORAGE_KEY, false);
-      if(res && res.value){ cards = JSON.parse(res.value); }
-    }
-  }catch(e){ /* no data yet, or storage unavailable */ }
+  let unifiedLocal=null;
+  try{ unifiedLocal=await loadLocalDataState(); }catch(e){ unifiedLocal=null; }
+  if(!unifiedLocal){
+    try{
+      if(window.storage && typeof window.storage.get === 'function'){
+        const res = await window.storage.get(STORAGE_KEY, false);
+        if(res && res.value){ cards = JSON.parse(res.value); }
+      }
+    }catch(e){ /* no data yet, or storage unavailable */ }
+  }
 
   if(!cards || !cards.length){
     cards = DEFAULT_CARDS.map(name => ({ id: uid(), name, limit: 0, billingDate: '', limitGroup: null, isDebit:false, entries: [], fee: null }));
@@ -2585,8 +2589,8 @@ async function loadLedgerSource(){
     const d=DEFAULTS[src.name]||{};
     const info=ACCOUNT_INFO[src.name]||{};
     return {
-      ...old,
       ...src,
+      ...old,
       id:String(old.id||src.id||('github-card-'+i)),
       name:String(src.name),
       limit:Number(src.limit)||Number(old.limit)||0,
@@ -3702,7 +3706,9 @@ async function restoreBackup(evt){
     if(!Array.isArray(data.cards))throw new Error('Invalid backup');
     if(!confirm('Restore this backup? Current local app data will be replaced.'))return;
     cards=data.cards;dueBills=Array.isArray(data.dueBills)?data.dueBills:[];cashbackLog=Array.isArray(data.cashbackLog)?data.cashbackLog:[];
-    await window.storage.set(STORAGE_KEY,JSON.stringify(cards));await window.storage.set(DUES_KEY,JSON.stringify(dueBills));await window.storage.set(CASHBACK_KEY,JSON.stringify(cashbackLog));
+    if(Array.isArray(data.recurringPayments)) recurringPayments=data.recurringPayments;
+    try{await saveUnifiedLocalData();}catch(_e){}
+    try{await window.storage.set(STORAGE_KEY,JSON.stringify(cards));await window.storage.set(DUES_KEY,JSON.stringify(dueBills));await window.storage.set(CASHBACK_KEY,JSON.stringify(cashbackLog));}catch(_e){}
     render();showToast('Backup restored');
   }catch(e){showToast('Invalid backup file');}
   evt.target.value='';
