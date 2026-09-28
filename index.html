@@ -2554,13 +2554,45 @@ function render(){
   return renderActiveTab(epoch);
 }
 
+function updateLocalDataFileDetails(){
+  const el=document.getElementById('localDataFileDetails');
+  if(!el)return;
+  const h=typeof loadLocalDataHandle==='function'?null:null;
+  if(window.__localDataFileName) el.innerHTML='📄 File: '+String(window.__localDataFileName).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(window.__localDataFileLocation||'Device file storage').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+}
+async function loadLocalDataFileDetails(){
+  const el=document.getElementById('localDataFileDetails');
+  if(!el)return;
+  try{
+    const h=typeof loadLocalDataHandle==='function'?await loadLocalDataHandle():null;
+    if(h){
+      window.__localDataFileName=h.name||'Card Ledger data';
+      window.__localDataFileLocation='Selected file on this device (folder path is not exposed by Android browser)';
+      updateLocalDataFileDetails();
+      return;
+    }
+    const fallback=typeof readLocalDataFallback==='function'?await readLocalDataFallback():null;
+    if(fallback){
+      window.__localDataFileName='Browser local storage copy';
+      window.__localDataFileLocation='IndexedDB on this device — no physical JSON path';
+    }else{
+      window.__localDataFileName='Not selected';
+      window.__localDataFileLocation='Not available';
+    }
+    updateLocalDataFileDetails();
+  }catch(e){
+    window.__localDataFileName='Not selected';
+    window.__localDataFileLocation='Not available';
+    updateLocalDataFileDetails();
+  }
+}
 function renderSecureUpdate(){return `
 <div class="panel secure-update-panel">
 <div class="chat-head"><div><div class="chat-kicker">LOCAL DATA</div><div class="tab-heading-row"><h2>📁 Card Ledger Data File</h2></div><div class="sub">Choose the single local file that stores your Card Ledger private data. Cards, transactions, repayments, fees, upcoming dues, cashback/charges, recurring payments and account details use this same file.</div></div><div class="secure-badge">LOCAL ONLY</div></div>
 <div class="chat-section"><div class="chat-section-title"><span class="chat-icon">📄</span><div><strong>Unified Card Ledger data file</strong><small>One plain JSON file is used locally for the complete private tracker. No GitHub upload or remote data feed is used.</small></div></div>
 <div class="chat-actions"><button class="tab-btn" onclick="createLocalDataFileUI()">＋ Create data file</button><button class="tab-btn" onclick="selectLocalDataFileUI()">📂 Select existing file</button><button class="tab-btn" onclick="document.getElementById('braveDataImport').click()">📥 Import JSON</button><button class="tab-btn" onclick="disconnectLocalDataFileUI()">Remove selection</button></div>
 <input id="braveDataImport" type="file" accept="application/json,.json" style="display:none" onchange="importBraveDataFile(event)">
-<div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div><div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 File: Not selected<br>📍 Location: Not available</div></div>
+<div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div><div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 File: Loading…<br>📍 Location: Checking device file access…</div><div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 File: Not selected<br>📍 Location: Not available</div></div>
 <div class="disclaimer">Your Card Ledger private data stays in the local JSON file you choose. The PWA remembers the file location on this device.</div>
 </div>`;}
 function updateLocalDataFileDetails(){
