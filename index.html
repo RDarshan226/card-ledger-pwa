@@ -414,6 +414,8 @@ let editingEntry = null; // { cardId, entryId } while an existing transaction is
 let filterText = '';
 let sortByUtil = false;
 let activeTab = 'ledger';
+let renderEpoch = 0;
+let dataReadyPromise = null;
 
 const CATEGORY_OPTIONS = ["Grocery","Food & Dining","Shopping","Travel","Transport","Fuel","Entertainment","Bills & Utilities","Health & Pharmacy","Rent","Personal Care","Subscriptions","Education","Investment","Other"];
 
@@ -2408,8 +2410,9 @@ function buildInsights(rows, p){
 
 function setTab(t){
   activeTab=t;
+  const epoch=++renderEpoch;
   updateTabSelection();
-  renderActiveTab();
+  return renderActiveTab(epoch);
 }
 function updateTabSelection(){
   const map={ledger:'tab-ledger',entry:'tab-entry',analysis:'tab-analysis',fees:'tab-fees',dues:'tab-dues',recurring:'tab-recurring',cashback:'tab-cashback',rewards:'tab-rewards',accounts:'tab-accounts',alerts:'tab-alerts',secure:'tab-secure'};
@@ -2445,18 +2448,19 @@ async function renderCoreTabData(tab){
     console.error('Card Ledger core tab preparation error',e);
   }
 }
-function renderActiveTab(){
+function renderActiveTab(epoch=renderEpoch){
   const name=activeTab.charAt(0).toUpperCase()+activeTab.slice(1);
+  const guard=()=>epoch===renderEpoch && activeTab===name.toLowerCase();
   try{
-    if(activeTab==='ledger') return renderCoreTabData('ledger').then(()=>renderLedger()).catch(e=>{console.error(e);tabFailure('Ledger',e);});
+    if(activeTab==='ledger') return renderCoreTabData('ledger').then(()=>{if(guard()) renderLedger();}).catch(e=>{if(guard()){console.error(e);tabFailure('Ledger',e);}});
     if(activeTab==='entry') return document.getElementById('app').innerHTML=renderQuickEntryPanel();
     if(activeTab==='analysis') return renderAnalysis();
     if(activeTab==='fees') return renderFees();
-    if(activeTab==='dues') return renderCoreTabData('dues').then(()=>renderDues()).catch(e=>{console.error(e);tabFailure('Dues',e);});
+    if(activeTab==='dues') return renderCoreTabData('dues').then(()=>{if(guard()) renderDues();}).catch(e=>{if(guard()){console.error(e);tabFailure('Dues',e);}});
     if(activeTab==='recurring') return renderRecurring();
     if(activeTab==='cashback') return renderCashback();
     if(activeTab==='rewards') return renderRewards();
-    if(activeTab==='accounts') return renderCoreTabData('accounts').then(()=>renderAccounts()).catch(e=>{console.error(e);tabFailure('Account Ageing',e);});
+    if(activeTab==='accounts') return renderCoreTabData('accounts').then(()=>{if(guard()) renderAccounts();}).catch(e=>{if(guard()){console.error(e);tabFailure('Account Ageing',e);}});
     if(activeTab==='alerts') return renderAlerts();
     if(activeTab==='secure'){
       document.getElementById('app').innerHTML=renderSecureUpdate();
@@ -2470,8 +2474,9 @@ function renderActiveTab(){
 
 function render(){
   document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+  const epoch=++renderEpoch;
   updateTabSelection();
-  renderActiveTab();
+  return renderActiveTab(epoch);
 }
 
 function renderSecureUpdate(){return `
@@ -2551,7 +2556,7 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0}); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
-async function init(){try{setVersionUI();await loadDeletedEntries();await loadRemovedCardNames();await loadRecurringPayments();await loadChatUpdates();await loadDues();await loadCashback();await loadLedgerSource();initTheme();render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and local transaction sources could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
+async function init(){try{setVersionUI();await loadDeletedEntries();await loadRemovedCardNames();await loadRecurringPayments();await loadChatUpdates();await loadDues();await loadCashback();dataReadyPromise=loadLedgerSource();await dataReadyPromise;initTheme();await render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and local transaction sources could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
 
 async function loadLedgerSource(){
   // CORE HYDRATION: local saved records contain private entries/fees; the
@@ -2613,7 +2618,7 @@ async function loadLedgerSource(){
 
   window.__cardMasterSource='github';
   window.__cardMasterLoaded=validSource.length>0;
-  window.__cardMasterVersion='v131';
+  window.__cardMasterVersion='v132';
   window.__coreDataDiagnostics={
     sourceCards:validSource.length,
     mergedCards:cards.length,
