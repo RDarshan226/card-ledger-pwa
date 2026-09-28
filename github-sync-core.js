@@ -161,7 +161,7 @@ async function loadLocalDataState(){
   }
 }
 async function selectLocalDataFile(){
-  if(!window.showOpenFilePicker) throw new Error('This browser does not support direct local-file access. Open the PWA in Chrome/Edge on a supported device.');
+  if(!window.showOpenFilePicker) throw new Error('This browser does not support direct local-file access. Open the PWA in Brave, Chrome, or Edge with file access enabled.');
   const picked=await window.showOpenFilePicker({
     multiple:false,
     types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}],
@@ -195,7 +195,7 @@ async function selectLocalDataFile(){
   return data;
 }
 async function createLocalDataFile(){
-  if(!window.showSaveFilePicker)throw new Error('This browser does not support direct local-file access. Open the PWA in Chrome/Edge on a supported device.');
+  if(!window.showSaveFilePicker)throw new Error('This browser does not support direct local-file access. Open the PWA in Brave, Chrome, or Edge with file access enabled.');
   const handle=await window.showSaveFilePicker({
     suggestedName:'card-ledger-data.json',
     types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}]
