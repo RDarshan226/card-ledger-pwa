@@ -1672,13 +1672,16 @@ async function loadData(){
   await loadChatUpdates();
   let unifiedLocal=null;
   try{ unifiedLocal=await loadLocalDataState(); }catch(e){ unifiedLocal=null; }
-  if(!unifiedLocal){
+  if(!unifiedLocal || !Array.isArray(unifiedLocal.cards) || !unifiedLocal.cards.length){
     try{
       if(window.storage && typeof window.storage.get === 'function'){
         const res = await window.storage.get(STORAGE_KEY, false);
-        if(res && res.value){ cards = JSON.parse(res.value); }
+        if(res && res.value){
+          const legacyCards=JSON.parse(res.value);
+          if(Array.isArray(legacyCards) && legacyCards.length) cards=legacyCards;
+        }
       }
-    }catch(e){ /* no data yet, or storage unavailable */ }
+    }catch(e){ /* no legacy data available */ }
   }
 
   if(!cards || !cards.length){
