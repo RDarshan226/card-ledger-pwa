@@ -2528,7 +2528,7 @@ function renderActiveTab(epoch=renderEpoch){
   const guard=()=>epoch===renderEpoch && activeTab===name.toLowerCase();
   try{
     if(activeTab==='ledger'){ try{ renderLedger(); }catch(e){ console.error('Card Ledger Ledger render error',e); if(guard()) tabFailure('Ledger',e); } return Promise.resolve(); }
-    if(activeTab==='entry') return document.getElementById('app').innerHTML=renderQuickEntryPanel();
+    if(activeTab==='entry'){ document.getElementById('app').innerHTML=renderQuickEntryPanel(); populateEntryCardDropdown(); return; }
     if(activeTab==='analysis') return renderAnalysis();
     if(activeTab==='fees') return renderFees();
     if(activeTab==='dues') return renderCoreTabData('dues').then(()=>{if(guard()) renderDues();}).catch(e=>{if(guard()){console.error(e);tabFailure('Dues',e);}});
@@ -2625,6 +2625,14 @@ async function encryptTransactionEntry(){
   }catch(e){showToast(e.message||'Could not save transaction');}
 }
 
+function populateEntryCardDropdown(){
+  const sel=document.getElementById("entry-card");
+  if(!sel) return;
+  const current=sel.value;
+  const list=(Array.isArray(cards)?cards:[]).filter(c=>c&&c.name&&!c.isInsurance);
+  sel.innerHTML='<option value="">Select card</option>'+list.map(c=>'<option value="'+String(c.id).replace(/"/g,"&quot;")+'">'+String(c.name).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")+'</option>').join("");
+  if(current && list.some(c=>String(c.id)===current)) sel.value=current;
+}
 function renderQuickEntryPanel(){
   return `
     <div class="panel chat-panel" id="chatSyncPanel">
@@ -2633,7 +2641,7 @@ function renderQuickEntryPanel(){
         <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details are stored together in the selected local JSON file</small></div></div>
         <div class="chat-form chat-form-stacked">
           <div class="field"><label>Main type</label><select id="entry-main-type" onchange="updateTransactionEntryFields()"><option value="expense">Expense</option><option value="repayment">Card repayment</option></select></div>
-          <div class="field"><label>Card</label><select id="entry-card" class="entry-card" onchange="updateTransactionEntryFields()">(Array.isArray(cards)?cards:[]).filter(c=>c&&c.name&&!c.isInsurance).map(c=>'<option value="'+String(c.name).replace(/"/g,"&quot;")+'">'+c.name+'</option>').join('')}</select></div>
+          <div class="field"><label>Card</label><select id="entry-card" class="entry-card" onchange="updateTransactionEntryFields()"><option value="">Select card</option></select></div>
           <div class="field"><label>Date</label><input id="entry-date" type="date" value="${todayStr()}"></div>
           <div class="field"><label>Amount ₹</label><input id="entry-amount" type="number" inputmode="decimal" placeholder="2500"></div>
           <div class="field"><label>Category</label><input id="entry-category" type="text" list="cat-list" placeholder="Shopping / Bills"></div>
