@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v118</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v119</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v118"></script>
+<script src="./github-sync-core.js?v=v119"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v118';
+const APP_VERSION='v119';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2111,7 +2111,13 @@ async function loadLedgerSource(){
 
   const validStored=storedCards.filter(c=>c&&typeof c==='object'&&c.name);
   const byName=new Map(validStored.map(c=>[String(c.name),c]));
-  const names=[...DEFAULT_CARDS];
+  // A card that still exists in the saved card database must remain visible
+  // even if an old removed-card flag is stale. Truly removed cards are absent
+  // from the saved card database, so this does not resurrect deliberate removals.
+  const savedNames=new Set(validStored.map(c=>String(c.name)));
+  const names=validStored.length
+    ? DEFAULT_CARDS.filter(name=>!removedCardNames.has(name)||savedNames.has(name))
+    : [...DEFAULT_CARDS];
   validStored.forEach(c=>{if(!names.includes(String(c.name)))names.push(String(c.name));});
 
   cards=names.map(name=>{
