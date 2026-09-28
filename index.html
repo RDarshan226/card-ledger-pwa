@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v103</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v104</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v103</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v104</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v103"></script>
+<script src="./github-sync-core.js?v=v104"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v103';
+const APP_VERSION='v104';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1962,7 +1962,7 @@ function render(){
   if(activeTab === 'ledger') renderLedger();
   else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); }
   else if(activeTab === 'analysis') renderAnalysis();
-  else if(activeTab === 'fees') { try{ renderFees(); }catch(e){ console.error('Card Fees render error',e); document.getElementById('app').innerHTML = '<div class="panel"><h2>Card Fees</h2><div class="sub">The fee data needs repair. Your other tabs are still safe.</div><button class="tab-btn" onclick="repairFeeData()">Repair fee data</button></div>'; } }
+  else if(activeTab === 'fees') { renderFees(); }
   else if(activeTab === 'dues') renderDues();
   else if(activeTab === 'recurring') renderRecurring();
   else if(activeTab === 'cashback') renderCashback();
@@ -2139,22 +2139,93 @@ function toggleFeeCard(id){ openFeeId = (openFeeId===id) ? null : id; render(); 
 
 async function repairFeeData(){
   try{
-    cards = Array.isArray(cards) ? cards : [];
+    if(!Array.isArray(cards)) cards=[];
     cards.forEach(c=>{
-      const oldFee = (c.fee && typeof c.fee==='object') ? c.fee : {};
-      const fresh = blankFeeForCard(c.name);
-      c.fee = Object.assign(fresh, oldFee);
-      c.fee.payments = Array.isArray(oldFee.payments) ? oldFee.payments.filter(Boolean).map(p=>({id:p.id||uid(),date:String(p.date||''),amount:Number(p.amount)||0})) : [];
-      c.fee.rewardRules = Array.isArray(oldFee.rewardRules) ? oldFee.rewardRules : [];
-      c.fee.surchargeRules = Array.isArray(oldFee.surchargeRules) ? oldFee.surchargeRules : [];
+      const old=(c.fee && typeof c.fee==='object') ? c.fee : {};
+      const fresh=blankFeeForCard(c.name);
+      c.fee=Object.assign(fresh,old);
+      if(!Array.isArray(c.fee.payments)) c.fee.payments=[];
+      if(!Array.isArray(c.fee.rewardRules)) c.fee.rewardRules=[];
+      if(!Array.isArray(c.fee.surchargeRules)) c.fee.surchargeRules=[];
+      c.fee.payments=c.fee.payments.filter(Boolean).map(p=>({id:p.id||uid(),date:String(p.date||''),amount:Number(p.amount)||0}));
     });
-    await saveData();
-    openFeeId=null;
-    render();
-    showToast('Card fee data repaired');
-  }catch(e){ console.error('Fee repair error',e); showToast('Could not repair fee data'); }
+    saveData().then(()=>{openFeeId=null;render();showToast('Card fee data repaired');}).catch(e=>{console.error(e);render();showToast('Fee data repaired locally');});
+  }catch(e){console.error('Fee repair error',e);render();showToast('Could not repair fee data');}
 }
 
+function renderFees(){
+  const app=document.getElementById('app');
+  if(!app) return;
+  if(!Array.isArray(cards)) cards=[];
+
+  // Card Fees is deliberately self-contained: it must render even when an
+  // older saved card has incomplete fee data. Every non-debit card is shown,
+  // and cards without a fee can be tracked directly from this screen.
+  const visible=cards.filter(c=>c && c.name!==DEBIT_CARD_NAME);
+  const today=todayStr();
+
+  let html='<div class="panel"><h2>Card Fees</h2><div class="sub">Track annual fees, waiver conditions, payment history and break-even spend. Tap a card to expand it.</div>';
+  if(!visible.length){
+    html+='<div class="empty-analysis">No credit cards found.</div>';
+  }else{
+    html+='<div class="ledger">';
+    visible.forEach(c=>{
+      const fee=(c.fee && typeof c.fee==='object')?c.fee:{};
+      const payments=Array.isArray(fee.payments)?fee.payments:[];
+      const base=Number(fee.baseAmount)||0;
+      const gst=fee.gstPct!=null?Number(fee.gstPct)||0:Number(GST_PCT)||0;
+      const total=Math.round(base*(1+gst/100));
+      const due=fee.nextDueOverride || feeNextDueFrom(payments) || today;
+      const waived=feeIsWaived(c);
+      const applicable=feeApplicable(fee);
+      const open=openFeeId===c.id;
+      const last=payments.length?[...payments].sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]:null;
+      let status='No fee tracked';
+      if(waived) status='Waived';
+      else if(applicable && due<=today) status=due===today?'Due today':'Overdue';
+      else if(applicable) status=due;
+      html+=`<div class="row">
+        <div class="row-main" onclick="toggleFeeCard('${c.id}')">
+          <div>
+            <div class="row-name">${c.name}<span class="share-tag fee-type-tag">${c.isInsurance?'Insurance':'Credit'}</span></div>
+            <div class="row-sub">${last?'Last paid '+last.date+' · '+inr(Number(last.amount)||0):(applicable?'Fee tracked · no payment logged':'No fee tracked yet')}</div>
+          </div>
+          <div class="row-amts">
+            <div class="row-used">${waived?inr(0):inr(total)}<span class="chevron ${open?'open':''}">▼</span></div>
+            <div class="row-limit">${status}</div>
+          </div>
+        </div>
+        <div class="detail-wrap ${open?'open':''}"><div class="detail-inner"><div class="detail">${renderFeeDetailSafe(c,fee,total,waived,applicable)}</div></div></div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+  app.innerHTML=html;
+}
+
+function renderFeeDetailSafe(card,fee,total,waived,applicable){
+  const payments=Array.isArray(fee.payments)?fee.payments:[];
+  const reward=Number(fee.rewardRatePct)||0;
+  const required=reward>0?Math.round(total/(reward/100)):0;
+  let html='<div class="detail-grid">';
+  html+=`<div class="field"><label>Base annual fee</label><input type="number" value="${Number(fee.baseAmount)||0}" onchange="updateFeeField('${card.id}','baseAmount',this.value)"></div>`;
+  html+=`<div class="field"><label>GST %</label><input type="number" value="${fee.gstPct!=null?Number(fee.gstPct):Number(GST_PCT)||0}" onchange="updateFeeField('${card.id}','gstPct',this.value)"></div>`;
+  html+=`<div class="field"><label>General reward rate %</label><input type="number" step="0.01" value="${reward}" onchange="updateFeeField('${card.id}','rewardRatePct',this.value)"></div>`;
+  html+=`<div class="field"><label>Next due date</label><input type="date" value="${fee.nextDueOverride||''}" onchange="updateFeeField('${card.id}','nextDueOverride',this.value)"></div>`;
+  html+='</div>';
+  html+=`<div class="breakeven-box"><b>Total fee incl. GST: ${waived?inr(0):inr(total)}</b>${required?' · Break-even spend at '+reward+'%: '+inr(required):''}</div>`;
+  if(payments.length){
+    html+='<div class="section-label">Payment history</div><table class="statement"><thead><tr><th>Date</th><th>Amount</th></tr></thead><tbody>'+payments.sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(p=>'<tr><td>'+p.date+'</td><td>'+inr(Number(p.amount)||0)+'</td></tr>').join('')+'</tbody></table>';
+  }else html+='<div class="empty-stmt">No fee payments logged yet.</div>';
+  html+=`<div class="entry-form" style="grid-template-columns:1fr 1fr auto;margin-top:12px;margin-bottom:0">
+    <input type="date" id="fee-date-${card.id}" value="${todayStr()}">
+    <input type="number" id="fee-amt-${card.id}" placeholder="Payment amount ₹">
+    <button class="fee-track-btn" onclick="logFeePayment('${card.id}',event)">Log payment</button>
+  </div>`;
+  if(!applicable) html+=`<div style="margin-top:10px"><button class="fee-track-btn" onclick="trackFee('${card.id}')">Track this fee</button></div>`;
+  return html;
+}
 function renderFees(){
   const app = document.getElementById('app');
   const feeCards = cards.filter(c=>c.name!==DEBIT_CARD_NAME && feeApplicable(c.fee));
