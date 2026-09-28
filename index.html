@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v120</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v121</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v120"></script>
+<script src="./github-sync-core.js?v=v121"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v120';
+const APP_VERSION='v121';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1539,8 +1539,20 @@ function renderLedger(){
     if(!Array.isArray(cards)) cards=[];
     cards=cards.filter(c=>c&&typeof c==='object');
   }catch(_e){ cards=[]; }
-  const creditCards = cards.filter(c=>!c.isDebit && !c.feeOnly && !removedCardNames.has(c.name));
-  const debitCards = cards.filter(c=>c.name===DEBIT_CARD_NAME && !removedCardNames.has(c.name));
+  // Never allow a stale/empty data source to make the Ledger disappear.
+  // DEFAULT_CARDS is the emergency display source; saved records are preferred.
+  const safeRemoved = removedCardNames instanceof Set ? removedCardNames : new Set();
+  if(!Array.isArray(cards) || !cards.length){
+    cards=DEFAULT_CARDS.map(name=>({id:uid(),name,limit:Number((DEFAULTS[name]||{}).limit)||0,billingDate:(DEFAULTS[name]||{}).billingDate||'',limitGroup:(DEFAULTS[name]||{}).limitGroup||null,isDebit:false,entries:[],fee:null}));
+  }
+  DEFAULT_CARDS.forEach(name=>{
+    if(!safeRemoved.has(name) && !cards.some(c=>c&&c.name===name)){
+      const d=DEFAULTS[name]||{};
+      cards.push({id:uid(),name,limit:Number(d.limit)||0,billingDate:d.billingDate||'',limitGroup:d.limitGroup||null,isDebit:false,entries:[],fee:null});
+    }
+  });
+  const creditCards = cards.filter(c=>c&&!c.isDebit&&!c.feeOnly&&(!safeRemoved.has(c.name)||DEFAULT_CARDS.includes(c.name)));
+  const debitCards = cards.filter(c=>c&&c.name===DEBIT_CARD_NAME&&!safeRemoved.has(c.name));
 
   const seenGroups = new Set();
   let totalLimit = 0;
@@ -2816,8 +2828,7 @@ function renderCashback(){
   const totalCharges = combinedLog.filter(e=>e.type==='charge').reduce((s,e)=>s+e.amount,0);
   const net = totalCashback - totalCharges;
 
-  let html = renderRewardTrackingManager();
-  html += `<div class="cover">
+  let html = `<div class="cover">`
     <div class="cover-figures">
       <div class="cover-line"><span class="cover-label">Total cashback</span><span class="cover-amt" style="color:var(--ok)">${inr(totalCashback)}</span></div>
       <div class="cover-line"><span class="cover-label">Total charges</span><span class="cover-amt" style="color:var(--danger)">${inr(totalCharges)}</span></div>
@@ -2859,6 +2870,7 @@ function renderCashback(){
       <tbody>${entryRows}</tbody>
     </table></div>` : '<div class="empty-stmt">No entries yet.</div>'}
   </div>`;
+  html += renderRewardTrackingManager();
   app.innerHTML = html;
 }
 
@@ -3022,8 +3034,7 @@ function renderRewards(){
     });
   });
 
-  let html = renderRewardTrackingManager();
-  html += `<div class="cover">
+  let html = `<div class="cover">`
     <div class="cover-figures">
       <div class="cover-line"><span class="cover-label">This month</span><span class="cover-amt">${inr(totalMonth)}</span></div>
       <div class="cover-line"><span class="cover-label">This year</span><span class="cover-amt">${inr(totalYear)}</span></div>
@@ -3062,6 +3073,7 @@ function renderRewards(){
     <div class="disclaimer">Estimated from each card's category/merchant rules (set per card in Card Fees), falling back to its general rate where nothing more specific applies, with monthly and per-merchant caps enforced automatically.</div>
   </div>`;
 
+  html += renderRewardTrackingManager();
   app.innerHTML = html;
 }
 
