@@ -1645,6 +1645,20 @@ function renderRecurringPaymentManager(){
   html+='<div class="breakeven-box" style="margin-top:12px;">'+recurringFormHTML(null)+'</div></div>';
   return html;
 }
+window.__reloadAfterLocalFileSelection=async function(){
+  try{
+    await loadData();
+    await loadDues();
+    await loadCashback();
+    await loadRecurringPayments();
+    if(typeof render==='function') await render();
+    if(typeof refreshLocalDataStatus==='function') await refreshLocalDataStatus();
+  }catch(e){
+    console.error('Local data file reload failed',e);
+    showToast('Local data file selected, but the app could not reload it');
+  }
+};
+
 async function loadData(){
   await loadDeletedEntries();
   await loadRemovedCardNames();
