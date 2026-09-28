@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v117</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v118</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v117"></script>
+<script src="./github-sync-core.js?v=v118"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v117';
+const APP_VERSION='v118';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2175,23 +2175,32 @@ async function loadLedgerSource(){
   return {cardCount:cards.length,fileLoaded:!!localData};
 }
 async function init(){
+  // Ledger is bootstrapped from its two authoritative sources. Do not call
+  // loadData() afterwards because that legacy routine can rebuild/overwrite cards.
   try{ initTheme(); setVersionUI(); await loadRemovedCardNames(); await loadLedgerSource(); render(); }
   catch(e){
     console.error('Ledger source initialization failed',e);
-    try{ if(!Array.isArray(cards)||!cards.length) cards=DEFAULT_CARDS.map(name=>({id:uid(),name,limit:Number((DEFAULTS[name]||{}).limit)||0,billingDate:(DEFAULTS[name]||{}).billingDate||'',limitGroup:(DEFAULTS[name]||{}).limitGroup||null,isDebit:false,entries:[],fee:null})); render(); }catch(_e){}
+    try{
+      if(!Array.isArray(cards)||!cards.length){
+        cards=DEFAULT_CARDS.map(name=>({id:uid(),name,limit:Number((DEFAULTS[name]||{}).limit)||0,billingDate:(DEFAULTS[name]||{}).billingDate||'',limitGroup:(DEFAULTS[name]||{}).limitGroup||null,isDebit:false,entries:[],fee:null}));
+      }
+      render();
+    }catch(_e){ console.error('Ledger fallback render failed',_e); }
   }
-  let merged=false;
-  try{ merged=await loadData(); }catch(e){ console.error('Background card-data migration failed',e); }
+
+  // Auxiliary datasets load independently and never replace Ledger card records.
+  try{ await loadRecurringPayments(); }catch(e){ console.error('Recurring data load failed',e); }
+  try{ await loadChatUpdates(); }catch(e){ console.error('Chat data load failed',e); }
   try{ await loadCashback(); }catch(e){ console.error('Cashback load failed',e); }
   try{ await loadDues(); }catch(e){ console.error('Dues load failed',e); }
-  try{ render(); }catch(e){ console.error('Final render error',e); }
+
+  try{ updateTabSelection(); renderActiveTab(); }catch(e){ console.error('Final tab render failed',e); }
   try{ refreshChatCardOptions(); }catch(e){}
   try{ refreshLocalDataStatus(); }catch(e){}
   try{ registerNotificationBackgroundCheck(); }catch(e){}
   setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},1200);
   setInterval(()=>{try{checkStatementNotifications();}catch(e){}},15*60*1000);
   try{ schedulePowerPlusTestNotification(); }catch(e){}
-  if(merged) try{ showToast('Ledger data loaded'); }catch(e){}
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>init(),{once:true}); else init();
 
