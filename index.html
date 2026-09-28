@@ -113,6 +113,18 @@
     transition:box-shadow .15s ease, background .15s ease, color .15s ease;
   }
   .tab-btn:hover{ box-shadow:0 4px 14px -6px rgba(224,149,42,.5); }
+  /* All buttons INSIDE tabs are cyan-blue; navigation .tab-btn buttons stay unchanged. */
+  #app button{
+    background:linear-gradient(135deg,#00CFFF,#007BFF)!important;
+    color:#FFFFFF!important;
+    border:1px solid rgba(255,255,255,.22)!important;
+    box-shadow:0 0 10px rgba(0,191,255,.22)!important;
+  }
+  #app button:hover{
+    color:#FFFFFF!important;
+    box-shadow:0 0 14px rgba(0,191,255,.38)!important;
+  }
+
   /* Unified cyan-blue button treatment across the app */
   button,.btn,.primary,.edit-btn,.del,.sort-btn,.fee-track-btn,.chat-primary,.chat-secondary,
   .due-toolbar button,.due-form button,.due-actions button,.entry-form button,.card-entry-form button,
