@@ -1318,7 +1318,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v143';
+const APP_VERSION='v144';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2026,6 +2026,7 @@ function initTheme(){
 function renderLedger(){
   const app = document.getElementById('app');
   if(!app) return;
+  try{
   // Ledger owns its own data hydration. A failure in another tab/data feed
   // must never prevent the core card list from being displayed.
   try{
@@ -2092,6 +2093,11 @@ function renderLedger(){
   }
 
   app.innerHTML=html;
+  }catch(error){
+    console.error('Ledger render failed:',error);
+    const safe=Array.isArray(cards)?cards.filter(c=>c&&typeof c==='object'):[];
+    app.innerHTML='<div class="panel"><h2>Card Ledger</h2><div class="sub">Ledger loaded in safe mode. '+safe.length+' card records found.</div><div class="ledger">'+safe.map(c=>'<div class="row"><div class="row-main"><div><div class="row-name">'+String(c.name||'Unnamed card')+'</div><div class="row-sub">'+(c.billingDate?'Bill date · '+String(c.billingDate):'Bill date not set')+'</div></div><div class="row-amts"><div class="row-used">₹'+Math.round(Math.max(0,utilised(c)||0)).toLocaleString('en-IN')+'</div><div class="row-limit">'+(c.limit?'of ₹'+Math.round(c.limit).toLocaleString('en-IN'):'limit not set')+'</div></div></div></div>').join('')+'</div><div class="sub" style="margin-top:10px">Technical error: '+String(error&&error.message||error)+'</div></div>';
+  }
 }
 
 function renderRow(card){
