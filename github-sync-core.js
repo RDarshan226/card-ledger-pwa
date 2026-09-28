@@ -359,6 +359,6 @@ async function saveTransactionToLocalFile(payload){
   if(typeof cashbackLog!=='undefined') data.cashback=cashbackLog;
   if(typeof recurringPayments!=='undefined') data.recurringPayments=recurringPayments;
   await writeLocalDataFile(data);
-  await refreshLocalDataStatus('✓ Saved locally · '+(await loadLocalDataHandle()).name);
+  const savedHandle=await loadLocalDataHandle(); await refreshLocalDataStatus('✓ Saved locally · '+(savedHandle&&savedHandle.name?savedHandle.name:'Card Ledger data'));
   return true;
 }
