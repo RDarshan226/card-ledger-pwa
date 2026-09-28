@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v119</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v120</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v119"></script>
+<script src="./github-sync-core.js?v=v120"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v119';
+const APP_VERSION='v120';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2618,7 +2618,10 @@ function nextBillingDateFor(card){
 }
 function projectedLedgerDues(){return cards.filter(c=>!c.isDebit&&!c.feeOnly).map(c=>({card:c,amount:Math.max(0,utilised(c)),billDate:nextBillingDateFor(c)})).filter(x=>x.amount>0&&x.billDate).sort((a,b)=>a.billDate.localeCompare(b.billDate));}
 function renderDues(){
-  const app=document.getElementById('app'),now=new Date();
+  const app=document.getElementById('app'); if(!app) return;
+  if(!Array.isArray(cards)) cards=[];
+  if(!Array.isArray(dueBills)) dueBills=[];
+  const now=new Date();
   const monthVal=window._dueMonth||now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const [y,m]=monthVal.split('-').map(Number);
   const monthStart=y+'-'+String(m).padStart(2,'0')+'-01',monthEnd=y+'-'+String(m).padStart(2,'0')+'-'+String(daysInMonth(y,m-1)).padStart(2,'0');
@@ -2975,7 +2978,8 @@ function computeCardRewardEntries(card){
 }
 
 function renderRewardTrackingManager(){
-  const rewardCards=cards.filter(c=>c.name!==DEBIT_CARD_NAME&&!c.isInsurance);
+  if(!Array.isArray(cards)) cards=[];
+  const rewardCards=cards.filter(c=>c&&c.name!==DEBIT_CARD_NAME&&!c.isInsurance);
   let html='<div class="panel"><h2>Manage reward tracking</h2><div class="sub">Reward tracking settings for your cards.</div>';
   rewardCards.forEach(c=>{
     const f=c.fee||blankFeeForCard(c.name);
@@ -2986,6 +2990,9 @@ function renderRewardTrackingManager(){
 }
 function renderRewards(){
   const app = document.getElementById('app');
+  if(!app) return;
+  if(!Array.isArray(cards)) cards=[];
+  cards.forEach(c=>{ if(!Array.isArray(c.entries)) c.entries=[]; if(c.fee && typeof c.fee!=='object') c.fee=null; });
   const now = new Date();
   const curY = now.getFullYear(), curM = now.getMonth();
   const curMonthKey = curY+'-'+curM;
@@ -3155,6 +3162,8 @@ function toggleAccountMonth(key){ openAccountMonth = (openAccountMonth===key) ? 
 
 function renderAccounts(){
   const app = document.getElementById('app');
+  if(!app) return;
+  if(!Array.isArray(cards)) cards=[];
   const trackable = cards.filter(c => !c.isDebit && !c.isInsurance);
   const unset = trackable.filter(c => !c.openedMonth || !c.openedYear);
   const set = trackable.filter(c => c.openedMonth && c.openedYear);
