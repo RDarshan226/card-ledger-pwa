@@ -368,11 +368,11 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">vv122</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v123</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
-  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v123</span></div>
+  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
     <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Entry</button>
@@ -394,11 +394,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v99 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v123 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v122"></script>
+<script src="./github-sync-core.js?v=v123"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v122';
+const APP_VERSION='v123';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2110,66 +2110,69 @@ function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleStri
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
 async function loadLedgerSource(){
-  // Card details are authoritative in the existing IndexedDB card database.
-  // The selected local JSON file is used only for Ledger transactions.
-  let storedCards=[];
+  // GitHub is the single authoritative source for card master data.
+  // The selected local JSON file is used ONLY for transactions/cashback.
+  let master=null;
   try{
-    const res=await window.storage.get(STORAGE_KEY,false);
-    if(res&&res.value){
-      const parsed=JSON.parse(res.value);
-      if(Array.isArray(parsed)) storedCards=parsed;
-    }
-  }catch(e){ console.warn('Card database read failed',e); }
+    const res=await fetch('./card-master.json?v='+encodeURIComponent(APP_VERSION),{cache:'no-store'});
+    if(!res.ok) throw new Error('card-master.json HTTP '+res.status);
+    master=await res.json();
+  }catch(e){
+    console.error('GitHub card master could not be loaded',e);
+  }
 
-  const validStored=storedCards.filter(c=>c&&typeof c==='object'&&c.name);
-  const byName=new Map(validStored.map(c=>[String(c.name),c]));
-  // A card that still exists in the saved card database must remain visible
-  // even if an old removed-card flag is stale. Truly removed cards are absent
-  // from the saved card database, so this does not resurrect deliberate removals.
-  const savedNames=new Set(validStored.map(c=>String(c.name)));
-  const names=validStored.length
-    ? DEFAULT_CARDS.filter(name=>!removedCardNames.has(name)||savedNames.has(name))
-    : [...DEFAULT_CARDS];
-  validStored.forEach(c=>{if(!names.includes(String(c.name)))names.push(String(c.name));});
+  const sourceCards=master&&Array.isArray(master.cards)?master.cards:[];
+  const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
 
-  cards=names.map(name=>{
-    const old=byName.get(name)||{};
+  // Never read card records from IndexedDB here. IndexedDB is not a card-data source.
+  // The fallback below uses the card definitions shipped in this GitHub release only.
+  const sourceNames=validSource.map(c=>String(c.name));
+  const names=sourceNames.length?sourceNames:[...DEFAULT_CARDS,DEBIT_CARD_NAME];
+
+  cards=names.map((name,i)=>{
+    const src=validSource.find(c=>String(c.name)===name)||{};
     const d=DEFAULTS[name]||{};
+    const info=ACCOUNT_INFO[name]||{};
+    const feeOnly=!!src.feeOnly;
+    const isDebit=src.isDebit!=null?!!src.isDebit:feeOnly||name===DEBIT_CARD_NAME;
+    const id=String(src.id||('github-card-'+i+'-'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')));
     return {
-      ...old,
-      id:old.id||uid(),
+      ...src,
+      id,
       name,
-      limit:Number(old.limit)!=null&&Number(old.limit)>0?Number(old.limit):Number(d.limit)||0,
-      billingDate:old.billingDate||d.billingDate||'',
-      limitGroup:old.limitGroup||d.limitGroup||null,
-      isDebit:!!old.isDebit,
-      feeOnly:!!old.feeOnly,
-      isInsurance:!!old.isInsurance,
-      entries:Array.isArray(old.entries)?old.entries:[],
-      fee:old.fee||null
+      limit:Number(src.limit)!=null?Number(src.limit):Number(d.limit)||0,
+      billingDate:String(src.billingDate||d.billingDate||''),
+      limitGroup:src.limitGroup||d.limitGroup||null,
+      isDebit,
+      feeOnly,
+      isInsurance:!!src.isInsurance,
+      network:String(src.network!=null?src.network:info.network||''),
+      tier:String(src.tier!=null?src.tier:info.tier||''),
+      bin:String(src.bin!=null?src.bin:info.bin||''),
+      openedMonth:Number(src.openedMonth||info.openedMonth)||0,
+      openedYear:Number(src.openedYear||info.openedYear)||0,
+      entries:[],
+      fee:blankFeeForCard(name)
     };
   });
 
-  // Preserve any saved card records exactly as records, including cards not
-  // currently in DEFAULT_CARDS.
-  validStored.forEach(old=>{
-    if(!cards.some(c=>c.name===old.name)){
-      cards.push({...old,id:old.id||uid(),entries:Array.isArray(old.entries)?old.entries:[]});
-    }
-  });
+  // Preserve the dedicated "Debit / Other Spends" account if the master file
+  // does not contain it, without using any local card database.
+  if(!cards.some(c=>c.name===DEBIT_CARD_NAME)){
+    cards.push({id:'github-card-debit-other-spends',name:DEBIT_CARD_NAME,limit:0,billingDate:'',limitGroup:null,isDebit:true,feeOnly:false,isInsurance:false,entries:[],fee:blankFeeForCard(DEBIT_CARD_NAME)});
+  }
 
+  // Local file is transaction-only. It cannot create, modify or remove cards.
   let localData=null;
   try{ localData=await readLocalDataFile(); }catch(e){ console.warn('Ledger transaction file unavailable',e); }
 
-  // Only replace transaction entries when the local file is actually readable.
-  // This prevents an unavailable file from wiping the card database entries.
   if(localData){
-    cards.forEach(c=>{c.entries=[];});
     const entries=Array.isArray(localData.entries)?localData.entries:[];
-    const cardByName=new Map(cards.map(c=>[String(c.name),c]));
+    const cardByName=new Map(cards.map(c=>[String(c.name).trim().toLowerCase(),c]));
     entries.filter(e=>e&&e.kind==='ledger'&&e.card).forEach(e=>{
-      const card=cardByName.get(String(e.card));
-      if(card) card.entries.push({
+      const card=cardByName.get(String(e.card).trim().toLowerCase());
+      if(!card)return;
+      card.entries.push({
         id:e.id||uid(),
         type:e.type==='repay'?'repay':'txn',
         date:e.date||todayStr(),
@@ -2186,13 +2189,21 @@ async function loadLedgerSource(){
     });
   }
 
-  if(!cards.some(c=>c.name===DEBIT_CARD_NAME)){
-    cards.push({id:uid(),name:DEBIT_CARD_NAME,limit:0,billingDate:'',limitGroup:null,isDebit:true,feeOnly:false,isInsurance:false,entries:[],fee:null});
-  }
-  if(!(removedCardNames instanceof Set)) removedCardNames=new Set();
-  return {cardCount:cards.length,fileLoaded:!!localData};
-}
-async function init(){
+  // Local due records may contain old card IDs. Re-link them by card name,
+  // but never use local records to populate or alter card master data.
+  try{
+    const byOldName=new Map(cards.map(c=>[String(c.name).trim().toLowerCase(),c.id]));
+    dueBills.forEach(b=>{
+      const name=String(b.cardName||'').trim().toLowerCase();
+      if(name&&byOldName.has(name)) b.cardId=byOldName.get(name);
+    });
+  }catch(e){}
+
+  window.__cardMasterSource='github';
+  window.__cardMasterVersion=master&&master.version?master.version:APP_VERSION;
+  window.__cardMasterLoaded=validSource.length>0;
+  return {cardCount:cards.length,fileLoaded:!!localData,source:'github'};
+}async function init(){
   // Ledger is bootstrapped from its two authoritative sources. Do not call
   // loadData() afterwards because that legacy routine can rebuild/overwrite cards.
   try{ initTheme(); setVersionUI(); await loadRemovedCardNames(); await loadLedgerSource(); render(); }
