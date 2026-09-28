@@ -354,7 +354,6 @@ async function createLocalDataFile(){
   const data=buildUnifiedLocalData();
   await clearLocalDataHandle();
   await writeLocalDataFallback(data);
-  if(typeof downloadBackup==='function') downloadBackup();
   await refreshLocalDataStatus('✓ Brave-compatible local storage active');
   showToast('Brave-compatible local storage created · use Backup Now to export');
   return data;
