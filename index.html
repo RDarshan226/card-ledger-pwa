@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v112</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v113</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v112</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v112"></script>
+<script src="./github-sync-core.js?v=v113"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -860,7 +860,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v112';
+const APP_VERSION='v113';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1965,41 +1965,43 @@ function buildInsights(rows, p){
 
 function setTab(t){
   activeTab=t;
+  updateTabSelection();
+  renderActiveTab();
+}
+function updateTabSelection(){
+  const map={ledger:'tab-ledger',entry:'tab-entry',analysis:'tab-analysis',fees:'tab-fees',dues:'tab-dues',recurring:'tab-recurring',cashback:'tab-cashback',rewards:'tab-rewards',accounts:'tab-accounts',alerts:'tab-alerts',secure:'tab-secure'};
+  Object.keys(map).forEach(k=>{const el=document.getElementById(map[k]);if(el)el.classList.toggle('active',activeTab===k);});
+}
+function tabFailure(name,error){
+  console.error('Card Ledger '+name+' tab error',error);
+  const app=document.getElementById('app');
+  if(app) app.innerHTML='<div class="panel"><h2>'+name+' could not be displayed</h2><div class="sub">This tab encountered an error. Other tabs remain available.</div><button class="tab-btn" onclick="setTab(\''+activeTab+'\')">Retry '+name+'</button></div>';
+}
+function renderActiveTab(){
+  const name=activeTab.charAt(0).toUpperCase()+activeTab.slice(1);
   try{
-    render();
-  }catch(e){
-    console.error('Card Ledger render error',e);
-    const app=document.getElementById('app');
-    if(app) app.innerHTML='<div class="panel"><h2>Ledger could not render</h2><div class="sub">The tab renderer hit an error. Reload the app to recover.</div><button class="tab-btn" onclick="location.reload()">Reload Card Ledger</button></div>';
-  }
-  if(t==='secure') setTimeout(()=>{try{refreshLocalDataStatus();}catch(e){}},0);
+    if(activeTab==='ledger') return renderLedger();
+    if(activeTab==='entry') return document.getElementById('app').innerHTML=renderQuickEntryPanel();
+    if(activeTab==='analysis') return renderAnalysis();
+    if(activeTab==='fees') return renderFees();
+    if(activeTab==='dues') return renderDues();
+    if(activeTab==='recurring') return renderRecurring();
+    if(activeTab==='cashback') return renderCashback();
+    if(activeTab==='rewards') return renderRewards();
+    if(activeTab==='accounts') return renderAccounts();
+    if(activeTab==='alerts') return renderAlerts();
+    if(activeTab==='secure'){
+      document.getElementById('app').innerHTML=renderSecureUpdate();
+      setTimeout(()=>{try{refreshLocalDataStatus();}catch(e){}},0);
+      return;
+    }
+  }catch(e){tabFailure(name,e);}
 }
 
 function render(){
   document.getElementById('dateline').textContent = 'Card Ledger — ' + new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-  document.getElementById('tab-ledger').classList.toggle('active', activeTab==='ledger');
-  document.getElementById('tab-entry').classList.toggle('active', activeTab==='entry');
-  document.getElementById('tab-analysis').classList.toggle('active', activeTab==='analysis');
-  document.getElementById('tab-fees').classList.toggle('active', activeTab==='fees');
-  document.getElementById('tab-dues').classList.toggle('active', activeTab==='dues');
-  document.getElementById('tab-recurring').classList.toggle('active', activeTab==='recurring');
-  document.getElementById('tab-cashback').classList.toggle('active', activeTab==='cashback');
-  document.getElementById('tab-rewards').classList.toggle('active', activeTab==='rewards');
-  document.getElementById('tab-accounts').classList.toggle('active', activeTab==='accounts');
-  const alertTab=document.getElementById('tab-alerts'); if(alertTab) alertTab.classList.toggle('active', activeTab==='alerts');
-  if(activeTab === 'ledger') renderLedger();
-  else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); }
-  else if(activeTab === 'analysis') renderAnalysis();
-  else if(activeTab === 'fees') { renderFees(); }
-  else if(activeTab === 'dues') renderDues();
-  else if(activeTab === 'recurring') renderRecurring();
-  else if(activeTab === 'cashback') renderCashback();
-  else if(activeTab === 'rewards') renderRewards();
-  else if(activeTab === 'accounts') renderAccounts();
-  else if(activeTab === 'alerts') renderAlerts();
-  else if(activeTab === 'secure') { document.getElementById('app').innerHTML = renderSecureUpdate(); refreshLocalDataStatus(); }
-  refreshChatCardOptions();
-  if(activeTab === 'entry') { refreshChatCardOptions(); updateTransactionEntryFields(); }
+  updateTabSelection();
+  renderActiveTab();
 }
 
 function renderSecureUpdate(){return `
