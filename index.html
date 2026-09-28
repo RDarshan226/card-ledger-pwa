@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v104</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v105</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v104</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v105</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v104"></script>
+<script src="./github-sync-core.js?v=v105"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v104';
+const APP_VERSION='v105';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2226,66 +2226,6 @@ function renderFeeDetailSafe(card,fee,total,waived,applicable){
   if(!applicable) html+=`<div style="margin-top:10px"><button class="fee-track-btn" onclick="trackFee('${card.id}')">Track this fee</button></div>`;
   return html;
 }
-function renderFees(){
-  const app = document.getElementById('app');
-  const feeCards = cards.filter(c=>c.name!==DEBIT_CARD_NAME && feeApplicable(c.fee));
-  const today = todayStr();
-
-  let rows = feeCards.map(c => {
-    const total = feeTotalFor(c.fee);
-    const hasRealFee = (c.fee.baseAmount||0) > 0 || (c.fee.payments && c.fee.payments.length > 0) || !!c.fee.nextDueOverride;
-    const due = feeNextDue(c.fee);
-    const waived = feeIsWaived(c);
-    const daysLeft = Math.round((new Date(due) - new Date(today)) / 86400000);
-    let status = 'paid', statusLabel = 'Upcoming';
-    if(!hasRealFee){ status='paid'; statusLabel = 'No annual fee'; }
-    else if(waived){ status='paid'; statusLabel = 'Waived'; }
-    else if(daysLeft <= 0){ status='due'; statusLabel = daysLeft===0 ? 'Due today' : 'Overdue'; }
-    else if(daysLeft <= 30){ status='soon'; statusLabel = `Due in ${daysLeft}d`; }
-    else { statusLabel = due; }
-    return {card:c, total, due, status, statusLabel, waived, hasRealFee};
-  }).sort((a,b)=> a.due.localeCompare(b.due));
-
-  let html = addCardFormHTML('fees') + `<div class="panel"><h2>Annual fees</h2><div class="sub">Fee shown includes GST where applicable · tap a card for payment history and the break-even calculation</div>`;
-  html += '<div class="ledger">';
-  rows.forEach(r => {
-    const isOpen = openFeeId === r.card.id;
-    const lastPayment = [...(r.card.fee.payments||[])].sort((a,b)=> b.date.localeCompare(a.date))[0];
-    html += `<div class="row">
-      <div class="row-main" onclick="toggleFeeCard('${r.card.id}')">
-        <div>
-          <div class="row-name">${r.card.name}<span class="share-tag fee-type-tag">${r.card.isInsurance ? 'Insurance' : (r.card.isDebit ? 'Debit' : 'Credit')}</span></div>
-          <div class="row-sub">${lastPayment ? 'Last paid ' + lastPayment.date + ' · ' + inr(lastPayment.amount) : 'No payment logged yet'}</div>
-        </div>
-        <div class="row-amts">
-          <div class="row-used">${r.waived ? inr(0) : inr(r.total)}<span class="chevron ${isOpen?'open':''}">▼</span></div>
-          <div class="row-limit"><span class="status-badge ${r.status}">${r.statusLabel}</span></div>
-          ${r.card.fee.waiver && r.card.fee.waiver.type==='transactions' ? `<div class="row-limit">${txnCountThisYear(r.card)}/${r.card.fee.waiver.threshold} txns</div>` : ''}
-        </div>
-      </div>
-      <div class="detail-wrap ${isOpen?'open':''}">
-        <div class="detail-inner"><div class="detail">${renderFeeDetail(r.card)}</div></div>
-      </div>
-    </div>`;
-  });
-  html += '</div></div>';
-  const untracked = cards.filter(c=>c.name!==DEBIT_CARD_NAME && !feeApplicable(c.fee));
-  if(!rows.length){
-    html = `<div class="panel"><h2>Annual fees</h2><div class="sub">No card has a fee logged yet.</div><div class="empty-analysis">Add a card below once it has an annual fee to track.</div></div>`;
-  }
-  if(untracked.length){
-    html += `<div class="panel">
-      <h2>Add a card</h2>
-      <div class="sub">Only cards with a fee logged show above — bring in another one here</div>
-      <div class="entry-form" style="grid-template-columns:1fr auto;">
-        <select id="untracked-card-select">${untracked.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select>
-        <button class="fee-track-btn" onclick="trackFee(document.getElementById('untracked-card-select').value)">Track fee</button>
-      </div>
-    </div>`;
-  }
-  app.innerHTML = html;
-}
-
 function renderFeeDetail(card){
   const fee = card.fee || blankFeeForCard(card.name);
   const total = feeTotalFor(fee);
