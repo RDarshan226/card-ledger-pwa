@@ -1319,7 +1319,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v152';
+const APP_VERSION='v153';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1699,12 +1699,15 @@ window.__reloadAfterLocalFileSelection=async function(){
 };
 
 async function loadData(){
+  window.__localDataRecoveryRequired=false;
+  window.__localDataRecoveryReason='';
   await loadDeletedEntries();
   await loadRemovedCardNames();
   await loadRecurringPayments();
   await loadChatUpdates();
   let unifiedLocal=null;
   try{ unifiedLocal=await loadLocalDataState(); }catch(e){ unifiedLocal=null; }
+  if(window.__localDataRecoveryRequired) return false;
   if(!unifiedLocal || !Array.isArray(unifiedLocal.cards) || !unifiedLocal.cards.length){
     try{
       if(window.storage && typeof window.storage.get === 'function'){
@@ -2700,13 +2703,28 @@ function renderQuickEntryPanel(){
 
 
 
+function renderRecoveryScreen(){
+  const app=document.getElementById('app'); if(!app)return;
+  const reason=String(window.__localDataRecoveryReason||'Your previous local data file is unavailable.');
+  app.innerHTML='<div class="panel" style="max-width:720px;margin:20px auto;">'+
+    '<h2>⚠️ Your Card Ledger data needs recovery</h2>'+\
+    '<div class="sub" style="margin:10px 0 16px;">The app could not safely open the local JSON data source. <strong>Your transaction data has NOT been replaced with a blank ledger.</strong></div>'+\
+    '<div class="sub" style="margin-bottom:16px;">Reason: '+reason.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'+\
+    '<div class="chat-actions" style="display:flex;flex-wrap:wrap;gap:10px;">'+\
+    '<button class="tab-btn" onclick="selectLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not open data file\'))">📂 Select / recover JSON file</button>'+\
+    '<button class="tab-btn" onclick="document.getElementById(\'recovery-backup-input\').click()">↩ Import backup</button>'+\
+    '<button class="tab-btn" onclick="if(confirm(\'No previous data will be recovered. Start a new empty Card Ledger?\')){window.__localDataRecoveryRequired=false;createLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not create data file\'))}">＋ Start new ledger</button>'+\
+    '</div><input id="recovery-backup-input" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">'+\
+    '<div class="sub" style="margin-top:18px;">Do not choose “Start new ledger” if you are trying to recover previous transactions.</div></div>';
+}
+
 function setVersionUI(){ const v=APP_VERSION; const a=document.getElementById('app-version'); const b=document.getElementById('startup-version'); if(a)a.textContent=v; if(b)b.textContent=v; }
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0}); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
-async function init(){try{setVersionUI();await loadDeletedEntries();await loadRemovedCardNames();await loadRecurringPayments();await loadChatUpdates();await loadDues();await loadCashback();dataReadyPromise=loadLedgerSource();await dataReadyPromise;initTheme();await render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and local transaction sources could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
+async function init(){try{setVersionUI();await loadDeletedEntries();await loadRemovedCardNames();await loadRecurringPayments();await loadChatUpdates();await loadDues();await loadCashback();dataReadyPromise=loadLedgerSource();await dataReadyPromise;initTheme();if(window.__localDataRecoveryRequired){renderRecoveryScreen();return;}await render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and local transaction sources could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
 
 async function loadLedgerSource(){
   // CORE HYDRATION: local saved records contain private entries/fees; the
@@ -2724,6 +2742,7 @@ async function loadLedgerSource(){
   }catch(e){ console.warn('Could not load card-master.json.',e); }
 
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
+  if(window.__localDataRecoveryRequired){ window.__cardMasterLoaded=false; return {recoveryRequired:true,reason:window.__localDataRecoveryReason||'Local data unavailable'}; }
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
   const existing=(Array.isArray(cards)?cards:[]).filter(c=>c&&typeof c==='object');
   const byName=new Map(existing.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
