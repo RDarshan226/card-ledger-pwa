@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v101</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v102</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v101</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v102</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v101"></script>
+<script src="./github-sync-core.js?v=v102"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -659,7 +659,7 @@ const MAXCOINS_GENERIC_CC_UPI = {
   }
 };
 
-function feeTotalFor(fee){ return Math.round((fee.baseAmount||0) * (1 + (fee.gstPct!=null?fee.gstPct:GST_PCT)/100)); }
+function feeTotalFor(fee){ fee=fee||{}; return Math.round((fee.baseAmount||0) * (1 + (fee.gstPct!=null?fee.gstPct:GST_PCT)/100)); }
 function feeNextDueFrom(payments){
   if(!payments || !payments.length) return todayStr(); // never paid = due now
   const latest = [...payments].sort((a,b)=> b.date.localeCompare(a.date))[0];
@@ -668,6 +668,7 @@ function feeNextDueFrom(payments){
   return d.toISOString().slice(0,10);
 }
 function feeNextDue(fee){
+  fee = fee || {};
   if(fee.nextDueOverride) return fee.nextDueOverride;
   return feeNextDueFrom(fee.payments);
 }
@@ -677,7 +678,7 @@ function feeApplicable(fee){
 // Transactions logged this calendar year on a card, for waiver checks like Union Bank's.
 function txnCountThisYear(card){
   const y = new Date().getFullYear();
-  return card.entries.filter(e => e.type==='txn' && new Date(e.date+'T00:00:00').getFullYear()===y).length;
+  return (card.entries||[]).filter(e => e.type==='txn' && new Date(e.date+'T00:00:00').getFullYear()===y).length;
 }
 function feeIsWaived(card){
   const w = card.fee && card.fee.waiver;
@@ -860,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v101';
+const APP_VERSION='v102';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1293,6 +1294,30 @@ async function loadData(){
       payments: fd && fd.payments ? fd.payments.map(p=>({id:uid(), ...p})) : []
     };
   });
+  // Defensive fee migration: older saved cards may have a partial fee object.
+  // Normalise every fee field used by Card Fees before rendering that tab.
+  cards.forEach(c => {
+    if(!c.fee) c.fee = blankFeeForCard(c.name);
+    const fd = FEE_DEFAULTS[c.name] || {};
+    if(c.fee.baseAmount == null) c.fee.baseAmount = Number(fd.baseAmount)||0;
+    if(c.fee.gstPct == null) c.fee.gstPct = fd.gstPct!=null ? Number(fd.gstPct) : GST_PCT;
+    if(c.fee.rewardRatePct == null) c.fee.rewardRatePct = fd.rewardRatePct!=null ? Number(fd.rewardRatePct) : 1;
+    if(c.fee.rewardRateConfirmed == null) c.fee.rewardRateConfirmed = !!(fd.rewardRatePct!=null);
+    if(c.fee.perTxnCapAmount == null) c.fee.perTxnCapAmount = Number(fd.perTxnCapAmount)||0;
+    if(c.fee.voucherSurchargePct == null) c.fee.voucherSurchargePct = Number(fd.voucherSurchargePct)||0;
+    if(c.fee.redemptionFeeAmount == null) c.fee.redemptionFeeAmount = Number(fd.redemptionFeeAmount)||0;
+    if(c.fee.capResetBasis == null) c.fee.capResetBasis = fd.capResetBasis || 'calendar';
+    if(!Array.isArray(c.fee.surchargeRules)) c.fee.surchargeRules = [];
+    if(!Array.isArray(c.fee.rewardRules)) c.fee.rewardRules = [];
+    if(!Array.isArray(c.fee.payments)) c.fee.payments = [];
+    c.fee.payments = c.fee.payments.filter(p=>p && typeof p==='object').map(p=>({id:p.id||uid(),date:String(p.date||''),amount:Number(p.amount)||0}));
+    if(c.fee.monthlyRewardCap == null) c.fee.monthlyRewardCap = Number(fd.monthlyRewardCap)||0;
+    if(c.fee.bestCategory == null) c.fee.bestCategory = '';
+    if(c.fee.nextDueOverride === undefined) c.fee.nextDueOverride = fd.nextDueOverride || null;
+    if(c.fee.waiver === undefined) c.fee.waiver = fd.waiver || null;
+    if(c.fee.tracked == null) c.fee.tracked = false;
+  });
+
   // Migrate any already-saved cards that predate rewardRules/monthlyRewardCap/perTxnCapAmount/
   // voucherSurchargePct, or whose rule set has grown since it was first seeded (matched by rule id,
   // so hand-added custom rules from the UI are preserved).
@@ -2136,7 +2161,7 @@ function renderFees(){
   html += '<div class="ledger">';
   rows.forEach(r => {
     const isOpen = openFeeId === r.card.id;
-    const lastPayment = [...r.card.fee.payments].sort((a,b)=> b.date.localeCompare(a.date))[0];
+    const lastPayment = [...(r.card.fee.payments||[])].sort((a,b)=> b.date.localeCompare(a.date))[0];
     html += `<div class="row">
       <div class="row-main" onclick="toggleFeeCard('${r.card.id}')">
         <div>
@@ -2173,7 +2198,7 @@ function renderFees(){
 }
 
 function renderFeeDetail(card){
-  const fee = card.fee;
+  const fee = card.fee || blankFeeForCard(card.name);
   const total = feeTotalFor(fee);
   const payments = [...fee.payments].sort((a,b)=> b.date.localeCompare(a.date));
   const waived = feeIsWaived(card);
