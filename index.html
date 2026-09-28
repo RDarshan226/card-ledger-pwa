@@ -2591,7 +2591,7 @@ function renderSecureUpdate(){return `
 <div class="chat-section"><div class="chat-section-title"><span class="chat-icon">📄</span><div><strong>Unified Card Ledger data file</strong><small>One plain JSON file is used locally for the complete private tracker. No GitHub upload or remote data feed is used.</small></div></div>
 <div class="chat-actions"><button class="tab-btn" onclick="createLocalDataFileUI()">＋ Create data file</button><button class="tab-btn" onclick="selectLocalDataFileUI()">📂 Select existing file</button><button class="tab-btn" onclick="document.getElementById('braveDataImport').click()">📥 Import JSON</button><button class="tab-btn" onclick="disconnectLocalDataFileUI()">Remove selection</button></div>
 <input id="braveDataImport" type="file" accept="application/json,.json" style="display:none" onchange="importBraveDataFile(event)">
-<div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div><div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 File: Loading…<br>📍 Location: Checking device file access…</div><div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 File: Not selected<br>📍 Location: Not available</div></div>
+<div id="githubStatus" class="github-status" style="margin-top:10px;">○ No local data file selected</div><div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 File: Not selected<br>📍 Location: Not available</div></div>
 <div class="disclaimer">Your Card Ledger private data stays in the local JSON file you choose. The PWA remembers the file location on this device.</div>
 </div>`;}
 function updateLocalDataFileDetails(){
@@ -2601,7 +2601,7 @@ function updateLocalDataFileDetails(){
   const location=window.__localDataFileLocation||'Not available';
   el.innerHTML='📄 File: '+String(name).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(location).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 }
-async async function createLocalDataFileUI(){
+async function createLocalDataFileUI(){
   try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}
 }
 async function selectLocalDataFileUI(){try{await selectLocalDataFile(); updateLocalDataFileDetails();}catch(e){showToast(e.message||'Could not select data file');}}
