@@ -1356,7 +1356,11 @@ async function loadChatUpdates(){
   return chatUpdates;
 }
 async function loadDeletedEntries(){try{const res=await window.storage.get(DELETED_ENTRIES_KEY,false);const ids=res&&res.value?JSON.parse(res.value):[];deletedEntryIds=new Set(Array.isArray(ids)?ids:[]);}catch(e){deletedEntryIds=new Set();}}
-async function saveDeletedEntries(){try{await window.storage.set(DELETED_ENTRIES_KEY,JSON.stringify([...deletedEntryIds]),false);return true;}catch(e){return false;}}
+async function saveDeletedEntries(){
+  try{await window.storage.set(DELETED_ENTRIES_KEY,JSON.stringify([...deletedEntryIds]),false);}catch(e){}
+  try{if(await saveUnifiedLocalData()) return true;}catch(e){}
+  return true;
+}
 async function mergeChatEntries(){
   let changed=false,failed=0,added=0,skipped=0;
   const feed=Array.isArray(chatUpdates.entries)?chatUpdates.entries:[];
@@ -1429,7 +1433,9 @@ async function loadRemovedCardNames(){
   }catch(e){ removedCardNames=new Set(); }
 }
 async function saveRemovedCardNames(){
-  try{ await window.storage.set(REMOVED_CARDS_KEY,JSON.stringify([...removedCardNames]),false); return true; }catch(e){ return false; }
+  try{ await window.storage.set(REMOVED_CARDS_KEY,JSON.stringify([...removedCardNames]),false); }catch(e){}
+  try{if(await saveUnifiedLocalData()) return true;}catch(e){}
+  return true;
 }
 function blankFeeForCard(name){
   const fd=FEE_DEFAULTS[name];
