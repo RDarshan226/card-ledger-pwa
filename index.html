@@ -1284,7 +1284,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v131';
+const APP_VERSION='v132';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2421,14 +2421,28 @@ function tabFailure(name,error){
   if(app) app.innerHTML='<div class="panel"><h2>'+name+' could not be displayed</h2><div class="sub">This tab encountered an error. Other tabs remain available.</div><button class="tab-btn" onclick="setTab(\''+activeTab+'\')">Retry '+name+'</button></div>';
 }
 async function renderCoreTabData(tab){
-  // CORE DATA GUARD: these three tabs must always hydrate from the same
-  // saved card records before rendering. GitHub supplies metadata only;
-  // local saved entries/fees remain attached to the same card objects.
+  // IMPORTANT: do not reload STORAGE_KEY when switching tabs. The in-memory
+  // global `cards` array is the authoritative session dataset already loaded
+  // during init(). Reloading it here could replace the live transaction records
+  // with an older/partial local snapshot and make Ledger/Accounts appear empty
+  // while Analysis/Rewards still show the data.
   try{
     if(tab==='dues') await loadDues();
-    await loadLedgerSource();
+    if(!Array.isArray(cards)) cards=[];
+    cards.forEach(c=>{
+      if(!c || typeof c!=='object') return;
+      if(!Array.isArray(c.entries)) c.entries=[];
+      if(c.fee && typeof c.fee!=='object') c.fee=null;
+    });
+    window.__coreTabSessionDiagnostics={
+      tab,
+      cards:cards.length,
+      cardsWithEntries:cards.filter(c=>Array.isArray(c.entries)&&c.entries.length>0).length,
+      totalEntries:cards.reduce((n,c)=>n+(Array.isArray(c.entries)?c.entries.length:0),0),
+      dueBills:Array.isArray(dueBills)?dueBills.length:0
+    };
   }catch(e){
-    console.error('Card Ledger core hydration error',e);
+    console.error('Card Ledger core tab preparation error',e);
   }
 }
 function renderActiveTab(){
