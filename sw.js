@@ -1,4 +1,4 @@
-const CACHE='card-ledger-pwa-v129';
+const CACHE='card-ledger-pwa-v130';
 const APP=['./','./index.html','./manifest.json','./sw.js','./github-sync-core.js','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
