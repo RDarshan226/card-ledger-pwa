@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v102</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v103</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v102</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v103</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v102"></script>
+<script src="./github-sync-core.js?v=v103"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v102';
+const APP_VERSION='v103';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1962,7 +1962,7 @@ function render(){
   if(activeTab === 'ledger') renderLedger();
   else if(activeTab === 'entry') { document.getElementById('app').innerHTML = renderQuickEntryPanel(); }
   else if(activeTab === 'analysis') renderAnalysis();
-  else if(activeTab === 'fees') renderFees();
+  else if(activeTab === 'fees') { try{ renderFees(); }catch(e){ console.error('Card Fees render error',e); document.getElementById('app').innerHTML = '<div class="panel"><h2>Card Fees</h2><div class="sub">The fee data needs repair. Your other tabs are still safe.</div><button class="tab-btn" onclick="repairFeeData()">Repair fee data</button></div>'; } }
   else if(activeTab === 'dues') renderDues();
   else if(activeTab === 'recurring') renderRecurring();
   else if(activeTab === 'cashback') renderCashback();
@@ -2136,6 +2136,24 @@ function nextMonthlyDue(day){
 }
 
 function toggleFeeCard(id){ openFeeId = (openFeeId===id) ? null : id; render(); }
+
+async function repairFeeData(){
+  try{
+    cards = Array.isArray(cards) ? cards : [];
+    cards.forEach(c=>{
+      const oldFee = (c.fee && typeof c.fee==='object') ? c.fee : {};
+      const fresh = blankFeeForCard(c.name);
+      c.fee = Object.assign(fresh, oldFee);
+      c.fee.payments = Array.isArray(oldFee.payments) ? oldFee.payments.filter(Boolean).map(p=>({id:p.id||uid(),date:String(p.date||''),amount:Number(p.amount)||0})) : [];
+      c.fee.rewardRules = Array.isArray(oldFee.rewardRules) ? oldFee.rewardRules : [];
+      c.fee.surchargeRules = Array.isArray(oldFee.surchargeRules) ? oldFee.surchargeRules : [];
+    });
+    await saveData();
+    openFeeId=null;
+    render();
+    showToast('Card fee data repaired');
+  }catch(e){ console.error('Fee repair error',e); showToast('Could not repair fee data'); }
+}
 
 function renderFees(){
   const app = document.getElementById('app');
