@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v121</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">vv122</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v121"></script>
+<script src="./github-sync-core.js?v=v122"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v121';
+const APP_VERSION='v122';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2828,7 +2828,7 @@ function renderCashback(){
   const totalCharges = combinedLog.filter(e=>e.type==='charge').reduce((s,e)=>s+e.amount,0);
   const net = totalCashback - totalCharges;
 
-  let html = `<div class="cover">`
+  let html = `<div class="cover">\n
     <div class="cover-figures">
       <div class="cover-line"><span class="cover-label">Total cashback</span><span class="cover-amt" style="color:var(--ok)">${inr(totalCashback)}</span></div>
       <div class="cover-line"><span class="cover-label">Total charges</span><span class="cover-amt" style="color:var(--danger)">${inr(totalCharges)}</span></div>
@@ -3034,7 +3034,7 @@ function renderRewards(){
     });
   });
 
-  let html = `<div class="cover">`
+  let html = `<div class="cover">\n
     <div class="cover-figures">
       <div class="cover-line"><span class="cover-label">This month</span><span class="cover-amt">${inr(totalMonth)}</span></div>
       <div class="cover-line"><span class="cover-label">This year</span><span class="cover-amt">${inr(totalYear)}</span></div>
