@@ -443,6 +443,7 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 let cards = [];
 let openId = null;
 let editingEntry = null; // { cardId, entryId } while an existing transaction is being edited
+let editingCardId = null;
 let filterText = '';
 let sortByUtil = false;
 let activeTab = 'ledger';
@@ -1318,7 +1319,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v144';
+const APP_VERSION='v145';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
