@@ -407,7 +407,7 @@
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
-    <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Entry</button>
+    <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Add Transaction</button>
     <button class="tab-btn" id="tab-secure" onclick="setTab('secure')" style="display:none">📁 Local Data File</button>
     <button class="tab-btn" id="tab-analysis" onclick="setTab('analysis')">Spend Analysis</button>
     <button class="tab-btn" id="tab-fees" onclick="setTab('fees')">Card Fees</button>
@@ -426,7 +426,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v162 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v163 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -2639,6 +2639,18 @@ async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
 
 
 async function refreshGitHubStatus(){return refreshLocalDataStatus();}
+async function refreshGitHubLedgerUI(){
+  try{
+    const data=await connectGitHub();
+    chatUpdates=data;
+    await applyLocalDataState(data);
+    await mergeChatEntries();
+    if(typeof render==='function') render();
+    await refreshGitHubStatus();
+    showToast('GitHub data refreshed');
+  }catch(e){showToast(e.message||'Could not refresh GitHub data');}
+}
+
 
 function updateTransactionEntryFields(){}
 
