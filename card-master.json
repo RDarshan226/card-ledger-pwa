@@ -1,6 +1,6 @@
 {
-  "version": "v123",
-  "source": "GitHub card master — card details only; transactions remain local",
+  "version": "v126",
+  "source": "GitHub unified card master — single authoritative source for card details used by all card-related tabs",
   "cards": [
     {
       "id": "github-card-0-sbi-simplyclick",
