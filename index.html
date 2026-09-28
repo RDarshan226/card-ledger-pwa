@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <title>Card Ledger</title>
 <style>
-  #startup-splash{animation:startupFailsafe 2.6s ease forwards;} @keyframes startupFailsafe{0%,75%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden;pointer-events:none}}
+  #startup-splash{animation:startupFailsafe 1.15s ease forwards;} @keyframes startupFailsafe{0%,78%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden;pointer-events:none}}
   :root{
     --paper:#080B12; --paper-card:#101622; --line:#26344A; --line-soft:#1B2739;
     --margin:#00F5FF; --ink:#F2F7FF; --ink-soft:#93A4BD;
@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v108</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v109</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v108</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v109</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v108"></script>
+<script src="./github-sync-core.js?v=v109"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -860,7 +860,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v108';
+const APP_VERSION='v109';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -3200,7 +3200,7 @@ if('serviceWorker' in navigator){
 }
 initTheme();
 const startupSplash=document.getElementById('startup-splash');
-setTimeout(()=>{ if(startupSplash) startupSplash.classList.add('hide'); },2000);setTimeout(()=>{if(startupSplash){startupSplash.classList.add('hide');startupSplash.style.display='none';}},2600);
+setTimeout(()=>{ if(startupSplash){ startupSplash.classList.add('hide'); } },1000);setTimeout(()=>{if(startupSplash){startupSplash.classList.add('hide');startupSplash.style.display='none';}},1250);
 </script>
 <datalist id="cat-list">
   <option value="Grocery"><option value="Food & Dining"><option value="Shopping">
