@@ -1318,7 +1318,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v142';
+const APP_VERSION='v143';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2520,7 +2520,7 @@ function renderActiveTab(epoch=renderEpoch){
   const name=activeTab.charAt(0).toUpperCase()+activeTab.slice(1);
   const guard=()=>epoch===renderEpoch && activeTab===name.toLowerCase();
   try{
-    if(activeTab==='ledger') return renderCoreTabData('ledger').then(()=>{if(guard()) renderLedger();}).catch(e=>{if(guard()){console.error(e);tabFailure('Ledger',e);}});
+    if(activeTab==='ledger'){ try{ renderLedger(); }catch(e){ console.error('Card Ledger Ledger render error',e); if(guard()) tabFailure('Ledger',e); } return Promise.resolve(); }
     if(activeTab==='entry') return document.getElementById('app').innerHTML=renderQuickEntryPanel();
     if(activeTab==='analysis') return renderAnalysis();
     if(activeTab==='fees') return renderFees();
