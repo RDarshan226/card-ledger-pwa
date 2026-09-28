@@ -1284,7 +1284,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v128';
+const APP_VERSION='v129';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2535,73 +2535,59 @@ function showToast(msg){ const t=document.getElementById('toast'); if(!t)return;
 async function init(){try{setVersionUI();await loadDeletedEntries();await loadRemovedCardNames();await loadRecurringPayments();await loadChatUpdates();await loadDues();await loadCashback();await loadLedgerSource();initTheme();render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and local transaction sources could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
 
 async function loadLedgerSource(){
-  // GitHub card master is the ONLY source of card details.
-  // The master is embedded in this GitHub-served release so the installed PWA
-  // cannot fall back to the old local IndexedDB card database.
+  // RESTORE/UNIFY: load the existing saved card records first so all existing
+  // transaction, fee, reward and analysis data survives. GitHub card-master
+  // supplies card metadata only; it must never replace entries/fees.
+  await loadData();
+
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
-  const names=validSource.map(c=>String(c.name));
+  const existing=Array.isArray(cards)?cards:[];
+  const byName=new Map(existing.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
 
   cards=validSource.map((src,i)=>{
+    const key=String(src.name).trim().toLowerCase();
+    const old=byName.get(key)||{};
     const d=DEFAULTS[src.name]||{};
     const info=ACCOUNT_INFO[src.name]||{};
-    const id=String(src.id||('github-card-'+i));
     return {
-      ...src,
-      id,
+      ...old,...src,
+      id:String(old.id||src.id||('github-card-'+i)),
       name:String(src.name),
-      limit:Number(src.limit)||0,
-      billingDate:String(src.billingDate||d.billingDate||''),
-      limitGroup:src.limitGroup||d.limitGroup||null,
-      isDebit:!!src.isDebit,
-      feeOnly:!!src.feeOnly,
-      isInsurance:!!src.isInsurance,
-      network:String(src.network!=null?src.network:info.network||''),
-      tier:String(src.tier!=null?src.tier:info.tier||''),
-      bin:String(src.bin!=null?src.bin:info.bin||''),
-      openedMonth:Number(src.openedMonth||info.openedMonth)||0,
-      openedYear:Number(src.openedYear||info.openedYear)||0,
-      entries:[],
-      fee:blankFeeForCard(src.name)
+      limit:Number(src.limit)||Number(old.limit)||0,
+      billingDate:String(src.billingDate||old.billingDate||d.billingDate||''),
+      limitGroup:src.limitGroup||old.limitGroup||d.limitGroup||null,
+      isDebit:!!src.isDebit,feeOnly:!!src.feeOnly,isInsurance:!!src.isInsurance,
+      network:String(src.network!=null?src.network:(old.network||info.network||'')),
+      tier:String(src.tier!=null?src.tier:(old.tier||info.tier||'')),
+      bin:String(src.bin!=null?src.bin:(old.bin||info.bin||'')),
+      openedMonth:Number(src.openedMonth||old.openedMonth||info.openedMonth)||0,
+      openedYear:Number(src.openedYear||old.openedYear||info.openedYear)||0,
+      entries:Array.isArray(old.entries)?old.entries:[],
+      fee:old.fee&&typeof old.fee==='object'?old.fee:blankFeeForCard(src.name)
     };
   });
 
-  // The only local data read here is the transaction JSON file.
-  let localData=null;
-  try{ localData=await readLocalDataFile(); }catch(e){ console.warn('Ledger transaction file unavailable',e); }
+  existing.forEach(old=>{
+    const key=String(old.name||'').trim().toLowerCase();
+    if(!cards.some(c=>String(c.name||'').trim().toLowerCase()===key)) cards.push(old);
+  });
 
-  if(localData){
-    const entries=Array.isArray(localData.entries)?localData.entries:[];
-    const cardByName=new Map(cards.map(c=>[String(c.name).trim().toLowerCase(),c]));
-    entries.filter(e=>e&&e.kind==='ledger'&&e.card).forEach(e=>{
-      const card=cardByName.get(String(e.card).trim().toLowerCase());
-      if(!card)return;
-      card.entries.push({
-        id:e.id||uid(), type:e.type==='repay'?'repay':'txn',
-        date:e.date||todayStr(), amount:Number(e.amount)||0,
-        category:e.category||'', platform:e.platform||'', note:e.note||'',
-        cashback:Number(e.cashback)||0, charge:Number(e.charge)||0,
-        rewardRatePct:e.rewardRatePct!=null?e.rewardRatePct:null,
-        rewardAmountOverride:e.rewardAmountOverride!=null?e.rewardAmountOverride:null,
-        surchargeAmount:e.surchargeAmount!=null?e.surchargeAmount:null
-      });
-    });
-  }
-
-  // Due records remain local, but are linked to the GitHub card IDs by name.
   try{
-    const byName=new Map(cards.map(c=>[String(c.name).trim().toLowerCase(),c.id]));
+    const cardByName=new Map(cards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
     if(Array.isArray(dueBills)) dueBills.forEach(b=>{
-      const id=byName.get(String(b.cardName||'').trim().toLowerCase());
-      if(id)b.cardId=id;
+      const card=cardByName.get(String(b.cardName||'').trim().toLowerCase());
+      if(card)b.cardId=card.id;
     });
   }catch(e){}
 
   window.__cardMasterSource='github';
   window.__cardMasterLoaded=validSource.length>0;
-  window.__cardMasterVersion='v125';
-  return {cardCount:cards.length,fileLoaded:!!localData,source:'github'};
-}if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>init(),{once:true}); else init();
+  window.__cardMasterVersion='v129';
+  return {cardCount:cards.length,source:'github',preservedExistingData:true};
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>init(),{once:true}); else init();
 
 /* One-time PWA notification test: IDFC Power+ and SBI SimplyClick at the next 01:44 local time. */
 function schedulePowerPlusTestNotification(){
