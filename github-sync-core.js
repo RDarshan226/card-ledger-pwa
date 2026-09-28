@@ -9,6 +9,7 @@
 const LOCAL_DATA_DB='card-ledger-local-file-v1';
 const LOCAL_DATA_STORE='handles';
 const LOCAL_DATA_ID='primary';
+const LOCAL_DATA_FALLBACK_ID='fallback-data';
 const LOCAL_DATA_VERSION=4;
 let localDataDbPromise;
 let chatUpdates={version:LOCAL_DATA_VERSION,entries:[],cashback:[]};
@@ -93,9 +94,32 @@ function normaliseLocalData(data){
     removedCardNames:[...new Set(removedCardNames.map(String))]
   };
 }
+async function readLocalDataFallback(){
+  const db=await openLocalDataDB();
+  return await new Promise((resolve,reject)=>{
+    const r=db.transaction(LOCAL_DATA_STORE,'readonly').objectStore(LOCAL_DATA_STORE).get(LOCAL_DATA_FALLBACK_ID);
+    r.onsuccess=()=>resolve(r.result?normaliseLocalData(r.result):null);
+    r.onerror=()=>reject(r.error);
+  });
+}
+async function writeLocalDataFallback(data){
+  const db=await openLocalDataDB();
+  const normal=normaliseLocalData(data);
+  normal.updatedAt=new Date().toISOString();
+  await new Promise((resolve,reject)=>{
+    const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).put(normal,LOCAL_DATA_FALLBACK_ID);
+    r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);
+  });
+  chatUpdates=normal;
+  return normal;
+}
 async function readLocalDataFile(){
   const handle=await loadLocalDataHandle();
-  if(!handle) throw new Error('No Card Ledger data file selected. Choose a local JSON file first.');
+  if(!handle){
+    const fallback=await readLocalDataFallback();
+    if(fallback)return fallback;
+    throw new Error('No Card Ledger data file selected. Choose or import a local JSON file first.');
+  }
   if(!(await localFilePermission(handle,true))) throw new Error('Permission to access the selected Card Ledger file was not granted.');
   const file=await handle.getFile();
   const text=await file.text();
@@ -105,7 +129,7 @@ async function readLocalDataFile(){
 }
 async function writeLocalDataFile(data){
   const handle=await loadLocalDataHandle();
-  if(!handle) throw new Error('No Card Ledger data file selected.');
+  if(!handle)return writeLocalDataFallback(data);
   if(!(await localFilePermission(handle,true))) throw new Error('Permission to write the selected Card Ledger file was not granted.');
   const normal=normaliseLocalData(data);
   normal.updatedAt=new Date().toISOString();
@@ -161,52 +185,89 @@ async function loadLocalDataState(){
   }
 }
 async function selectLocalDataFile(){
-  if(!window.showOpenFilePicker) throw new Error('This browser does not support direct local-file access. Open the PWA in Brave, Chrome, or Edge with file access enabled.');
-  const picked=await window.showOpenFilePicker({
-    multiple:false,
-    types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}],
-    excludeAcceptAllOption:false
+  if(window.showOpenFilePicker){
+    const picked=await window.showOpenFilePicker({
+      multiple:false,
+      types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}],
+      excludeAcceptAllOption:false
+    });
+    const handle=picked&&picked[0];
+    if(!handle)throw new Error('No data file selected.');
+    if(!(await localFilePermission(handle,true)))throw new Error('Permission to access the selected data file was not granted.');
+    const file=await handle.getFile();
+    const text=await file.text();
+    let data;
+    if(!text.trim()) data=normaliseLocalData(null);
+    else{try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}}
+    await saveLocalDataHandle(handle);
+    const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
+    await applyLocalDataState(data);
+    if(!hadCards && typeof cards!=='undefined' && Array.isArray(cards) && cards.length){
+      const current=buildUnifiedLocalData();
+      data={...data,cards:current.cards};
+    }
+    data=normaliseLocalData(data);
+    await writeLocalDataFile(data);
+    if(typeof window.__reloadAfterLocalFileSelection==='function') await window.__reloadAfterLocalFileSelection();
+    await refreshLocalDataStatus('✓ Unified local data file selected · '+handle.name);
+    showToast('Unified Card Ledger data file selected');
+    return data;
+  }
+  // Brave/other Chromium fallback: use the normal Android file picker and keep
+  // the imported JSON in IndexedDB. The app remains fully usable and private;
+  // use Backup Now to export the latest JSON back to a file.
+  return await new Promise((resolve,reject)=>{
+    const input=document.createElement('input');
+    input.type='file'; input.accept='application/json,.json'; input.style.display='none';
+    input.onchange=async()=>{
+      try{
+        const file=input.files&&input.files[0];
+        if(!file) throw new Error('No data file selected.');
+        const text=await file.text();
+        let data;
+        if(!text.trim()) data=normaliseLocalData(null);
+        else{try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}}
+        await clearLocalDataHandle();
+        const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
+        await applyLocalDataState(data);
+        if(!hadCards && typeof cards!=='undefined' && Array.isArray(cards) && cards.length){
+          const current=buildUnifiedLocalData();
+          data={...data,cards:current.cards};
+        }
+        data=normaliseLocalData(data);
+        await writeLocalDataFallback(data);
+        if(typeof window.__reloadAfterLocalFileSelection==='function') await window.__reloadAfterLocalFileSelection();
+        await refreshLocalDataStatus('✓ Brave-compatible local data imported · '+file.name);
+        showToast('Local data imported for Brave');
+        resolve(data);
+      }catch(e){reject(e);}
+      finally{input.remove();}
+    };
+    document.body.appendChild(input);
+    input.click();
   });
-  const handle=picked&&picked[0];
-  if(!handle)throw new Error('No data file selected.');
-  if(!(await localFilePermission(handle,true)))throw new Error('Permission to access the selected data file was not granted.');
-  const file=await handle.getFile();
-  const text=await file.text();
-  let data;
-  if(!text.trim()) data=normaliseLocalData(null);
-  else{try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}}
-  await saveLocalDataHandle(handle);
-  // Import immediately. Old v3 files may contain flat transaction entries but
-  // no cards; preserve those entries instead of replacing them with a blank
-  // card snapshot. The normal Ledger migration then attaches them to cards.
-  const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
-  await applyLocalDataState(data);
-  if(!hadCards && typeof cards!=='undefined' && Array.isArray(cards) && cards.length){
-    const current=buildUnifiedLocalData();
-    data={...data,cards:current.cards};
-  }
-  data=normaliseLocalData(data);
-  await writeLocalDataFile(data);
-  if(typeof window.__reloadAfterLocalFileSelection==='function'){
-    await window.__reloadAfterLocalFileSelection();
-  }
-  await refreshLocalDataStatus('✓ Unified local data file selected · '+handle.name);
-  showToast('Unified Card Ledger data file selected');
-  return data;
 }
 async function createLocalDataFile(){
-  if(!window.showSaveFilePicker)throw new Error('This browser does not support direct local-file access. Open the PWA in Brave, Chrome, or Edge with file access enabled.');
-  const handle=await window.showSaveFilePicker({
-    suggestedName:'card-ledger-data.json',
-    types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}]
-  });
-  if(!handle)throw new Error('No data file selected.');
-  if(!(await localFilePermission(handle,true)))throw new Error('Permission to write the selected data file was not granted.');
-  await saveLocalDataHandle(handle);
+  if(window.showSaveFilePicker){
+    const handle=await window.showSaveFilePicker({
+      suggestedName:'card-ledger-data.json',
+      types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}]
+    });
+    if(!handle)throw new Error('No data file selected.');
+    if(!(await localFilePermission(handle,true)))throw new Error('Permission to write the selected data file was not granted.');
+    await saveLocalDataHandle(handle);
+    const data=buildUnifiedLocalData();
+    await writeLocalDataFile(data);
+    await refreshLocalDataStatus('✓ Unified local data file created · '+handle.name);
+    showToast('Unified Card Ledger data file created');
+    return data;
+  }
   const data=buildUnifiedLocalData();
-  await writeLocalDataFile(data);
-  await refreshLocalDataStatus('✓ Unified local data file created · '+handle.name);
-  showToast('Unified Card Ledger data file created');
+  await clearLocalDataHandle();
+  await writeLocalDataFallback(data);
+  if(typeof downloadBackup==='function') downloadBackup();
+  await refreshLocalDataStatus('✓ Brave-compatible local storage active');
+  showToast('Brave-compatible local storage created · use Backup Now to export');
   return data;
 }
 async function refreshLocalDataStatus(message){
@@ -215,12 +276,15 @@ async function refreshLocalDataStatus(message){
   try{
     const h=await loadLocalDataHandle();
     el.className='github-status '+(h?'connected':'');
-    el.textContent=message||(h?'✓ Unified local data file · '+(h.name||'Card Ledger data'):'○ No local data file selected');
+    const fallback=await readLocalDataFallback();
+    el.textContent=message||(h?'✓ Unified local data file · '+(h.name||'Card Ledger data'):(fallback?'✓ Brave-compatible local storage':'○ No local data file selected'));
   }catch(e){el.textContent=message||'○ No local data file selected';}
 }
 async function connectGitHub(){return selectLocalDataFile().catch(e=>showToast(e.message||'Could not select local data file'));}
 async function disconnectGitHub(){
   await clearLocalDataHandle();
+  const db=await openLocalDataDB();
+  await new Promise((resolve,reject)=>{const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).delete(LOCAL_DATA_FALLBACK_ID);r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);});
   chatUpdates=normaliseLocalData(null);
   window.__localUnifiedDataLoaded=false;
   await refreshLocalDataStatus('○ Local data file disconnected');
