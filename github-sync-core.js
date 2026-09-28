@@ -256,7 +256,7 @@ async function saveTransactionToLocalFile(payload){
   }
   if(!data.entries.some(x=>x&&x.id===payload.id)) data.entries.push(payload);
   if(typeof cards!=='undefined' && Array.isArray(cards)) data.cards=cloneJson(cards,[]);
-  data.entries=flattenCardEntries(data.cards).concat(data.entries.filter(e=>!flattenCardEntries(data.cards).some(x=>x.id===e.id));
+  data.entries=flattenCardEntries(data.cards).concat(data.entries.filter(e=>!flattenCardEntries(data.cards).some(x=>x.id===e.id)));
   if(typeof dueBills!=='undefined') data.dueBills=dueBills;
   if(typeof cashbackLog!=='undefined') data.cashback=cashbackLog;
   if(typeof recurringPayments!=='undefined') data.recurringPayments=recurringPayments;
