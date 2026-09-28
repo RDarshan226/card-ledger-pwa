@@ -1,5 +1,5 @@
-const CACHE='card-ledger-pwa-v125';
-const APP=['./','./index.html','./manifest.json','./sw.js','./github-sync-core.js','./icon-192.svg','./icon-512.svg'];
+const CACHE='card-ledger-pwa-v126';
+const APP=['./','./index.html','./manifest.json','./sw.js','./github-sync-core.js','./card-master.json','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(APP)).then(()=>self.skipWaiting()));
@@ -52,6 +52,16 @@ self.addEventListener('notificationclick',event=>{
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET') return;
   const url=new URL(event.request.url);
+
+  const isCardMaster = url.pathname.endsWith('/card-master.json');
+  if(isCardMaster){
+    event.respondWith(
+      fetch(event.request,{cache:'no-store'})
+        .then(response=>{const copy=response.clone();caches.open(CACHE).then(c=>c.put('./card-master.json',copy));return response;})
+        .catch(()=>caches.match('./card-master.json'))
+    );
+    return;
+  }
 
   const isNavigation = event.request.mode === 'navigate' || (event.request.headers.get('accept')||'').includes('text/html');
   if(isNavigation){
