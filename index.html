@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v116</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v117</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v116"></script>
+<script src="./github-sync-core.js?v=v117"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -861,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v116';
+const APP_VERSION='v117';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2098,17 +2098,8 @@ function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleStri
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
 async function loadLedgerSource(){
-  // The Ledger is now sourced directly from the selected local JSON data file.
-  // Other datasets (cashback, dues, recurring payments, chat feed) are not
-  // required for the Ledger to open.
-  let localData=null;
-  try{
-    localData=await readLocalDataFile();
-  }catch(e){
-    console.warn('Ledger local file read unavailable:',e);
-  }
-
-  // Keep card metadata/limits from the existing local IndexedDB when present.
+  // Card details are authoritative in the existing IndexedDB card database.
+  // The selected local JSON file is used only for Ledger transactions.
   let storedCards=[];
   try{
     const res=await window.storage.get(STORAGE_KEY,false);
@@ -2116,59 +2107,73 @@ async function loadLedgerSource(){
       const parsed=JSON.parse(res.value);
       if(Array.isArray(parsed)) storedCards=parsed;
     }
-  }catch(e){}
+  }catch(e){ console.warn('Card database read failed',e); }
 
-  const byName=new Map(storedCards.filter(c=>c&&c.name).map(c=>[c.name,c]));
+  const validStored=storedCards.filter(c=>c&&typeof c==='object'&&c.name);
+  const byName=new Map(validStored.map(c=>[String(c.name),c]));
   const names=[...DEFAULT_CARDS];
-  (Array.isArray(storedCards)?storedCards:[]).forEach(c=>{
-    if(c&&c.name&&!names.includes(c.name)) names.push(c.name);
-  });
+  validStored.forEach(c=>{if(!names.includes(String(c.name)))names.push(String(c.name));});
 
   cards=names.map(name=>{
     const old=byName.get(name)||{};
     const d=DEFAULTS[name]||{};
     return {
-      id:old.id||uid(), name,
-      limit:Number(old.limit)||Number(d.limit)||0,
+      ...old,
+      id:old.id||uid(),
+      name,
+      limit:Number(old.limit)!=null&&Number(old.limit)>0?Number(old.limit):Number(d.limit)||0,
       billingDate:old.billingDate||d.billingDate||'',
       limitGroup:old.limitGroup||d.limitGroup||null,
       isDebit:!!old.isDebit,
       feeOnly:!!old.feeOnly,
       isInsurance:!!old.isInsurance,
-      network:old.network||'', tier:old.tier||'', bin:old.bin||'',
-      openedMonth:Number(old.openedMonth)||0, openedYear:Number(old.openedYear)||0,
-      fee:old.fee||null, entries:[]
+      entries:Array.isArray(old.entries)?old.entries:[],
+      fee:old.fee||null
     };
   });
 
-  // Entries in the JSON file are the authoritative Ledger transactions.
-  const entries=Array.isArray(localData&&localData.entries)?localData.entries:[];
-  const cardByName=new Map(cards.map(c=>[c.name,c]));
-  entries.filter(e=>e&&e.kind==='ledger'&&e.card).forEach(e=>{
-    const card=cardByName.get(String(e.card));
-    if(card){
-      card.entries.push({
-        id:e.id||uid(), type:e.type==='repay'?'repay':'txn',
-        date:e.date||todayStr(), amount:Number(e.amount)||0,
-        category:e.category||'', platform:e.platform||'', note:e.note||'',
-        cashback:Number(e.cashback)||0, charge:Number(e.charge)||0,
+  // Preserve any saved card records exactly as records, including cards not
+  // currently in DEFAULT_CARDS.
+  validStored.forEach(old=>{
+    if(!cards.some(c=>c.name===old.name)){
+      cards.push({...old,id:old.id||uid(),entries:Array.isArray(old.entries)?old.entries:[]});
+    }
+  });
+
+  let localData=null;
+  try{ localData=await readLocalDataFile(); }catch(e){ console.warn('Ledger transaction file unavailable',e); }
+
+  // Only replace transaction entries when the local file is actually readable.
+  // This prevents an unavailable file from wiping the card database entries.
+  if(localData){
+    cards.forEach(c=>{c.entries=[];});
+    const entries=Array.isArray(localData.entries)?localData.entries:[];
+    const cardByName=new Map(cards.map(c=>[String(c.name),c]));
+    entries.filter(e=>e&&e.kind==='ledger'&&e.card).forEach(e=>{
+      const card=cardByName.get(String(e.card));
+      if(card) card.entries.push({
+        id:e.id||uid(),
+        type:e.type==='repay'?'repay':'txn',
+        date:e.date||todayStr(),
+        amount:Number(e.amount)||0,
+        category:e.category||'',
+        platform:e.platform||'',
+        note:e.note||'',
+        cashback:Number(e.cashback)||0,
+        charge:Number(e.charge)||0,
         rewardRatePct:e.rewardRatePct!=null?e.rewardRatePct:null,
         rewardAmountOverride:e.rewardAmountOverride!=null?e.rewardAmountOverride:null,
         surchargeAmount:e.surchargeAmount!=null?e.surchargeAmount:null
       });
-    }
-  });
+    });
+  }
 
   if(!cards.some(c=>c.name===DEBIT_CARD_NAME)){
     cards.push({id:uid(),name:DEBIT_CARD_NAME,limit:0,billingDate:'',limitGroup:null,isDebit:true,feeOnly:false,isInsurance:false,entries:[],fee:null});
   }
-
-  // Removed cards remain respected, but a missing/invalid file can never
-  // erase the saved card list.
   if(!(removedCardNames instanceof Set)) removedCardNames=new Set();
-  return {fileLoaded:!!localData, entryCount:entries.length};
+  return {cardCount:cards.length,fileLoaded:!!localData};
 }
-
 async function init(){
   try{ initTheme(); setVersionUI(); await loadRemovedCardNames(); await loadLedgerSource(); render(); }
   catch(e){
