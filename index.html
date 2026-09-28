@@ -394,11 +394,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v96 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v97 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v96"></script>
+<script src="./github-sync-core.js?v=v97"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -860,7 +860,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v96';
+const APP_VERSION='v97';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1555,24 +1555,9 @@ async function createLocalDataFileUI(){
 async function selectLocalDataFileUI(){try{await selectLocalDataFile();}catch(e){showToast(e.message||'Could not select data file');}}
 async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect data file');}}
 async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
-function setTab(t){activeTab=t;render();if(t==='secure')setTimeout(refreshLocalDataStatus,0);}
 
-function render(){
-const d=document.getElementById('dateline');if(d)d.textContent='Card Ledger — '+new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-['ledger','entry','analysis','fees','dues','recurring','cashback','rewards','accounts','alerts'].forEach(x=>{const e=document.getElementById('tab-'+x);if(e)e.classList.toggle('active',activeTab===x);});
-const app=document.getElementById('app');
-if(activeTab==='ledger')renderLedger();
-else if(activeTab==='entry'){app.innerHTML=renderQuickEntryPanel();refreshChatCardOptions();updateTransactionEntryFields();}
-else if(activeTab==='analysis')renderAnalysis();
-else if(activeTab==='fees')renderFees();
-else if(activeTab==='dues')renderDues();
-else if(activeTab==='recurring')renderRecurring();
-else if(activeTab==='cashback')renderCashback();
-else if(activeTab==='rewards')renderRewards();
-else if(activeTab==='accounts')renderAccounts();
-else if(activeTab==='alerts')renderAlerts();
-else if(activeTab==='secure'){app.innerHTML=renderSecureUpdate();refreshLocalDataStatus();}
-}
+
+
 
 async function refreshGitHubStatus(){return refreshLocalDataStatus();}
 
@@ -2485,30 +2470,7 @@ function renderRewards(){
 }
 
 /* ---------------- Notification samples ---------------- */
-function schedulePowerPlusTestNotification(){
-  const now=new Date();
-  const target=new Date(now);
-  target.setHours(1,44,0,0);
-  if(target<=now) target.setDate(target.getDate()+1);
-  const delay=target.getTime()-Date.now();
-  setTimeout(async()=>{
-    try{
-      if(!notificationSupported()) return;
-      let permission=Notification.permission;
-      if(permission!=='granted') permission=await Notification.requestPermission();
-      if(permission!=='granted') return;
-      const selected=['IDFC Power+','SBI SimplyClick'].map(name=>cards.find(c=>c.name===name)).filter(Boolean);
-      const lines=selected.map(card=>card.name+' — '+inr(Math.max(0,Number(utilised(card))||0)));
-      const title='Card Ledger — Sample notification';
-      const total=selected.reduce((sum,card)=>sum+Math.max(0,Number(utilised(card))||0),0);
-      const options={body:lines.join(' · ')+' · Total — '+inr(total)+' · Test 1:44 AM',icon:'./icon-192.svg',badge:'./icon-192.svg',tag:'card-ledger-sample-0144-'+Date.now(),renotify:true,data:{url:'./',cardIds:selected.map(c=>c.id),date:todayStr()}};
-      const reg=await navigator.serviceWorker.ready;
-      if(reg&&reg.showNotification) await reg.showNotification(title,options);
-      else if(reg.active) reg.active.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
-      else new Notification(title,options);
-    }catch(e){ console.error('Sample notification failed',e); }
-  },delay);
-}
+
 /* ---------------- Statement notifications ---------------- */
 const NOTIFY_SETTINGS_KEY = 'card-ledger-notification-settings-v1';
 let notificationSettings = { enabled:false, cards:{} };
