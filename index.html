@@ -426,7 +426,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v152 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v159 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -2656,8 +2656,9 @@ async function encryptTransactionEntry(){
     if(!card){showToast('Choose a card');return;}
     if(!amount||amount<=0){showToast('Enter a valid amount');return;}
     const payload={v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type:mainType==='repayment'?'repay':'txn',date,amount,category,platform,note,cashback,charge};
-    await saveTransactionToLocalFile(payload);
-    chatUpdates=await readLocalDataFile();
+    const targetFile=await saveEntryToChosenLocalFile(payload);
+    chatUpdates=targetFile;
+    window.__localDataUsingFallback=false;
     await mergeChatEntries();
     await saveData();
     ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
