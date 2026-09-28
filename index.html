@@ -863,7 +863,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const GITHUB_CARD_MASTER = [
+let GITHUB_CARD_MASTER = [
   {
     "id": "github-card-0-sbi-simplyclick",
     "name": "SBI SimplyClick",
@@ -1286,7 +1286,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v140';
+const APP_VERSION='v141';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2632,7 +2632,7 @@ async function loadLedgerSource(){
       const master=await res.json();
       if(master && Array.isArray(master.cards) && master.cards.length) GITHUB_CARD_MASTER=master.cards;
     }
-  }catch(e){ GITHUB_CARD_MASTER=[]; console.warn('Could not load card-master.json.',e); }
+  }catch(e){ console.warn('Could not load card-master.json.',e); }
 
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
