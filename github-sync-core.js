@@ -158,11 +158,28 @@ async function saveUnifiedLocalData(){
   await writeLocalDataFile(buildUnifiedLocalData());
   return true;
 }
+function attachFlatEntriesToCards(localCards, flatEntries){
+  const result=cloneJson(localCards,[]);
+  const list=Array.isArray(flatEntries)?flatEntries:[];
+  result.forEach(c=>{
+    if(!Array.isArray(c.entries)) c.entries=[];
+    const mine=list.filter(e=>e && (
+      (e.cardId && c.id && String(e.cardId)===String(c.id)) ||
+      (e.card && c.name && String(e.card).trim()===String(c.name).trim())
+    ));
+    const ids=new Set(c.entries.filter(Boolean).map(e=>String(e.id)));
+    mine.forEach(e=>{if(e.id && !ids.has(String(e.id))) c.entries.push(cloneJson(e,e));});
+  });
+  return result;
+}
 async function applyLocalDataState(data){
   const d=normaliseLocalData(data);
-  // Existing v3 files may contain only flat entries/cashback. Keep those feeds
-  // available for the normal merge path; cards remain canonical once present.
-  if(typeof cards!=='undefined' && Array.isArray(d.cards) && d.cards.length) cards=cloneJson(d.cards,[]);
+  // Cards are the canonical session records. Older unified files may have
+  // cards plus transactions only in the top-level entries mirror; reattach
+  // those entries by cardId/card name so the Ledger is not empty.
+  if(typeof cards!=='undefined' && Array.isArray(d.cards) && d.cards.length){
+    cards=attachFlatEntriesToCards(d.cards,d.entries);
+  }
   if(typeof dueBills!=='undefined' && Array.isArray(d.dueBills)) dueBills=cloneJson(d.dueBills,[]);
   if(typeof cashbackLog!=='undefined' && Array.isArray(d.cashback)) cashbackLog=cloneJson(d.cashback,[]);
   if(typeof recurringPayments!=='undefined' && Array.isArray(d.recurringPayments)) recurringPayments=cloneJson(d.recurringPayments,[]);
