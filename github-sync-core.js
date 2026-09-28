@@ -243,7 +243,7 @@ async function readLocalDataFile(){
   const file=await handle.getFile();
   const text=await file.text();
   if(!text.trim())return normaliseLocalData(null);
-  try{return normaliseLocalData(JSON.parse(text));}
+  try{return normaliseLocalData(parseLedgerJson(text));}
   catch(e){throw new Error('The selected Card Ledger data file is not valid JSON.');}
 }
 async function writeLocalDataFile(data){
@@ -392,7 +392,7 @@ async function selectLocalDataFile(){
     let data;
     if(!text.trim()) throw new Error('The selected file is empty.');
     try{
-      const parsed=JSON.parse(text);
+      const parsed=parseLedgerJson(text);
       if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)) throw new Error('JSON root must be an object.');
       const hasLedgerShape=Array.isArray(parsed.cards)||Array.isArray(parsed.entries)||Array.isArray(parsed.dueBills)||Array.isArray(parsed.cashback)||Array.isArray(parsed.cashbackLog)||Array.isArray(parsed.recurringPayments);
       if(!hasLedgerShape) throw new Error('This JSON does not contain Card Ledger data.');
@@ -529,6 +529,25 @@ async function loadChatUpdates(){
     return chatUpdates;
   }
 }
+function parseLedgerJson(text){
+  const raw=String(text||'').replace(/^\\uFEFF/,'').trimStart();
+  if(!raw) throw new Error('The selected Card Ledger data file is empty.');
+  try{return JSON.parse(raw);}catch(firstError){
+    const end=findFirstJsonValueEnd(raw);
+    if(end>0){
+      const first=raw.slice(0,end);
+      try{
+        const parsed=JSON.parse(first);
+        // Some older exported files contain a second JSON value appended after
+        // the valid ledger object. Keep the valid first object instead of
+        // failing with "Unexpected non-whitespace character after JSON".
+        return parsed;
+      }catch(e){}
+    }
+    throw firstError;
+  }
+}
+
 function findFirstJsonValueEnd(text){
   const s=String(text||'').replace(/^\\uFEFF/,'').trimStart();
   if(!s) return -1;
