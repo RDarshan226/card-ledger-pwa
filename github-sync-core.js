@@ -151,9 +151,17 @@ function buildUnifiedLocalData(){
   });
 }
 async function hasLocalDataFile(){
-  try{return !!(await loadLocalDataHandle());}catch(e){return false;}
+  try{
+    if(await loadLocalDataHandle()) return true;
+    return !!(await readLocalDataFallback());
+  }catch(e){return false;}
 }
 async function saveUnifiedLocalData(){
+  // A Brave/Android import uses the IndexedDB fallback rather than a
+  // FileSystemFileHandle. Treat that fallback as the active unified data
+  // source, otherwise saveData()/saveDues()/saveCashback() would silently
+  // fall back to the old legacy stores and the unified data would stop
+  // receiving new changes.
   if(!(await hasLocalDataFile())) return false;
   await writeLocalDataFile(buildUnifiedLocalData());
   return true;
