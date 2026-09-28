@@ -1284,7 +1284,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v129';
+const APP_VERSION='v130';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2420,18 +2420,29 @@ function tabFailure(name,error){
   const app=document.getElementById('app');
   if(app) app.innerHTML='<div class="panel"><h2>'+name+' could not be displayed</h2><div class="sub">This tab encountered an error. Other tabs remain available.</div><button class="tab-btn" onclick="setTab(\''+activeTab+'\')">Retry '+name+'</button></div>';
 }
+async function renderCoreTabData(tab){
+  // CORE DATA GUARD: these three tabs must always hydrate from the same
+  // saved card records before rendering. GitHub supplies metadata only;
+  // local saved entries/fees remain attached to the same card objects.
+  try{
+    if(tab==='dues') await loadDues();
+    await loadLedgerSource();
+  }catch(e){
+    console.error('Card Ledger core hydration error',e);
+  }
+}
 function renderActiveTab(){
   const name=activeTab.charAt(0).toUpperCase()+activeTab.slice(1);
   try{
-    if(activeTab==='ledger') return renderLedger();
+    if(activeTab==='ledger') return renderCoreTabData('ledger').then(()=>renderLedger()).catch(e=>{console.error(e);tabFailure('Ledger',e);});
     if(activeTab==='entry') return document.getElementById('app').innerHTML=renderQuickEntryPanel();
     if(activeTab==='analysis') return renderAnalysis();
     if(activeTab==='fees') return renderFees();
-    if(activeTab==='dues') return renderDues();
+    if(activeTab==='dues') return renderCoreTabData('dues').then(()=>renderDues()).catch(e=>{console.error(e);tabFailure('Dues',e);});
     if(activeTab==='recurring') return renderRecurring();
     if(activeTab==='cashback') return renderCashback();
     if(activeTab==='rewards') return renderRewards();
-    if(activeTab==='accounts') return renderAccounts();
+    if(activeTab==='accounts') return renderCoreTabData('accounts').then(()=>renderAccounts()).catch(e=>{console.error(e);tabFailure('Account Ageing',e);});
     if(activeTab==='alerts') return renderAlerts();
     if(activeTab==='secure'){
       document.getElementById('app').innerHTML=renderSecureUpdate();
@@ -2439,12 +2450,6 @@ function renderActiveTab(){
       return;
     }
   }catch(e){
-    if(activeTab==='ledger'){
-      const app=document.getElementById('app');
-      if(app) app.innerHTML='<div class="panel"><h2>Ledger data could not be rendered</h2><div class="sub">Your saved card data is protected. Retry the Ledger without loading the other tabs.</div><button class="tab-btn" onclick="renderLedger()">Retry Ledger</button></div>';
-      console.error('Card Ledger Ledger tab error',e);
-      return;
-    }
     tabFailure(name,e);
   }
 }
