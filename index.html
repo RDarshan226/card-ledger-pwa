@@ -368,7 +368,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v113</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v114</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v113</span></div>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v113"></script>
+<script src="./github-sync-core.js?v=v114"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -407,6 +407,7 @@ const BACKUP_KEY = 'card-ledger-auto-backup-v1';
 let dueBills = [];
 let backupSeq = 0;
 let cashbackLog = [];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 let cards = [];
 let openId = null;
 let editingEntry = null; // { cardId, entryId } while an existing transaction is being edited
@@ -860,7 +861,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v113';
+const APP_VERSION='v114';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -3039,8 +3040,6 @@ function renderAlerts(){
 loadNotificationSettings();
 /* ---------------- Account Ages ---------------- */
 let openAccountMonth = null;
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
 function toggleAccountMonth(key){ openAccountMonth = (openAccountMonth===key) ? null : key; render(); }
 
 function renderAccounts(){
