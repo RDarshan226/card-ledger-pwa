@@ -1284,7 +1284,7 @@ const GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v130';
+const APP_VERSION='v131';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -2540,9 +2540,10 @@ function showToast(msg){ const t=document.getElementById('toast'); if(!t)return;
 async function init(){try{setVersionUI();await loadDeletedEntries();await loadRemovedCardNames();await loadRecurringPayments();await loadChatUpdates();await loadDues();await loadCashback();await loadLedgerSource();initTheme();render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and local transaction sources could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
 
 async function loadLedgerSource(){
-  // RESTORE/UNIFY: load the existing saved card records first so all existing
-  // transaction, fee, reward and analysis data survives. GitHub card-master
-  // supplies card metadata only; it must never replace entries/fees.
+  // CORE HYDRATION: local saved records contain private entries/fees; the
+  // GitHub master contains authoritative card metadata. Merge them by card
+  // name, preserve all local history, then persist the merged card records so
+  // every tab sees exactly the same card objects on the next render.
   await loadData();
 
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
@@ -2550,19 +2551,22 @@ async function loadLedgerSource(){
   const existing=Array.isArray(cards)?cards:[];
   const byName=new Map(existing.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
 
-  cards=validSource.map((src,i)=>{
+  const merged=validSource.map((src,i)=>{
     const key=String(src.name).trim().toLowerCase();
     const old=byName.get(key)||{};
     const d=DEFAULTS[src.name]||{};
     const info=ACCOUNT_INFO[src.name]||{};
     return {
-      ...old,...src,
+      ...old,
+      ...src,
       id:String(old.id||src.id||('github-card-'+i)),
       name:String(src.name),
       limit:Number(src.limit)||Number(old.limit)||0,
       billingDate:String(src.billingDate||old.billingDate||d.billingDate||''),
       limitGroup:src.limitGroup||old.limitGroup||d.limitGroup||null,
-      isDebit:!!src.isDebit,feeOnly:!!src.feeOnly,isInsurance:!!src.isInsurance,
+      isDebit:!!src.isDebit,
+      feeOnly:!!src.feeOnly,
+      isInsurance:!!src.isInsurance,
       network:String(src.network!=null?src.network:(old.network||info.network||'')),
       tier:String(src.tier!=null?src.tier:(old.tier||info.tier||'')),
       bin:String(src.bin!=null?src.bin:(old.bin||info.bin||'')),
@@ -2573,11 +2577,14 @@ async function loadLedgerSource(){
     };
   });
 
+  // Keep locally-created cards that are not yet in the GitHub master.
   existing.forEach(old=>{
     const key=String(old.name||'').trim().toLowerCase();
-    if(!cards.some(c=>String(c.name||'').trim().toLowerCase()===key)) cards.push(old);
+    if(!merged.some(c=>String(c.name||'').trim().toLowerCase()===key)) merged.push(old);
   });
+  cards=merged;
 
+  // Re-link saved statements to the current card IDs after the metadata merge.
   try{
     const cardByName=new Map(cards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
     if(Array.isArray(dueBills)) dueBills.forEach(b=>{
@@ -2586,9 +2593,22 @@ async function loadLedgerSource(){
     });
   }catch(e){}
 
+  // Persist the merged metadata + preserved private data. This is important:
+  // without this write, the next tab could reload an older local card object.
+  await saveData();
+
   window.__cardMasterSource='github';
   window.__cardMasterLoaded=validSource.length>0;
-  window.__cardMasterVersion='v129';
+  window.__cardMasterVersion='v131';
+  window.__coreDataDiagnostics={
+    sourceCards:validSource.length,
+    mergedCards:cards.length,
+    cardsWithEntries:cards.filter(c=>Array.isArray(c.entries)&&c.entries.length>0).length,
+    totalEntries:cards.reduce((n,c)=>n+(Array.isArray(c.entries)?c.entries.length:0),0),
+    dueBills:Array.isArray(dueBills)?dueBills.length:0,
+    cardsWithOpeningDates:cards.filter(c=>c.openedMonth&&c.openedYear).length,
+    cardsWithBillingDates:cards.filter(c=>parseDay(c.billingDate)).length
+  };
   return {cardCount:cards.length,source:'github',preservedExistingData:true};
 }
 
