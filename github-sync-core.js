@@ -398,6 +398,53 @@ async function loadChatUpdates(){
     return chatUpdates;
   }
 }
+async function saveEntryToChosenLocalFile(payload){
+  if(!window.showOpenFilePicker){
+    throw new Error('This browser does not support direct editing of a user-selected JSON file. Open Card Ledger in Chrome or another browser with File System Access support.');
+  }
+  const picked=await window.showOpenFilePicker({
+    multiple:false,
+    types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}],
+    excludeAcceptAllOption:false
+  });
+  const handle=picked&&picked[0];
+  if(!handle) throw new Error('No JSON file selected.');
+  if(!(await localFilePermission(handle,true))) throw new Error('Permission to edit the selected JSON file was not granted.');
+  const file=await handle.getFile();
+  const text=await file.text();
+  if(!text.trim()) throw new Error('The selected JSON file is empty.');
+  let data;
+  try{
+    const parsed=JSON.parse(text);
+    if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)) throw new Error('JSON root must be an object.');
+    const hasLedgerShape=Array.isArray(parsed.cards)||Array.isArray(parsed.entries)||Array.isArray(parsed.dueBills)||Array.isArray(parsed.cashback)||Array.isArray(parsed.cashbackLog)||Array.isArray(parsed.recurringPayments);
+    if(!hasLedgerShape) throw new Error('This JSON does not contain Card Ledger data.');
+    data=normaliseLocalData(parsed);
+  }catch(e){
+    throw new Error(e&&e.message?e.message:'The selected file is not valid Card Ledger JSON.');
+  }
+
+  await saveLocalDataHandle(handle);
+
+  if(!Array.isArray(data.entries)) data.entries=[];
+  if(!data.entries.some(x=>x&&x.id===payload.id)) data.entries.push(payload);
+
+  if(!Array.isArray(data.cards)) data.cards=[];
+  const card=data.cards.find(c=>c&&(c.id===payload.cardId||c.name===payload.card));
+  if(card){
+    card.entries=Array.isArray(card.entries)?card.entries:[];
+    if(!card.entries.some(e=>e&&e.id===payload.id)) card.entries.push(payload);
+  }
+  data.entries=flattenCardEntries(data.cards).concat(data.entries.filter(e=>!flattenCardEntries(data.cards).some(x=>x.id===e.id)));
+  data=normaliseLocalData(data);
+  await writeLocalDataFile(data);
+  await applyLocalDataState(data);
+  window.__localDataRecoveryRequired=false;
+  window.__localDataRecoveryReason='';
+  await refreshLocalDataStatus('✓ Entry written to '+handle.name);
+  return data;
+}
+
 async function saveTransactionToLocalFile(payload){
   const data=await readLocalDataFile();
   // New transaction is inserted into the canonical card record when the card
