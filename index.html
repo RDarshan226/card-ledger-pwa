@@ -368,10 +368,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v106</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v107</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v106</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v107</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadData().then(()=>{render();showToast('Ledger refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -398,7 +398,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v106"></script>
+<script src="./github-sync-core.js?v=v107"></script>
 <script>
 const STORAGE_KEY = 'card-ledger-v2';
 const CASHBACK_KEY = 'card-ledger-cashback-v1';
@@ -497,7 +497,6 @@ const FEE_DEFAULTS = {
   "HDFC MoneyBack+": { baseAmount: 500, payments: [] },
   "SBI SimplyClick":   { baseAmount: 499, payments: [{ date: "2025-09-07", amount: Math.round(499*(1+GST_PCT/100)) }, { date: "2026-09-08", amount: 589 }], nextDueOverride: "2027-09-07" },
   "IDFC Power+":       { baseAmount: 499, payments: [{ date: "2026-08-20", amount: Math.round(499*(1+GST_PCT/100)) }], redemptionFeeAmount: 99 },
-  "IDFC Millenia":     { baseAmount: 0, payments: [], redemptionFeeAmount: 99 },
   "SBI Tata Neu Plus": { baseAmount: 499, payments: [{ date: "2026-09-08", amount: 588.82 }], nextDueOverride: "2027-09-07" },
   // Confirmed from RBL's own Duet T&C: 1% on retail/online, capped ₹500/calendar month,
   // min ₹100 per transaction to qualify (not modeled — flat 1% applied regardless of size).
@@ -861,7 +860,7 @@ let deletedEntryIds=new Set();
 let editingRecurringId=null;
 let editingRewardCardId=null;
 
-const APP_VERSION='v106';
+const APP_VERSION='v107';
 /* PWA local database layer — plain local storage only.
    Transaction data lives in the user-selected JSON file. App settings/cards remain
    in a simple local IndexedDB store; no encryption or decryption is used. */
@@ -1542,6 +1541,8 @@ function renderLedger(){
     <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
   </div>`;
 
+  html += addCardFormHTML('ledger');
+
   html += `<div class="toolbar">
     <input type="text" id="search" placeholder="Find a card…" value="${String(filterText||'').replace(/"/g,'&quot;')}" oninput="onSearch(this.value)">
     <button class="sort-btn ${sortByUtil?'active':''}" onclick="toggleSort()">${sortByUtil ? '⇅ Sorted by usage' : '⇅ Sort by usage'}</button>
@@ -2161,7 +2162,7 @@ function renderFees(){
   // Card Fees is deliberately self-contained: it must render even when an
   // older saved card has incomplete fee data. Every non-debit card is shown,
   // and cards without a fee can be tracked directly from this screen.
-  const visible=cards.filter(c=>c && c.name!==DEBIT_CARD_NAME && feeApplicable(c.fee));
+  const visible=cards.filter(c=>c && c.name!==DEBIT_CARD_NAME && c.name!=="IDFC Millenia" && feeApplicable(c.fee));
   const today=todayStr();
 
   let html='<div class="panel"><h2>Card Fees</h2><div class="sub">Track annual fees, waiver conditions, payment history and break-even spend. Tap a card to expand it.</div>';
