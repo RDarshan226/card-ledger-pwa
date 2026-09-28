@@ -131,15 +131,46 @@ async function readLocalDataFile(){
 }
 async function writeLocalDataFile(data){
   const handle=await loadLocalDataHandle();
-  if(!handle)return writeLocalDataFallback(data);
+  if(!handle){
+    const normal=await writeLocalDataFallback(data);
+    window.__localDataUsingFallback=true;
+    return normal;
+  }
   if(!(await localFilePermission(handle,true))) throw new Error('Permission to write the selected Card Ledger file was not granted.');
   const normal=normaliseLocalData(data);
   normal.updatedAt=new Date().toISOString();
+  const json=JSON.stringify(normal,null,2)+'\\n';
   const writable=await handle.createWritable();
-  await writable.write(JSON.stringify(normal,null,2)+'\n');
+  await writable.write(json);
   await writable.close();
+  // Verify the browser actually persisted the new contents to the selected file.
+  try{
+    const verifyFile=await handle.getFile();
+    const verifyText=await verifyFile.text();
+    if(verifyText!==json) throw new Error('The selected Card Ledger file could not be verified after writing.');
+  }catch(e){
+    throw new Error(e&&e.message?e.message:'The selected Card Ledger file could not be verified after writing.');
+  }
   chatUpdates=normal;
+  window.__localDataUsingFallback=false;
   return normal;
+}
+async function downloadLocalDataSnapshot(data,message){
+  try{
+    const normal=normaliseLocalData(data);
+    normal.updatedAt=new Date().toISOString();
+    const blob=new Blob([JSON.stringify(normal,null,2)+'\\n'],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='card-ledger-data-latest.json';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    if(message) showToast(message);
+    return true;
+  }catch(e){
+    if(message) showToast('Could not export the latest JSON file');
+    return false;
+  }
 }
 function buildUnifiedLocalData(){
   return normaliseLocalData({
@@ -365,6 +396,8 @@ async function saveTransactionToLocalFile(payload){
   if(typeof cashbackLog!=='undefined') data.cashback=cashbackLog;
   if(typeof recurringPayments!=='undefined') data.recurringPayments=recurringPayments;
   await writeLocalDataFile(data);
-  const savedHandle=await loadLocalDataHandle(); await refreshLocalDataStatus('✓ Saved locally · '+(savedHandle&&savedHandle.name?savedHandle.name:'Card Ledger data'));
+  const savedHandle=await loadLocalDataHandle();
+  if(!savedHandle) await downloadLocalDataSnapshot(data,'Saved to device storage. Latest JSON file exported.');
+  await refreshLocalDataStatus(savedHandle?'✓ Saved locally · '+savedHandle.name:'✓ Saved to device storage · latest JSON exported');
   return true;
 }
