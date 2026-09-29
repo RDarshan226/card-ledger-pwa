@@ -224,27 +224,12 @@ async function writeLocalDataFallback(data){
   return normal;
 }
 async function readLocalDataFile(){
-  try{
-    const remote=await fetchGitHubDataFile();
-    if(remote.data)return remote.data;
-    // No GitHub data file yet: keep the current live ledger available so the
-    // first GitHub save can create the repository data file without blanking cards.
-    if(typeof cards!=='undefined'&&Array.isArray(cards)&&cards.length)return buildUnifiedLocalData();
-  }catch(e){
-    // If GitHub is temporarily unavailable, retain the existing local recovery path.
-  }
-  const handle=await loadLocalDataHandle();
-  if(!handle){
-    const fallback=await readLocalDataFallback();
-    if(fallback)return fallback;
-    throw new Error('No Card Ledger data file selected. Choose or import a local JSON file first.');
-  }
-  if(!(await localFilePermission(handle,true))) throw new Error('Permission to access the selected Card Ledger file was not granted.');
-  const file=await handle.getFile();
-  const text=await file.text();
-  if(!text.trim())return normaliseLocalData(null);
-  try{return normaliseLocalData(parseLedgerJson(text));}
-  catch(e){throw new Error('The selected Card Ledger data file is not valid JSON.');}
+  // GitHub is the single source of truth. Do not fall back to browser files,
+  // IndexedDB, or the old local-recovery flow.
+  const remote=await fetchGitHubDataFile();
+  if(remote.data)return remote.data;
+  if(typeof cards!=='undefined'&&Array.isArray(cards)&&cards.length)return buildUnifiedLocalData();
+  throw new Error('GitHub Card Ledger data is unavailable.');
 }
 async function writeLocalDataFile(data){
   // GitHub is now the primary persistence target. Local file support remains
