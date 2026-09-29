@@ -74,6 +74,7 @@ async function requireGitHubToken(){
   token=await showGitHubTokenDialog();
   if(!token) throw new Error('GitHub token is required to open Card Ledger.');
   setGitHubToken(token);
+  setGithubAuthVersion();
   try{
     const check=await fetch(githubDataApiUrl(),{headers:githubApiHeaders(false),cache:'no-store'});
     if(!(check.ok || check.status===404)){
