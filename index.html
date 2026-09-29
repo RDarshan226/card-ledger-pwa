@@ -404,11 +404,11 @@
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v152</span></div>
-  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh GitHub data">↻ Refresh</button></div></div>
+  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="GitHub Data" aria-label="GitHub Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh GitHub data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
     <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Add Transaction</button>
-    <button class="tab-btn" id="tab-secure" onclick="setTab('secure')" style="display:none">📁 Local Data File</button>
+    <button class="tab-btn" id="tab-secure" onclick="setTab('secure')" style="display:none">☁️ GitHub Data</g/button>
     <button class="tab-btn" id="tab-analysis" onclick="setTab('analysis')">Spend Analysis</button>
     <button class="tab-btn" id="tab-fees" onclick="setTab('fees')">Card Fees</button>
     <button class="tab-btn" id="tab-dues" onclick="setTab('dues')">Upcoming Dues</button>
@@ -1322,8 +1322,8 @@ function b64(bytes){return bytesToB64(bytes);}
 function b64ToBytes(v){const bin=atob(v);return Uint8Array.from(bin,c=>c.charCodeAt(0));}
 function unb64(v){return b64ToBytes(v);}
 async function verifyChatEncryptionKey(){return {ok:true,reason:'github'};}
-async function inspectChatKeyHistory(){return refreshLocalDataStatus();}
-async function inspectCredentialVaultChatKey(){return refreshLocalDataStatus();}
+async function inspectChatKeyHistory(){return getGitHubDataStatus();}
+async function inspectCredentialVaultChatKey(){return getGitHubDataStatus();}
 async function loadChatUpdates(){
   const data=await readGitHubData();
   await applyLocalDataState(data);
@@ -1614,20 +1614,6 @@ function renderRecurringPaymentManager(){
   html+='<div class="breakeven-box" style="margin-top:12px;">'+recurringFormHTML(null)+'</div></div>';
   return html;
 }
-window.__reloadAfterLocalFileSelection=async function(){
-  try{
-    await loadData();
-    await loadDues();
-    await loadCashback();
-    await loadRecurringPayments();
-    if(typeof render==='function') await render();
-    if(typeof refreshLocalDataStatus==='function') await refreshLocalDataStatus();
-  }catch(e){
-    console.error('GitHub data file reload failed',e);
-    showToast('GitHub data file selected, but the app could not reload it');
-  }
-};
-
 async function loadData(){
   const unifiedLocal=await readGitHubData();
   await applyLocalDataState(unifiedLocal);
@@ -2406,7 +2392,7 @@ function renderActiveTab(epoch=renderEpoch){
     if(activeTab==='alerts') return renderAlerts();
     if(activeTab==='secure'){
       document.getElementById('app').innerHTML=renderSecureUpdate();
-      setTimeout(()=>{try{refreshLocalDataStatus();}catch(e){}},0);
+      setTimeout(()=>{try{refreshGitHubStatus();}catch(e){}},0);
       return;
     }
   }catch(e){
@@ -2430,7 +2416,7 @@ function renderSecureUpdate(){return `
 <div id="githubDataFileDetails" class="github-status" style="margin-top:8px;">📄 Data: card-ledger-data.json<br>📍 Repository: RDarshan226/card-ledger-pwa</div></div>
 <div class="disclaimer">The ledger data is plain JSON in GitHub. It is not encrypted.</div>
 </div>`;}
-function updateLocalDataFileDetails(){
+function refreshGitHubStatus(){
   const el=document.getElementById('githubDataFileDetails');
   if(!el) return;
   const name=window.__githubDataFileName||'GitHub not connected';
@@ -2438,12 +2424,12 @@ function updateLocalDataFileDetails(){
   el.innerHTML='📄 File: '+String(name).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(location).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 }
 async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect GitHub');}}
-async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
+async function refreshKeyFileStatus(){return refreshGitHubStatus();}
 
 
 
 
-async function refreshGitHubStatus(){return refreshLocalDataStatus();}
+async function refreshGitHubStatus(){return refreshGitHubStatus();}
 async function refreshGitHubLedgerUI(){
   try{
     const data=await connectGitHub();
