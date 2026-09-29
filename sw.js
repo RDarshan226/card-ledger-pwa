@@ -1,4 +1,4 @@
-const CACHE='card-ledger-pwa-v185';
+const CACHE='card-ledger-pwa-v186';
 const APP=['./','./index.html','./manifest.json','./sw.js','./data-source.js','./icon-192.svg','./icon-512.svg'];
 
 self.addEventListener('install',event=>{
@@ -54,6 +54,12 @@ self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
 
   const isNavigation = event.request.mode === 'navigate' || (event.request.headers.get('accept')||'').includes('text/html');
+  const isLedgerData = url.pathname.endsWith('/card-ledger-data.json');
+  if(isLedgerData){
+    event.respondWith(fetch(event.request,{cache:'no-store'}));
+    return;
+  }
+
   if(isNavigation){
     event.respondWith(
       fetch(event.request,{cache:'no-store'})
