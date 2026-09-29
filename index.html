@@ -426,7 +426,7 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">GitHub database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v172 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v174 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
@@ -2531,6 +2531,10 @@ async function loadLedgerSource(){
 
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
   if(window.__githubDataLoadFailed){ window.__cardMasterLoaded=false; return {recoveryRequired:true,reason:window.__githubDataLoadError||'GitHub data unavailable'}; }
+  // Keep a separate copy of the GitHub transaction mirror. The card-master
+  // merge below contains metadata only on some older versions, so never let
+  // that merge replace valid GitHub transactions with empty entries arrays.
+  const remoteEntries=Array.isArray(chatUpdates&&chatUpdates.entries)?chatUpdates.entries.map(e=>({...e})):[];
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
   const existing=(Array.isArray(cards)?cards:[]).filter(c=>c&&typeof c==='object');
   const byName=new Map(existing.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
@@ -2568,6 +2572,18 @@ async function loadLedgerSource(){
     if(!merged.some(c=>String(c.name||'').trim().toLowerCase()===key)) merged.push(old);
   });
   cards=merged;
+
+  // Reattach every GitHub transaction after the card-master merge. Match by
+  // both card ID and card name so renamed/legacy IDs cannot make the Ledger
+  // appear as 0 transactions.
+  cards=attachFlatEntriesToCards(cards,remoteEntries);
+  cards.forEach(c=>{
+    const rc=Array.isArray(chatUpdates&&chatUpdates.cards)?chatUpdates.cards.find(x=>x&&String(x.name||'').trim().toLowerCase()===String(c.name||'').trim().toLowerCase()):null;
+    if(rc&&Array.isArray(rc.entries)&&rc.entries.length){
+      const ids=new Set((Array.isArray(c.entries)?c.entries:[]).filter(Boolean).map(e=>String(e.id)));
+      rc.entries.forEach(e=>{if(e&&e.id&&!ids.has(String(e.id)))c.entries.push({...e,cardId:c.id,card:c.name});});
+    }
+  });
 
   // Re-link saved statements to the current card IDs after the metadata merge.
   try{
