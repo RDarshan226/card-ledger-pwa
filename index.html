@@ -429,7 +429,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v184"></script>
+<script src="./data-source.js?v=v185"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1314,7 +1314,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v184';
+const APP_VERSION='v185';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -2456,7 +2456,7 @@ async function init(){try{setVersionUI();dataReadyPromise=loadLedgerSource();awa
 async function loadLedgerSource(){
   // CORE HYDRATION: data source is the single source of truth. The PWA is read-only;
   // transaction changes are uploaded from Chat using the connected data source tool.
-  await loadData();
+  await loadChatUpdates();
 
   try{
     const res=await fetch('./card-master.json?ts='+Date.now(),{cache:'no-store'});
