@@ -1,6 +1,5 @@
 /* Card Ledger PWA — GitHub-only data core.
  * User ledger data is stored in card-ledger-data.json in the repository.
- * Legacy file/IndexedDB recovery code is intentionally kept outside this file.
  */
 const GITHUB_DATA_REPO='RDarshan226/card-ledger-pwa';
 const GITHUB_DATA_PATH='card-ledger-data.json';
