@@ -74,10 +74,19 @@ async function writeGitHubData(data,commitMessage){
     const current=await fetchGitHubDataFile();
     const normal=normaliseLedgerData(data);
     normal.updatedAt=new Date().toISOString();
-    const body={message:commitMessage||'Update Card Ledger data',content:encodeGitHubBase64(JSON.stringify(normal,null,2)+'\n'),branch:GITHUB_DATA_BRANCH};
+    const body={message:commitMessage||'Update Card Ledger data',content:encodeGitHubBase64(JSON.stringify(normal,null,2)+'
+'),branch:GITHUB_DATA_BRANCH};
     if(current.sha)body.sha=current.sha;
     let res=await fetch('https://api.github.com/repos/'+GITHUB_DATA_REPO+'/contents/'+GITHUB_DATA_PATH,{method:'PUT',headers:githubApiHeaders(true),body:JSON.stringify(body)});
-    if(!res.ok && (res.status===409 || res.status===422)){\n      // A 409/422 can occur when another write changed the data file between the GET and PUT.\n      // Re-read the file and retry with the latest blob SHA.\n      const fresh=await fetchGitHubDataFile();\n      if(fresh.sha){\n        body.sha=fresh.sha;\n        res=await fetch('https://api.github.com/repos/'+GITHUB_DATA_REPO+'/contents/'+GITHUB_DATA_PATH,{method:'PUT',headers:githubApiHeaders(true),body:JSON.stringify(body)});\n      }\n    }
+    if(!res.ok && (res.status===409 || res.status===422)){
+      // A 409/422 can occur when another write changed the data file between the GET and PUT.
+      // Re-read the file and retry with the latest blob SHA.
+      const fresh=await fetchGitHubDataFile();
+      if(fresh.sha){
+        body.sha=fresh.sha;
+        res=await fetch('https://api.github.com/repos/'+GITHUB_DATA_REPO+'/contents/'+GITHUB_DATA_PATH,{method:'PUT',headers:githubApiHeaders(true),body:JSON.stringify(body)});
+      }
+    }
     if(!res.ok){
       let detail='GitHub data write failed ('+res.status+').';
       try{const j=await res.json();if(j&&j.message)detail+=' '+j.message;}catch(e){}
