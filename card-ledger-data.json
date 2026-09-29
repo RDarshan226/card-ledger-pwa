@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-09-29T10:54:55.214Z",
+  "updatedAt": "2026-09-29T11:10:48.754Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -353,6 +353,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": 50,
           "surchargeAmount": null
+        },
+        {
+          "id": "slice-repay-980-16-20260921",
+          "type": "repay",
+          "date": "2026-09-21",
+          "amount": 980.8,
+          "note": "paid via Kotak app bill payment",
+          "category": "",
+          "platform": "Kotak app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "2jppy7kd",
+          "card": "Slice Credit Card"
         }
       ],
       "fee": {
@@ -456,7 +470,22 @@
       "isDebit": false,
       "feeOnly": false,
       "isInsurance": false,
-      "entries": [],
+      "entries": [
+        {
+          "id": "amazon-icici-660-20260922",
+          "type": "txn",
+          "date": "2026-09-22",
+          "amount": 660,
+          "note": "Amazon purchase",
+          "category": "Shopping",
+          "platform": "Amazon",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "psw7cqxt",
+          "card": "Amazon ICICI"
+        }
+      ],
       "fee": {
         "baseAmount": 0,
         "gstPct": 18,
@@ -502,6 +531,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "yes-finbooster-repay-10-20260921",
+          "type": "repay",
+          "date": "2026-09-21",
+          "amount": 10,
+          "note": "paid via BHIM app bill payment",
+          "category": "",
+          "platform": "BHIM",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "j3qyazyg",
+          "card": "Yes Bank Finbooster"
         }
       ],
       "fee": {
@@ -597,6 +640,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "jupiter-repay-646-20260927",
+          "type": "repay",
+          "date": "2026-09-27",
+          "amount": 646,
+          "note": "paid via BHIM app bill payment",
+          "category": "",
+          "platform": "BHIM",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "vkkef24j",
+          "card": "Jupiter Edge+"
         }
       ],
       "fee": {
@@ -1133,6 +1190,34 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "bob-uni-rupay-245-20260918",
+          "type": "txn",
+          "date": "2026-09-18",
+          "amount": 245,
+          "note": "BoB Uni RuPay purchase",
+          "category": "Shopping",
+          "platform": "RuPay",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "owunlcjd",
+          "card": "BOB Uni GoldX (RuPay)"
+        },
+        {
+          "id": "bob-uni-rupay-100-20260924",
+          "type": "txn",
+          "date": "2026-09-24",
+          "amount": 100,
+          "note": "BoB Uni RuPay purchase",
+          "category": "Shopping",
+          "platform": "RuPay",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "owunlcjd",
+          "card": "BOB Uni GoldX (RuPay)"
         }
       ],
       "fee": {
@@ -1504,6 +1589,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "axis-neo-repay-1175-20260923",
+          "type": "repay",
+          "date": "2026-09-23",
+          "amount": 1175.16,
+          "note": "paid via Kotak app bill payment",
+          "category": "",
+          "platform": "Kotak app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "nfr5g5fi",
+          "card": "Axis Neo"
         }
       ],
       "fee": {
@@ -1638,6 +1737,34 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "indusind-platinum-repay-10-20260923",
+          "type": "repay",
+          "date": "2026-09-23",
+          "amount": 10,
+          "note": "paid via BHIM app bill payment",
+          "category": "",
+          "platform": "BHIM",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "96j4vdo6",
+          "card": "IndusInd Visa Platinum"
+        },
+        {
+          "id": "indusind-platinum-instamart-546-20260923",
+          "type": "txn",
+          "date": "2026-09-23",
+          "amount": 546,
+          "note": "Instamart purchase",
+          "category": "Grocery",
+          "platform": "Instamart",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "96j4vdo6",
+          "card": "IndusInd Visa Platinum"
         }
       ],
       "fee": {
@@ -1673,7 +1800,22 @@
       "isDebit": false,
       "feeOnly": false,
       "isInsurance": false,
-      "entries": [],
+      "entries": [
+        {
+          "id": "moneyback-amazon-gold-10-20260921",
+          "type": "txn",
+          "date": "2026-09-21",
+          "amount": 10,
+          "note": "Amazon gold purchase",
+          "category": "Shopping",
+          "platform": "Amazon",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "mube3d80",
+          "card": "HDFC MoneyBack+"
+        }
+      ],
       "fee": {
         "baseAmount": 500,
         "gstPct": 18,
@@ -3898,6 +4040,146 @@
       "surchargeAmount": null,
       "cardId": "2jppy7kd",
       "card": "Slice Credit Card"
+    },
+    {
+      "id": "amazon-icici-660-20260922",
+      "type": "txn",
+      "date": "2026-09-22",
+      "amount": 660,
+      "note": "Amazon purchase",
+      "category": "Shopping",
+      "platform": "Amazon",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
+    },
+    {
+      "id": "axis-neo-repay-1175-20260923",
+      "type": "repay",
+      "date": "2026-09-23",
+      "amount": 1175.16,
+      "note": "paid via Kotak app bill payment",
+      "category": "",
+      "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "nfr5g5fi",
+      "card": "Axis Neo"
+    },
+    {
+      "id": "bob-uni-rupay-245-20260918",
+      "type": "txn",
+      "date": "2026-09-18",
+      "amount": 245,
+      "note": "BoB Uni RuPay purchase",
+      "category": "Shopping",
+      "platform": "RuPay",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "owunlcjd",
+      "card": "BOB Uni GoldX (RuPay)"
+    },
+    {
+      "id": "indusind-platinum-repay-10-20260923",
+      "type": "repay",
+      "date": "2026-09-23",
+      "amount": 10,
+      "note": "paid via BHIM app bill payment",
+      "category": "",
+      "platform": "BHIM",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "96j4vdo6",
+      "card": "IndusInd Visa Platinum"
+    },
+    {
+      "id": "indusind-platinum-instamart-546-20260923",
+      "type": "txn",
+      "date": "2026-09-23",
+      "amount": 546,
+      "note": "Instamart purchase",
+      "category": "Grocery",
+      "platform": "Instamart",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "96j4vdo6",
+      "card": "IndusInd Visa Platinum"
+    },
+    {
+      "id": "bob-uni-rupay-100-20260924",
+      "type": "txn",
+      "date": "2026-09-24",
+      "amount": 100,
+      "note": "BoB Uni RuPay purchase",
+      "category": "Shopping",
+      "platform": "RuPay",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "owunlcjd",
+      "card": "BOB Uni GoldX (RuPay)"
+    },
+    {
+      "id": "slice-repay-980-16-20260921",
+      "type": "repay",
+      "date": "2026-09-21",
+      "amount": 980.8,
+      "note": "paid via Kotak app bill payment",
+      "category": "",
+      "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "2jppy7kd",
+      "card": "Slice Credit Card"
+    },
+    {
+      "id": "yes-finbooster-repay-10-20260921",
+      "type": "repay",
+      "date": "2026-09-21",
+      "amount": 10,
+      "note": "paid via BHIM app bill payment",
+      "category": "",
+      "platform": "BHIM",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "j3qyazyg",
+      "card": "Yes Bank Finbooster"
+    },
+    {
+      "id": "moneyback-amazon-gold-10-20260921",
+      "type": "txn",
+      "date": "2026-09-21",
+      "amount": 10,
+      "note": "Amazon gold purchase",
+      "category": "Shopping",
+      "platform": "Amazon",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "mube3d80",
+      "card": "HDFC MoneyBack+"
+    },
+    {
+      "id": "jupiter-repay-646-20260927",
+      "type": "repay",
+      "date": "2026-09-27",
+      "amount": 646,
+      "note": "paid via BHIM app bill payment",
+      "category": "",
+      "platform": "BHIM",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "vkkef24j",
+      "card": "Jupiter Edge+"
     }
   ],
   "cashback": [
@@ -4244,6 +4526,22 @@
       "amount": 50,
       "date": "2026-09-27",
       "note": "Slice — Zepto purchase cashback"
+    },
+    {
+      "id": "cb-axis-neo-1175-20260923",
+      "type": "cashback",
+      "category": "Card Cashback",
+      "amount": 11.75,
+      "date": "2026-09-23",
+      "note": "Axis Neo bill payment cashback — Kotak app"
+    },
+    {
+      "id": "cb-slice-980-16-20260921",
+      "type": "cashback",
+      "category": "Card Cashback",
+      "amount": 9.81,
+      "date": "2026-09-21",
+      "note": "Slice bill payment cashback — Kotak app"
     }
   ],
   "dueBills": [],
