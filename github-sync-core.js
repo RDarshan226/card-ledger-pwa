@@ -55,7 +55,7 @@ async function fetchGitHubDataFile(){
   }
   const j=await res.json();
   const parsed=JSON.parse(decodeGitHubBase64(j.content||''));
-  return {data:normaliseLocalData(parsed),sha:j.sha||null,missing:false};
+  return {data:normaliseLedgerData(parsed),sha:j.sha||null,missing:false};
 }
 
 async function requireGitHubToken(){
@@ -72,7 +72,7 @@ async function writeGitHubData(data,commitMessage){
   githubWritePromise=(async()=>{
     const token=await requireGitHubToken();
     const current=await fetchGitHubDataFile();
-    const normal=normaliseLocalData(data);
+    const normal=normaliseLedgerData(data);
     normal.updatedAt=new Date().toISOString();
     const body={message:commitMessage||'Update Card Ledger data',content:encodeGitHubBase64(JSON.stringify(normal,null,2)+'\n'),branch:GITHUB_DATA_BRANCH};
     if(current.sha)body.sha=current.sha;
@@ -98,7 +98,7 @@ async function writeGitHubData(data,commitMessage){
 
 async function saveGitHubEntry(payload){
   const current=await fetchGitHubDataFile();
-  const data=current.data?normaliseLocalData(current.data):buildUnifiedLocalData();
+  const data=current.data?normaliseLedgerData(current.data):buildUnifiedLedgerData();
   if(typeof cards!=='undefined'&&Array.isArray(cards)&&cards.length)data.cards=cloneJson(cards,[]);
   const remoteEntries=Array.isArray(data.entries)?data.entries:[];
   const cardEntries=flattenCardEntries(data.cards);
@@ -114,10 +114,10 @@ async function saveGitHubEntry(payload){
   }
   data.entries=flattenCardEntries(data.cards).concat(data.entries.filter(e=>e&&!flattenCardEntries(data.cards).some(x=>String(x.id)===String(e.id))));
   const saved=await writeGitHubData(data,'Card Ledger: add transaction');
-  await applyLocalDataState(saved);
-  window.__localDataUsingFallback=false;
-  window.__localDataRecoveryRequired=false;
-  window.__localDataRecoveryReason='';
+  await applyLedgerDataState(saved);
+  window.__githubDataUsingFallback=false;
+  window.__githubDataRecoveryRequired=false;
+  window.__githubDataRecoveryReason='';
   return saved;
 }
 
@@ -136,7 +136,7 @@ function flattenCardEntries(cards){
   return out;
 }
 
-function normaliseLocalData(data){
+function normaliseLedgerData(data){
   const d=data&&typeof data==='object'?data:{};
   const cards=Array.isArray(d.cards)?d.cards:[];
   const entries=Array.isArray(d.entries)?d.entries:[];
@@ -175,8 +175,8 @@ function attachFlatEntriesToCards(localCards, flatEntries){
   return result;
 }
 
-async function applyLocalDataState(data){
-  const d=normaliseLocalData(data);
+async function applyLedgerDataState(data){
+  const d=normaliseLedgerData(data);
   // Cards are the canonical session records. Older unified files may have
   // cards plus transactions only in the top-level entries mirror; reattach
   // those entries by cardId/card name so the Ledger is not empty.
@@ -196,13 +196,13 @@ async function applyLocalDataState(data){
   if(typeof removedCardNames!=='undefined') removedCardNames=new Set(d.removedCardNames);
   chatUpdates=d;
   window.chatUpdatesForSecurity=d.entries;
-  window.__chatFeedSource='local-file';
-  window.__localUnifiedDataLoaded=Array.isArray(d.cards)&&d.cards.length>0;
+  window.__chatFeedSource='github';
+  window.__githubUnifiedDataLoaded=Array.isArray(d.cards)&&d.cards.length>0;
   return d;
 }
 
-function buildUnifiedLocalData(){
-  return normaliseLocalData({
+function buildUnifiedLedgerData(){
+  return normaliseLedgerData({
     version:LEDGER_DATA_VERSION,
     cards:typeof cards!=='undefined'&&Array.isArray(cards)?cards:[],
     dueBills:typeof dueBills!=='undefined'&&Array.isArray(dueBills)?dueBills:[],
@@ -218,14 +218,14 @@ async function connectGitHub(){
     await requireGitHubToken();
     const remote=await fetchGitHubDataFile();
     if(remote.data){
-      await applyLocalDataState(remote.data);
-      window.__localDataRecoveryRequired=false;
-      window.__localDataRecoveryReason='';
+      await applyLedgerDataState(remote.data);
+      window.__githubDataRecoveryRequired=false;
+      window.__githubDataRecoveryReason='';
       return remote.data;
     }
-    const seed=buildUnifiedLocalData();
+    const seed=buildUnifiedLedgerData();
     await writeGitHubData(seed,'Card Ledger: initialize data file');
-    await applyLocalDataState(seed);
+    await applyLedgerDataState(seed);
     return seed;
   }catch(e){throw e;}
 }
@@ -249,20 +249,20 @@ async function readGitHubData(){
   if(!remote.data) throw new Error('GitHub Card Ledger data file was not found.');
   return remote.data;
 }
-async function saveUnifiedLocalData(){
-  const saved=await writeGitHubData(buildUnifiedLocalData(),'Card Ledger: save data');
-  await applyLocalDataState(saved);
+async function saveUnifiedLedgerData(){
+  const saved=await writeGitHubData(buildUnifiedLedgerData(),'Card Ledger: save data');
+  await applyLedgerDataState(saved);
   return true;
 }
-async function saveEntryToChosenLocalFile(payload){
+async function saveEntryToGitHub(payload){
   return await saveGitHubEntry(payload);
 }
 async function loadChatUpdates(){
   const data=await readGitHubData();
-  await applyLocalDataState(data);
+  await applyLedgerDataState(data);
   window.__chatFeedSource='github';
   return data;
 }
-window.__localDataRecoveryRequired=false;
-window.__localDataRecoveryReason='';
-window.__localDataUsingFallback=false;
+window.__githubDataRecoveryRequired=false;
+window.__githubDataRecoveryReason='';
+window.__githubDataUsingFallback=false;
