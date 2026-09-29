@@ -430,7 +430,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v172"></script>
+<script src="./github-sync-core.js?v=v173"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1315,7 +1315,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v172';
+const APP_VERSION='v173';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -2429,7 +2429,6 @@ async function refreshKeyFileStatus(){return refreshGitHubStatus();}
 
 
 
-async function refreshGitHubStatus(){return refreshGitHubStatus();}
 async function refreshGitHubLedgerUI(){
   try{
     const data=await connectGitHub();
@@ -2581,8 +2580,7 @@ async function loadLedgerSource(){
 
   // Persist the merged metadata + preserved private data. This is important:
   // without this write, the next tab could reload an older local card object.
-  await saveData();
-
+  // Startup is read-only. GitHub is authoritative; do not require a write token just to display the Ledger.
   window.__cardMasterSource='github';
   window.__cardMasterLoaded=validSource.length>0;
   window.__cardMasterVersion='v132';
