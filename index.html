@@ -404,7 +404,7 @@
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v152</span></div>
-  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh local data">↻ Refresh</button></div></div>
+  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="Local Data File" aria-label="Local Data File">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('GitHub card data refreshed')})" title="Refresh GitHub data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
     <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Add Transaction</button>
@@ -423,7 +423,7 @@
   <button class="tab-btn" onclick="document.getElementById('restoreFile').click()">Restore Backup</button>
   <button class="tab-btn" id="installBtn" onclick="installPWA()" style="display:none">Install App</button>
   <input id="restoreFile" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">
-  <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">Local database</span>
+  <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">GitHub database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
   <div class="footnote">Card Ledger v168 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
@@ -432,10 +432,6 @@
 
 <script src="./github-sync-core.js?v=v168"></script>
 <script>
-const STORAGE_KEY = 'card-ledger-v2';
-const CASHBACK_KEY = 'card-ledger-cashback-v1';
-const DUES_KEY = 'card-ledger-dues-v1';
-const BACKUP_KEY = 'card-ledger-auto-backup-v1';
 let dueBills = [];
 let backupSeq = 0;
 let cashbackLog = [];
@@ -1320,79 +1316,26 @@ let GITHUB_CARD_MASTER = [
 ];
 
 const APP_VERSION='v168';
-/* PWA local database layer — plain local storage only.
-   Transaction data lives in the user-selected JSON file. App settings/cards remain
-   in a simple local IndexedDB store; no encryption or decryption is used. */
-(function(){
-  const DB_NAME='card-ledger-pwa-db-plain', DB_VERSION=1, STORE='kv';
-  let dbPromise;
-  function openDB(){
-    if(dbPromise)return dbPromise;
-    dbPromise=new Promise((resolve,reject)=>{
-      const req=indexedDB.open(DB_NAME,DB_VERSION);
-      req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE);};
-      req.onsuccess=()=>resolve(req.result);
-      req.onerror=()=>reject(req.error);
-    });
-    return dbPromise;
-  }
-  async function rawGet(key){
-    const db=await openDB();
-    return await new Promise((resolve,reject)=>{
-      const r=db.transaction(STORE,'readonly').objectStore(STORE).get(key);
-      r.onsuccess=()=>resolve(r.result==null?null:r.result);
-      r.onerror=()=>reject(r.error);
-    });
-  }
-  async function rawSet(key,value){
-    const db=await openDB();
-    return await new Promise((resolve,reject)=>{
-      const r=db.transaction(STORE,'readwrite').objectStore(STORE).put(value,key);
-      r.onsuccess=()=>resolve({ok:true});
-      r.onerror=()=>reject(r.error);
-    });
-  }
-  async function rawRemove(key){
-    const db=await openDB();
-    return await new Promise((resolve,reject)=>{
-      const r=db.transaction(STORE,'readwrite').objectStore(STORE).delete(key);
-      r.onsuccess=()=>resolve({ok:true});
-      r.onerror=()=>reject(r.error);
-    });
-  }
-  window.storage={
-    async get(key){const value=await rawGet(key);return value==null?null:{value:String(value)};},
-    async set(key,value){return rawSet(key,String(value));},
-    async remove(key){return rawRemove(key);},
-    async exportEncryptedText(value){return String(value);},
-    async importEncryptedText(value){return typeof value==='string'?value:JSON.stringify(value);}
-  };
-})();
-
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
 function b64ToBytes(v){const bin=atob(v);return Uint8Array.from(bin,c=>c.charCodeAt(0));}
 function unb64(v){return b64ToBytes(v);}
-async function verifyChatEncryptionKey(){return {ok:true,reason:'local-file'};}
+async function verifyChatEncryptionKey(){return {ok:true,reason:'github'};}
 async function inspectChatKeyHistory(){return refreshLocalDataStatus();}
 async function inspectCredentialVaultChatKey(){return refreshLocalDataStatus();}
 async function loadChatUpdates(){
-  try{
-    chatUpdates=await readLocalDataFile();
-    window.chatUpdatesForSecurity=chatUpdates.entries;
-    window.__chatFeedSource='local-file';
-  }catch(e){
-    chatUpdates={version:3,entries:[],cashback:[]};
-    window.__chatFeedSource='none';
-  }
-  return chatUpdates;
+  const data=await readGitHubData();
+  await applyLocalDataState(data);
+  window.__chatFeedSource='github';
+  return data;
 }
-async function loadDeletedEntries(){try{const res=await window.storage.get(DELETED_ENTRIES_KEY,false);const ids=res&&res.value?JSON.parse(res.value):[];deletedEntryIds=new Set(Array.isArray(ids)?ids:[]);}catch(e){deletedEntryIds=new Set();}}
+async function loadDeletedEntries(){
+  const data=await readGitHubData();
+  deletedEntryIds=new Set(Array.isArray(data.deletedEntryIds)?data.deletedEntryIds.map(String):[]);
+}
 async function saveDeletedEntries(){
-  try{await window.storage.set(DELETED_ENTRIES_KEY,JSON.stringify([...deletedEntryIds]),false);}catch(e){}
-  try{if(await saveUnifiedLocalData()) return true;}catch(e){}
-  return true;
+  try{await saveUnifiedLocalData();return true;}catch(e){return false;}
 }
 async function mergeChatEntries(){
   let changed=false,failed=0,added=0,skipped=0;
@@ -1460,15 +1403,11 @@ function refreshChatCardOptions(){
   if(current && usable.some(c=>c.name===current)) sel.value=current;
 }
 async function loadRemovedCardNames(){
-  try{
-    const r=await window.storage.get(REMOVED_CARDS_KEY,false);
-    if(r&&r.value){ const a=JSON.parse(r.value); removedCardNames=new Set(Array.isArray(a)?a:[]); }
-  }catch(e){ removedCardNames=new Set(); }
+  const data=await readGitHubData();
+  removedCardNames=new Set(Array.isArray(data.removedCardNames)?data.removedCardNames:[]);
 }
 async function saveRemovedCardNames(){
-  try{ await window.storage.set(REMOVED_CARDS_KEY,JSON.stringify([...removedCardNames]),false); }catch(e){}
-  try{if(await saveUnifiedLocalData()) return true;}catch(e){}
-  return true;
+  try{await saveUnifiedLocalData();return true;}catch(e){return false;}
 }
 function blankFeeForCard(name){
   const fd=FEE_DEFAULTS[name];
@@ -1617,20 +1556,11 @@ async function removeCardUI(id,evt){
   render();showToast(c.name+' removed');
 }
 async function loadRecurringPayments(){
-  try{
-    const local=await readLocalDataFile();
-    if(local && Array.isArray(local.recurringPayments)){ recurringPayments=local.recurringPayments; return; }
-  }catch(e){}
-  try{
-    const r=await window.storage.get(RECURRING_PAYMENTS_KEY,false);
-    if(r&&r.value) recurringPayments=JSON.parse(r.value);
-  }catch(e){recurringPayments=[];}
-  if(!Array.isArray(recurringPayments)) recurringPayments=[];
+  const data=await readGitHubData();
+  recurringPayments=Array.isArray(data.recurringPayments)?data.recurringPayments:[];
 }
 async function saveRecurringPayments(){
-  try{ if(await saveUnifiedLocalData()){ try{await writeAutoBackup();}catch(_e){} return true; } }catch(e){}
-  try{await window.storage.set(RECURRING_PAYMENTS_KEY,JSON.stringify(recurringPayments),false);await writeAutoBackup();return true;}
-  catch(e){showToast('Could not save recurring payments');return false;}
+  try{await saveUnifiedLocalData();return true;}catch(e){showToast('Could not save recurring payments to GitHub');return false;}
 }
 function nextRecurringDate(p){
   const day=Number(p.day)||1, now=new Date();
@@ -1693,33 +1623,16 @@ window.__reloadAfterLocalFileSelection=async function(){
     if(typeof render==='function') await render();
     if(typeof refreshLocalDataStatus==='function') await refreshLocalDataStatus();
   }catch(e){
-    console.error('Local data file reload failed',e);
-    showToast('Local data file selected, but the app could not reload it');
+    console.error('GitHub data file reload failed',e);
+    showToast('GitHub data file selected, but the app could not reload it');
   }
 };
 
 async function loadData(){
-  window.__localDataRecoveryRequired=false;
-  window.__localDataRecoveryReason='';
-  await loadDeletedEntries();
-  await loadRemovedCardNames();
-  await loadRecurringPayments();
-  await loadChatUpdates();
-  let unifiedLocal=null;
-  try{ unifiedLocal=await loadLocalDataState(); }catch(e){ unifiedLocal=null; }
-  if(window.__localDataRecoveryRequired) return false;
-  if(!unifiedLocal || !Array.isArray(unifiedLocal.cards) || !unifiedLocal.cards.length){
-    try{
-      if(window.storage && typeof window.storage.get === 'function'){
-        const res = await window.storage.get(STORAGE_KEY, false);
-        if(res && res.value){
-          const legacyCards=JSON.parse(res.value);
-          if(Array.isArray(legacyCards) && legacyCards.length) cards=legacyCards;
-        }
-      }
-    }catch(e){ /* no legacy data available */ }
-  }
-
+  const unifiedLocal=await readGitHubData();
+  await applyLocalDataState(unifiedLocal);
+  window.__githubDataLoadFailed=false;
+  window.__githubDataLoadError='';
   if(!cards || !cards.length){
     cards = DEFAULT_CARDS.map(name => ({ id: uid(), name, limit: 0, billingDate: '', limitGroup: null, isDebit:false, entries: [], fee: null }));
   }
@@ -1934,76 +1847,27 @@ async function loadData(){
   return addedAny;
 }
 
+
 async function loadCashback(){
-  try{
-    const local=await readLocalDataFile();
-    if(local && Array.isArray(local.cashback)){ cashbackLog=local.cashback; }
-    else throw new Error('no local cashback');
-  }catch(e){
-    try{
-      if(window.storage && typeof window.storage.get === 'function'){
-        const res = await window.storage.get(CASHBACK_KEY, false);
-        if(res && res.value){ cashbackLog = JSON.parse(res.value); }
-      }
-    }catch(_e){ /* no data yet, or storage unavailable */ }
-  }
-
-  if(!cashbackLog || !cashbackLog.length){
-    cashbackLog = [{
-      id: 'opening-net', type: 'cashback', category: 'Opening Balance',
-      amount: 3940.36, date: todayStr(),
-      note: 'Net cashback position as provided'
-    }];
-  }
-
-  // Cancelled: the Union Bank daily auto-log's fee entries beyond 1 Sept.
-  const beforeLen = cashbackLog.length;
-  cashbackLog = (Array.isArray(cashbackLog)?cashbackLog:[]).filter(e => {
-    const id=String(e&&e.id||'');
-    return !(id.indexOf('cb-union-plat-fee-2026') === 0 && e.date >= '2026-08-29' && e.date <= '2026-09-01');
-  });
-  let changed = cashbackLog.length !== beforeLen;
-
-  SEED_CASHBACK.forEach(seed => {
-    if(!cashbackLog.some(e => e.id === seed.id)){
-      cashbackLog.push({ ...seed });
-      changed = true;
-    }
-  });
-
-  if(changed) await saveCashback();
+  const data=await readGitHubData();
+  cashbackLog=Array.isArray(data.cashback)?data.cashback:[];
 }
 
-async function writeAutoBackup(){
-  try{
-    await window.storage.set(BACKUP_KEY, JSON.stringify({version:2,savedAt:new Date().toISOString(),cards,dueBills,cashbackLog,recurringPayments,removedCardNames:[...removedCardNames]}), false);
-    const el=document.getElementById('saveStatus'); if(el) el.textContent='Saved locally · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-    return true;
-  }catch(e){ const el=document.getElementById('saveStatus'); if(el) el.textContent='Local save error'; return false; }
-}
 
 async function saveCashback(){
-  try{ if(await saveUnifiedLocalData()){ try{await writeAutoBackup();}catch(_e){} return true; } }catch(e){}
-  for(let attempt=0; attempt<2; attempt++){
-    try{ await window.storage.set(CASHBACK_KEY, JSON.stringify(cashbackLog), false); await writeAutoBackup(); return true; }
-    catch(e){ if(attempt===1) showToast('Could not save — changes kept for this session only'); }
-  }
-  return false;
+  try{await saveUnifiedLocalData();return true;}catch(e){showToast('Could not save cashback to GitHub');return false;}
 }
 
 async function saveData(){
-  let localSaved=false;
-  try{ localSaved=await saveUnifiedLocalData(); }catch(e){}
   try{
-    if(window.storage && typeof window.storage.set === 'function'){
-      await window.storage.set(STORAGE_KEY, JSON.stringify(cards), false);
-      try{ await writeAutoBackup(); }catch(_e){}
-      return true;
-    }
-  }catch(e){}
-  if(localSaved) return true;
-  showToast('Could not save — changes kept for this session only');
-  return false;
+    await saveUnifiedLocalData();
+    const el=document.getElementById('saveStatus');
+    if(el) el.textContent='Saved to GitHub · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    return true;
+  }catch(e){
+    showToast('Could not save to GitHub: '+(e.message||'write failed'));
+    return false;
+  }
 }
 
 function utilised(card){ return (Array.isArray(card&&card.entries)?card.entries:[]).reduce((sum,e)=> sum + (e.type==='txn' ? (Number(e.amount)||0) : -(Number(e.amount)||0)), 0); }
@@ -2011,7 +1875,7 @@ function utilised(card){ return (Array.isArray(card&&card.entries)?card.entries:
 function applyTheme(theme){
   const chosen=theme==='light'?'light':'dark';
   document.documentElement.setAttribute('data-theme',chosen);
-  try{localStorage.setItem('card-ledger-theme-v1',chosen);}catch(e){}
+  try{sessionStorage.setItem('card-ledger-theme-v1',chosen);}catch(e){}
   const b=document.getElementById('themeToggleBtn');
   if(b) b.textContent=chosen==='dark'?'☀️ Light':'🌙 Dark';
   const meta=document.querySelector('meta[name="theme-color"]');
@@ -2023,7 +1887,7 @@ function toggleTheme(){
 }
 function initTheme(){
   let saved='dark';
-  try{saved=localStorage.getItem('card-ledger-theme-v1')||'dark';}catch(e){}
+  try{saved=sessionStorage.getItem('card-ledger-theme-v1')||'dark';}catch(e){}
   applyTheme(saved);
 }
 
@@ -2557,82 +2421,23 @@ function render(){
   return renderActiveTab(epoch);
 }
 
-function updateLocalDataFileDetails(){
-  const el=document.getElementById('localDataFileDetails');
-  if(!el)return;
-  if(window.__localDataFileName) el.innerHTML='📄 File: '+String(window.__localDataFileName).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(window.__localDataFileLocation||'Device file storage').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-}
-async function loadLocalDataFileDetails(){
-  const el=document.getElementById('localDataFileDetails');
-  if(!el)return;
-  try{
-    const h=typeof loadLocalDataHandle==='function'?await loadLocalDataHandle():null;
-    if(h){
-      window.__localDataFileName=h.name||'Card Ledger data';
-      window.__localDataFileLocation='Selected file on this device (folder path is not exposed by Android browser)';
-      updateLocalDataFileDetails();
-      return;
-    }
-    const fallback=typeof readLocalDataFallback==='function'?await readLocalDataFallback():null;
-    if(fallback){
-      window.__localDataFileName='Browser local storage copy';
-      window.__localDataFileLocation='IndexedDB on this device — no physical JSON path';
-    }else{
-      window.__localDataFileName='Not selected';
-      window.__localDataFileLocation='Not available';
-    }
-    updateLocalDataFileDetails();
-  }catch(e){
-    window.__localDataFileName='Not selected';
-    window.__localDataFileLocation='Not available';
-    updateLocalDataFileDetails();
-  }
-}
 function renderSecureUpdate(){return `
 <div class="panel secure-update-panel">
 <div class="chat-head"><div><div class="chat-kicker">GITHUB DATA</div><div class="tab-heading-row"><h2>☁️ Card Ledger GitHub Data</h2></div><div class="sub">Transactions and the unified Card Ledger data are stored directly in the repository.</div></div><div class="secure-badge">GITHUB</div></div>
 <div class="chat-section"><div class="chat-section-title"><span class="chat-icon">☁️</span><div><strong>Repository data file</strong><small>Plain JSON at card-ledger-data.json</small></div></div>
 <div class="chat-actions"><button class="tab-btn" onclick="connectGitHub().then(()=>location.reload()).catch(e=>showToast(e.message||'Could not connect GitHub'))">🔗 Connect GitHub</button><button class="tab-btn" onclick="connectGitHub().then(()=>location.reload()).catch(e=>showToast(e.message||'Could not refresh GitHub'))">↻ Refresh from GitHub</button><button class="tab-btn" onclick="disconnectGitHub().then(()=>location.reload()).catch(e=>showToast(e.message||'Could not clear GitHub connection'))">Remove GitHub connection</button></div>
 <div id="githubStatus" class="github-status" style="margin-top:10px;">○ GitHub data not connected</div>
-<div id="localDataFileDetails" class="github-status" style="margin-top:8px;">📄 Data: card-ledger-data.json<br>📍 Repository: RDarshan226/card-ledger-pwa</div></div>
+<div id="githubDataFileDetails" class="github-status" style="margin-top:8px;">📄 Data: card-ledger-data.json<br>📍 Repository: RDarshan226/card-ledger-pwa</div></div>
 <div class="disclaimer">The ledger data is plain JSON in GitHub. It is not encrypted.</div>
 </div>`;}
 function updateLocalDataFileDetails(){
-  const el=document.getElementById('localDataFileDetails');
+  const el=document.getElementById('githubDataFileDetails');
   if(!el) return;
-  const name=window.__localDataFileName||'Not selected';
-  const location=window.__localDataFileLocation||'Not available';
+  const name=window.__githubDataFileName||'GitHub not connected';
+  const location=window.__githubDataFileLocation||'Not available';
   el.innerHTML='📄 File: '+String(name).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(location).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 }
-async function createLocalDataFileUI(){
-  try{await createLocalDataFile();}catch(e){showToast(e.message||'Could not create data file');}
-}
-async function selectLocalDataFileUI(){try{await selectLocalDataFile(); updateLocalDataFileDetails();}catch(e){showToast(e.message||'Could not select data file');}}
-async function importBraveDataFile(event){
-  try{
-    const file=event&&event.target&&event.target.files&&event.target.files[0];
-    if(!file){showToast('No JSON file selected');return;}
-    const text=await file.text();
-    let data;
-    try{data=normaliseLocalData(JSON.parse(text));}catch(e){throw new Error('The selected file is not valid Card Ledger JSON.');}
-    await clearLocalDataHandle();
-    await applyLocalDataState(data);
-    if(!Array.isArray(data.cards)||!data.cards.length){
-      data={...data,cards:buildUnifiedLocalData().cards};
-    }
-    data=normaliseLocalData(data);
-    await writeLocalDataFallback(data);
-    window.__localUnifiedDataLoaded=Array.isArray(data.cards)&&data.cards.length>0;
-    if(typeof loadDues==='function') await loadDues();
-    if(typeof loadCashback==='function') await loadCashback();
-    if(typeof loadRecurringPayments==='function') await loadRecurringPayments();
-    if(typeof render==='function') await render();
-    await refreshLocalDataStatus('✓ Imported '+file.name+' · '+data.cards.length+' cards · '+data.entries.length+' entries');
-    showToast('Imported '+data.cards.length+' cards and '+data.entries.length+' entries from '+file.name);
-  }catch(e){showToast(e.message||'Could not import JSON file');}
-  finally{if(event&&event.target)event.target.value='';}
-}
-async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect data file');}}
+async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect GitHub');}}
 async function refreshKeyFileStatus(){return refreshLocalDataStatus();}
 
 
@@ -2670,7 +2475,7 @@ async function encryptTransactionEntry(){
     const payload={v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type:mainType==='repayment'?'repay':'txn',date,amount,category,platform,note,cashback,charge};
     const targetFile=await saveEntryToChosenLocalFile(payload);
     chatUpdates=targetFile;
-    window.__localDataUsingFallback=false;
+    window.__githubDataUsingFallback=false;
     await mergeChatEntries();
     ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     render(); refreshChatCardOptions(); updateTransactionEntryFields();
@@ -2695,7 +2500,7 @@ function renderQuickEntryPanel(){
     <div class="panel chat-panel" id="chatSyncPanel">
       <div class="chat-head"><div><div class="chat-kicker">GITHUB ENTRY</div><div class="tab-heading-row"><h2>🧾 Add transaction</h2></div><div class="sub">One transaction can be an Expense or Card repayment, with Cashback and Charge paid recorded as additional fields.</div></div><div class="secure-badge">GITHUB</div></div>
       <div class="chat-section entry-section">
-        <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details are stored together in the selected local JSON file</small></div></div>
+        <div class="chat-section-title"><span class="chat-icon">🧾</span><div><strong>Transaction entry</strong><small>All details are stored together in the selected GitHub data file</small></div></div>
         <div class="chat-form chat-form-stacked">
           <div class="field"><label>Main type</label><select id="entry-main-type" onchange="updateTransactionEntryFields()"><option value="expense">Expense</option><option value="repayment">Card repayment</option></select></div>
           <div class="field"><label>Card</label><select id="entry-card" class="entry-card" onchange="updateTransactionEntryFields()"><option value="">Select card</option></select></div>
@@ -2709,26 +2514,12 @@ function renderQuickEntryPanel(){
         </div>
         <button class="chat-primary entry-encrypt-btn" onclick="encryptTransactionEntry(true)">☁️ Save to GitHub</button>
       </div>
-      <div class="chat-output"><div class="chat-output-head"><div><strong>Local data storage</strong><small>The transaction is written directly to the selected JSON file. Nothing is encrypted or uploaded.</small></div><span>JSON</span></div></div>
+      <div class="chat-output"><div class="chat-output-head"><div><strong>GitHub data storage</strong><small>The transaction is written directly to the GitHub data file. Nothing is encrypted or uploaded.</small></div><span>JSON</span></div></div>
     </div>`;
 }
 
 
 
-function renderRecoveryScreen(){
-  const app=document.getElementById('app'); if(!app)return;
-  const reason=String(window.__localDataRecoveryReason||'Your previous local data file is unavailable.');
-  app.innerHTML='<div class="panel" style="max-width:720px;margin:20px auto;">'+
-    '<h2>⚠️ Your Card Ledger data needs recovery</h2>'+
-    '<div class="sub" style="margin:10px 0 16px;">The app could not safely open the local JSON data source. <strong>Your transaction data has NOT been replaced with a blank ledger.</strong></div>'+
-    '<div class="sub" style="margin-bottom:16px;">Reason: '+reason.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'+
-    '<div class="chat-actions" style="display:flex;flex-wrap:wrap;gap:10px;">'+
-    '<button class="tab-btn" onclick="selectLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not open data file\'))">📂 Select / recover JSON file</button>'+
-    '<button class="tab-btn" onclick="document.getElementById(\'recovery-backup-input\').click()">↩ Import backup</button>'+
-    '<button class="tab-btn" onclick="if(confirm(\'No previous data will be recovered. Start a new empty Card Ledger?\')){window.__localDataRecoveryRequired=false;createLocalDataFile().then(()=>location.reload()).catch(e=>showToast(e.message||\'Could not create data file\'))}">＋ Start new ledger</button>'+
-    '</div><input id="recovery-backup-input" type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(event)">'+
-    '<div class="sub" style="margin-top:18px;">Do not choose “Start new ledger” if you are trying to recover previous transactions.</div></div>';
-}
 
 function setVersionUI(){ const v=APP_VERSION; const a=document.getElementById('app-version'); const b=document.getElementById('startup-version'); if(a)a.textContent=v; if(b)b.textContent=v; }
 
@@ -2736,7 +2527,7 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0}); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
-async function init(){try{setVersionUI();dataReadyPromise=loadLedgerSource();await dataReadyPromise;initTheme();if(window.__localDataRecoveryRequired){renderRecoveryScreen();return;}await render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and GitHub Card Ledger data could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
+async function init(){try{setVersionUI();dataReadyPromise=loadLedgerSource();await dataReadyPromise;initTheme();await render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and GitHub Card Ledger data could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
 
 async function loadLedgerSource(){
   // CORE HYDRATION: local saved records contain private entries/fees; the
@@ -2754,7 +2545,7 @@ async function loadLedgerSource(){
   }catch(e){ console.warn('Could not load card-master.json.',e); }
 
   const sourceCards=Array.isArray(GITHUB_CARD_MASTER)?GITHUB_CARD_MASTER:[];
-  if(window.__localDataRecoveryRequired){ window.__cardMasterLoaded=false; return {recoveryRequired:true,reason:window.__localDataRecoveryReason||'Local data unavailable'}; }
+  if(window.__githubDataLoadFailed){ window.__cardMasterLoaded=false; return {recoveryRequired:true,reason:window.__githubDataLoadError||'GitHub data unavailable'}; }
   const validSource=sourceCards.filter(c=>c&&typeof c==='object'&&c.name);
   const existing=(Array.isArray(cards)?cards:[]).filter(c=>c&&typeof c==='object');
   const byName=new Map(existing.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
@@ -2830,9 +2621,9 @@ function schedulePowerPlusTestNotification(){
   if(target.getTime()<=Date.now()) target.setDate(target.getDate()+1);
   const y=target.getFullYear(), m=String(target.getMonth()+1).padStart(2,'0'), d=String(target.getDate()).padStart(2,'0');
   const key='power-plus-simplyclick-test-notification-'+y+m+d+'-0144';
-  if(localStorage.getItem(key)==='1') return;
+  if(sessionStorage.getItem(key)==='1') return;
   const fire=async()=>{
-    if(localStorage.getItem(key)==='1') return;
+    if(sessionStorage.getItem(key)==='1') return;
     if(!notificationSupported()||Notification.permission!=='granted') return;
     const names=['IDFC Power+','SBI SimplyClick'];
     const selected=names.map(name=>cards.find(c=>c.name===name)).filter(Boolean);
@@ -2844,7 +2635,7 @@ function schedulePowerPlusTestNotification(){
       const reg=await navigator.serviceWorker.ready;
       if(reg.active){
         reg.active.postMessage({type:'SHOW_STATEMENT_NOTIFICATION',title,options});
-        localStorage.setItem(key,'1');
+        sessionStorage.setItem(key,'1');
         showToast('Sample notification sent');
         return;
       }
@@ -2852,7 +2643,7 @@ function schedulePowerPlusTestNotification(){
     try{
       if(Notification.permission==='granted'){
         new Notification(title,options);
-        localStorage.setItem(key,'1');
+        sessionStorage.setItem(key,'1');
         showToast('Sample notification sent');
       }
     }catch(e){}
@@ -3209,28 +3000,12 @@ function normaliseBills(){
   }));
 }
 async function loadDues(){
-  try{
-    const local=await readLocalDataFile();
-    if(local && Array.isArray(local.dueBills)){ dueBills=local.dueBills; normaliseBills(); return; }
-  }catch(e){}
-  try{
-    if(window.storage && typeof window.storage.get === 'function'){
-      const r=await window.storage.get(DUES_KEY,false);
-      if(r&&r.value) dueBills=JSON.parse(r.value);
-    }
-  }catch(e){}
+  const data=await readGitHubData();
+  dueBills=Array.isArray(data.dueBills)?data.dueBills:[];
   normaliseBills();
 }
 async function saveDues(){
-  try{ if(await saveUnifiedLocalData()){ try{await writeAutoBackup();}catch(_e){} return true; } }catch(e){}
-  try{
-    if(window.storage && typeof window.storage.set === 'function'){
-      await window.storage.set(DUES_KEY,JSON.stringify(dueBills),false);
-      try{await writeAutoBackup();}catch(_e){}
-      return true;
-    }
-  }catch(e){}
-  showToast('Could not save dues'); return false;
+  try{await saveUnifiedLocalData();return true;}catch(e){showToast('Could not save dues to GitHub');return false;}
 }
 function billFor(cardId, dueDate){ return dueBills.find(b=>b.cardId===cardId && b.dueDate===dueDate); }
 function nextBillingDateFor(card){
@@ -3712,8 +3487,8 @@ function renderRewards(){
 /* ---------------- Statement notifications ---------------- */
 const NOTIFY_SETTINGS_KEY = 'card-ledger-notification-settings-v1';
 let notificationSettings = { enabled:false, cards:{} };
-function loadNotificationSettings(){ try{ const raw=localStorage.getItem(NOTIFY_SETTINGS_KEY); if(raw){ const p=JSON.parse(raw); notificationSettings={enabled:!!p.enabled,cards:(p.cards&&typeof p.cards==='object')?p.cards:{}}; } }catch(e){} }
-function saveNotificationSettings(){ try{localStorage.setItem(NOTIFY_SETTINGS_KEY,JSON.stringify(notificationSettings));}catch(e){} }
+function loadNotificationSettings(){ try{ const raw=sessionStorage.getItem(NOTIFY_SETTINGS_KEY); if(raw){ const p=JSON.parse(raw); notificationSettings={enabled:!!p.enabled,cards:(p.cards&&typeof p.cards==='object')?p.cards:{}}; } }catch(e){} }
+function saveNotificationSettings(){ try{sessionStorage.setItem(NOTIFY_SETTINGS_KEY,JSON.stringify(notificationSettings));}catch(e){} }
 function notificationSupported(){ return 'Notification' in window; }
 function notificationCardEnabled(card){ return notificationSettings.cards[card.id] !== false; }
 function statementNotificationKey(card,date){ return 'statement|'+card.id+'|'+date; }
@@ -3757,7 +3532,7 @@ async function checkStatementNotifications(){
   const eligible=cards.filter(c=>!c.isDebit&&!c.feeOnly&&parseDay(c.billingDate)&&notificationCardEnabled(c)&&parseDay(c.billingDate)===Number(today.slice(8)));
   if(!eligible.length) return;
   const key='statement-batch|'+today;
-  if(localStorage.getItem(key)==='1') return;
+  if(sessionStorage.getItem(key)==='1') return;
   const lines=eligible.map(card=>card.name+' — '+inr(getStatementAmountForDate(card,today)));
   const title=eligible.length===1?'Statement generated — '+eligible[0].name:'Credit card statements — '+today;
   const total=eligible.reduce((sum,card)=>sum+getStatementAmountForDate(card,today),0); const body=lines.join(' · ')+' · Total — '+inr(total);
@@ -3770,7 +3545,7 @@ async function checkStatementNotifications(){
     }
   }catch(e){}
   if(!shown){try{if(Notification.permission==='granted'){new Notification(title,options);shown=true;}}catch(e){}}
-  if(shown) localStorage.setItem(key,'1');
+  if(shown) sessionStorage.setItem(key,'1');
 }
 async function enableStatementNotifications(){
   if(!notificationSupported()){showToast('Notifications are not supported in this browser');return;}
@@ -3856,7 +3631,6 @@ function renderAccounts(){
 
 async function setOpenedDate(){ showToast('Opening dates are managed in card-master.json'); }
 
-async function hasRecoveryPackage(){return true;}
 async function downloadBackup(){
   try{
     const payload={version:4,app:'Card Ledger PWA',savedAt:new Date().toISOString(),cards,dueBills,cashbackLog,recurringPayments};
@@ -3870,13 +3644,13 @@ async function restoreBackup(evt){
   try{
     const data=JSON.parse(await file.text());
     if(!Array.isArray(data.cards))throw new Error('Invalid backup');
-    if(!confirm('Restore this backup? Current local app data will be replaced.'))return;
-    cards=data.cards;dueBills=Array.isArray(data.dueBills)?data.dueBills:[];cashbackLog=Array.isArray(data.cashbackLog)?data.cashbackLog:[];
-    if(Array.isArray(data.recurringPayments)) recurringPayments=data.recurringPayments;
-    try{await saveUnifiedLocalData();}catch(_e){}
-    try{await window.storage.set(STORAGE_KEY,JSON.stringify(cards));await window.storage.set(DUES_KEY,JSON.stringify(dueBills));await window.storage.set(CASHBACK_KEY,JSON.stringify(cashbackLog));}catch(_e){}
-    render();showToast('Backup restored');
-  }catch(e){showToast('Invalid backup file');}
+    if(!confirm('Restore this backup to GitHub? Current GitHub ledger data will be replaced.'))return;
+    const payload=normaliseLocalData(data);
+    await writeGitHubData(payload,'Card Ledger: restore backup');
+    await applyLocalDataState(payload);
+    await render();
+    showToast('Backup restored to GitHub');
+  }catch(e){showToast(e.message||'Invalid backup file');}
   evt.target.value='';
 }
 let deferredInstallPrompt=null;
