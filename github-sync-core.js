@@ -5,6 +5,7 @@ const GITHUB_DATA_REPO='RDarshan226/card-ledger-pwa';
 const GITHUB_DATA_PATH='card-ledger-data.json';
 const GITHUB_DATA_BRANCH='main';
 const GITHUB_TOKEN_KEY='card-ledger-github-token-v1';
+const LEDGER_DATA_VERSION=4;
 let githubWritePromise=null;
 
 function getGitHubToken(){
@@ -145,7 +146,7 @@ function normaliseLocalData(data){
   const deletedEntryIds=Array.isArray(d.deletedEntryIds)?d.deletedEntryIds:[];
   const removedCardNames=Array.isArray(d.removedCardNames)?d.removedCardNames:[];
   return {
-    version:LOCAL_DATA_VERSION,
+    version:LEDGER_DATA_VERSION,
     app:'Card Ledger PWA',
     updatedAt:d.updatedAt||new Date().toISOString(),
     cards:cloneJson(cards,[]),
@@ -202,7 +203,7 @@ async function applyLocalDataState(data){
 
 function buildUnifiedLocalData(){
   return normaliseLocalData({
-    version:LOCAL_DATA_VERSION,
+    version:LEDGER_DATA_VERSION,
     cards:typeof cards!=='undefined'&&Array.isArray(cards)?cards:[],
     dueBills:typeof dueBills!=='undefined'&&Array.isArray(dueBills)?dueBills:[],
     cashback:typeof cashbackLog!=='undefined'&&Array.isArray(cashbackLog)?cashbackLog:[],
@@ -231,7 +232,8 @@ async function connectGitHub(){
 
 async function disconnectGitHub(){
   clearGitHubToken();
-  await refreshLocalDataStatus('○ GitHub data connection cleared');
+  const el=document.getElementById('githubStatus');
+  if(el)el.textContent='○ GitHub data connection cleared';
   showToast('GitHub token cleared from this browser session');
 }
 
