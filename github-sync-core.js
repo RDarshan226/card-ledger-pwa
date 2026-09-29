@@ -60,13 +60,49 @@ async function fetchGitHubDataFile(){
 
 async function requireGitHubToken(){
   let token=getGitHubToken();
-  if(token)return token;
-  token=window.prompt('Enter your GitHub fine-grained Personal Access Token. It is kept only for this browser session. The token must have Contents: Read and write access to '+GITHUB_DATA_REPO+'.','');
-  if(!token)throw new Error('GitHub token is required to save transactions.');
-  setGitHubToken(token.trim());
-  return getGitHubToken();
+  if(token){
+    try{
+      const check=await fetch(githubDataApiUrl(),{headers:githubApiHeaders(false),cache:'no-store'});
+      if(check.ok || check.status===404) return token;
+    }catch(e){}
+    clearGitHubToken();
+  }
+  token=await showGitHubTokenDialog();
+  if(!token) throw new Error('GitHub token is required to open Card Ledger.');
+  setGitHubToken(token);
+  try{
+    const check=await fetch(githubDataApiUrl(),{headers:githubApiHeaders(false),cache:'no-store'});
+    if(!(check.ok || check.status===404)){
+      let detail='GitHub token/repository access failed ('+check.status+').';
+      try{const j=await check.json();if(j&&j.message)detail+=' '+j.message;}catch(e){}
+      clearGitHubToken();
+      throw new Error(detail);
+    }
+    return token;
+  }catch(e){clearGitHubToken();throw e;}
 }
-
+function showGitHubTokenDialog(){
+  return new Promise(resolve=>{
+    const old=document.getElementById('github-token-modal'); if(old)old.remove();
+    const modal=document.createElement('div'); modal.id='github-token-modal';
+    modal.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;">'+
+      '<div style="width:min(520px,100%);background:#101622;color:#F2F7FF;border:1px solid #00CFFF;border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.55);font-family:Inter,system-ui,sans-serif;">'+
+      '<div style="font:700 11px monospace;letter-spacing:.12em;color:#00E5FF;text-transform:uppercase;margin-bottom:6px;">GITHUB AUTHENTICATION REQUIRED</div>'+
+      '<h2 style="margin:0 0 8px;font-size:21px;">Connect Card Ledger</h2>'+
+      '<p style="margin:0 0 14px;color:#AFC0D5;font-size:13px;line-height:1.5;">Enter a GitHub fine-grained Personal Access Token with <b>Contents: Read and write</b> access to <b>'+GITHUB_DATA_REPO+'</b>. The token is kept only in this browser session.</p>'+
+      '<input id="github-token-input" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_..." style="width:100%;padding:12px;border:1px solid #3B4B63;border-radius:9px;background:#080B12;color:#fff;font:13px monospace;box-sizing:border-box;">'+
+      '<div id="github-token-error" style="display:none;color:#FF6B85;font-size:12px;margin-top:8px;"></div>'+
+      '<div style="display:flex;gap:9px;margin-top:14px;"><button id="github-token-cancel" type="button" style="flex:1;padding:11px;border-radius:9px;border:1px solid #41516A;background:#172231;color:#DDEBFA;cursor:pointer;">Cancel</button><button id="github-token-submit" type="button" style="flex:1;padding:11px;border-radius:9px;border:1px solid #00CFFF;background:linear-gradient(135deg,#00CFFF,#007BFF);color:#fff;font-weight:700;cursor:pointer;">Connect GitHub</button></div>'+
+      '</div></div>';
+    document.body.appendChild(modal);
+    const input=document.getElementById('github-token-input'), submit=document.getElementById('github-token-submit'), cancel=document.getElementById('github-token-cancel'), error=document.getElementById('github-token-error');
+    const finish=v=>{modal.remove();resolve(v||'');};
+    cancel.onclick=()=>finish('');
+    submit.onclick=()=>{const v=String(input.value||'').trim();if(!v){error.textContent='Enter a GitHub token.';error.style.display='block';return;}finish(v);};
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')submit.click();if(e.key==='Escape')cancel.click();});
+    setTimeout(()=>input.focus(),50);
+  });
+}
 async function writeGitHubData(data,commitMessage){
   if(githubWritePromise)return githubWritePromise;
   githubWritePromise=(async()=>{
@@ -74,8 +110,7 @@ async function writeGitHubData(data,commitMessage){
     const current=await fetchGitHubDataFile();
     const normal=normaliseLedgerData(data);
     normal.updatedAt=new Date().toISOString();
-    const body={message:commitMessage||'Update Card Ledger data',content:encodeGitHubBase64(JSON.stringify(normal,null,2)+'
-'),branch:GITHUB_DATA_BRANCH};
+    const body={message:commitMessage||'Update Card Ledger data',content:encodeGitHubBase64(JSON.stringify(normal,null,2)+'\\n'),branch:GITHUB_DATA_BRANCH};
     if(current.sha)body.sha=current.sha;
     let res=await fetch('https://api.github.com/repos/'+GITHUB_DATA_REPO+'/contents/'+GITHUB_DATA_PATH,{method:'PUT',headers:githubApiHeaders(true),body:JSON.stringify(body)});
     if(!res.ok && (res.status===409 || res.status===422)){
