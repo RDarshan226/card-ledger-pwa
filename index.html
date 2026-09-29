@@ -425,11 +425,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">data source database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v182 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v183 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v182"></script>
+<script src="./data-source.js?v=v183"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1314,7 +1314,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v182';
+const APP_VERSION='v183';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1334,7 +1334,7 @@ async function loadDeletedEntries(){
   deletedEntryIds=new Set(Array.isArray(data.deletedEntryIds)?data.deletedEntryIds.map(String):[]);
 }
 async function saveDeletedEntries(){
-  try{await saveLedgerData();return true;}catch(e){return false;}
+  try{return false;}catch(e){return false;}
 }
 async function mergeChatEntries(){
   let changed=false,failed=0,added=0,skipped=0;
@@ -1406,7 +1406,7 @@ async function loadRemovedCardNames(){
   removedCardNames=new Set(Array.isArray(data.removedCardNames)?data.removedCardNames:[]);
 }
 async function saveRemovedCardNames(){
-  try{await saveLedgerData();return true;}catch(e){return false;}
+  try{return false;}catch(e){return false;}
 }
 function blankFeeForCard(name){
   const fd=FEE_DEFAULTS[name];
@@ -1559,7 +1559,7 @@ async function loadRecurringPayments(){
   recurringPayments=Array.isArray(data.recurringPayments)?data.recurringPayments:[];
 }
 async function saveRecurringPayments(){
-  try{await saveLedgerData();return true;}catch(e){showToast('Could not save recurring payments to data source');return false;}
+  try{return false;}catch(e){showToast('Could not save recurring payments to data source');return false;}
 }
 function nextRecurringDate(p){
   const day=Number(p.day)||1, now=new Date();
@@ -1615,9 +1615,8 @@ function renderRecurringPaymentManager(){
 }
 async function loadData(){
   // Load the published ledger data directly. This PWA has no write/auth connection.
-  await requiredata sourceToken();
-  const unifieddata source=await readLedgerData();
-  await applyLedgerDataState(unifieddata source);
+  const ledgerData=await readLedgerData();
+  await applyLedgerDataState(ledgerData);
   window.__dataLoadFailed=false;
   window.__dataLoadError='';
   if(!cards || !cards.length){
@@ -1842,20 +1841,10 @@ async function loadCashback(){
 
 
 async function saveCashback(){
-  try{await saveLedgerData();return true;}catch(e){showToast('Could not save cashback to data source');return false;}
+  try{return false;}catch(e){showToast('Could not save cashback to data source');return false;}
 }
 
-async function saveData(){
-  try{
-    await saveLedgerData();
-    const el=document.getElementById('saveStatus');
-    if(el) el.textContent='Saved to data source · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-    return true;
-  }catch(e){
-    showToast('Could not save to data source: '+(e.message||'write failed'));
-    return false;
-  }
-}
+async function saveData(){ showToast('Read-only mode: update transactions from Chat.'); return false; }
 
 function utilised(card){ return (Array.isArray(card&&card.entries)?card.entries:[]).reduce((sum,e)=> sum + (e.type==='txn' ? (Number(e.amount)||0) : -(Number(e.amount)||0)), 0); }
 
@@ -2393,7 +2382,6 @@ function renderActiveTab(epoch=renderEpoch){
     if(activeTab==='alerts') return renderAlerts();
     if(activeTab==='secure'){
       document.getElementById('app').innerHTML=renderSecureUpdate();
-      setTimeout(()=>{try{refreshDataSourceStatus();}catch(e){}},0);
       return;
     }
   }catch(e){
@@ -2415,50 +2403,9 @@ function renderSecureUpdate(){return `
 <div class="data-source-status connected">✓ Read-only mode · no token, login or write connection is used by this PWA</div>
 <div class="disclaimer">The PWA never writes to the repository. Chat updates the repository data file, and the PWA reads the latest published copy.</div></div>
 </div>`;}
-async function disconnectDataSourceUI(){try{await disconnectDataSource();}catch(e){showToast(e.message||'Could not disconnect data source');}}
-async function refreshDataSourceStatus(){return refreshDataSourceStatus();}
-
-
-
-
-async function refreshLedgerDataUI(){
-  try{
-    const data=await connectDataSource();
-    chatUpdates=data;
-    await applyLedgerDataState(data);
-    await mergeChatEntries();
-    if(typeof render==='function') render();
-    await refreshDataSourceStatus();
-    showToast('data source data refreshed');
-  }catch(e){showToast(e.message||'Could not refresh data source data');}
-}
-
-
 function updateTransactionEntryFields(){}
 
-async function encryptTransactionEntry(){
-  try{
-    const mainTypeEl=document.getElementById('entry-main-type'); const cardEl=document.getElementById('entry-card'); const dateEl=document.getElementById('entry-date'); const amountEl=document.getElementById('entry-amount'); const categoryEl=document.getElementById('entry-category'); const platformEl=document.getElementById('entry-platform'); const cashbackEl=document.getElementById('entry-cashback'); const chargeEl=document.getElementById('entry-charge'); const noteEl=document.getElementById('entry-note'); if(!mainTypeEl||!cardEl||!dateEl||!amountEl||!categoryEl||!platformEl||!cashbackEl||!chargeEl||!noteEl){showToast('Transaction form is not ready. Please open +Entry again.');return;} const mainType=mainTypeEl.value;
-    const card=cardEl.value;
-    const date=dateEl.value||todayStr();
-    const amount=Number(amountEl.value);
-    const category=categoryEl.value.trim();
-    const platform=platformEl.value.trim();
-    const cashback=Number(cashbackEl.value)||0;
-    const charge=Number(chargeEl.value)||0;
-    const note=noteEl.value.trim();
-    if(!card){showToast('Choose a card');return;}
-    if(!amount||amount<=0){showToast('Enter a valid amount');return;}
-    const payload={v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type:mainType==='repayment'?'repay':'txn',date,amount,category,platform,note,cashback,charge};
-    const targetFile=await saveLedgerEntry(payload);
-    chatUpdates=targetFile;
-    window.__dataSourceDataUsingFallback=false;
-    await mergeChatEntries();
-    ['entry-amount','entry-category','entry-platform','entry-cashback','entry-charge','entry-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    render(); refreshChatCardOptions(); updateTransactionEntryFields();
-    showToast('Transaction saved to data source');
-  }catch(e){showToast(e.message||'Could not save transaction');}
-}
+async function encryptTransactionEntry(){ showToast('Read-only mode: transactions are added from Chat.'); }
 
 function populateEntryCardDropdown(){
   const sel=document.getElementById("entry-card");
@@ -2586,8 +2533,8 @@ async function loadLedgerSource(){
 
   // Persist the merged metadata + preserved private data. This is important:
   // without this write, the next tab could reload an older local card object.
-  // Startup is read-only. data source is authoritative; do not require a write token just to display the Ledger.
-  window.__cardMasterSource='dataSource';
+  // Startup is read-only. the published data file is authoritative.
+  window.__cardMasterSource='data-file';
   window.__cardMasterLoaded=validSource.length>0;
   window.__cardMasterVersion='v132';
   window.__coreDataDiagnostics={
@@ -2995,7 +2942,7 @@ async function loadDues(){
   normaliseBills();
 }
 async function saveDues(){
-  try{await saveLedgerData();return true;}catch(e){showToast('Could not save dues to data source');return false;}
+  try{return false;}catch(e){showToast('Could not save dues to data source');return false;}
 }
 function billFor(cardId, dueDate){ return dueBills.find(b=>b.cardId===cardId && b.dueDate===dueDate); }
 function nextBillingDateFor(card){
