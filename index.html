@@ -425,17 +425,18 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">data source database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v185 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v189 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v187"></script>
+<script src="./data-source.js?v=v189"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
 let cashbackLog = [];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 let cards = [];
+let chatUpdates = {};
 let openId = null;
 let editingEntry = null; // { cardId, entryId } while an existing transaction is being edited
 let editingCardId = null;
@@ -1314,7 +1315,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v188';
+const APP_VERSION='v189';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
