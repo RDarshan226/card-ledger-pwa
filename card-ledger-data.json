@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-09-29T10:47:52.318Z",
+  "updatedAt": "2026-09-29T10:54:55.214Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -1128,18 +1128,6 @@
           "date": "2026-09-08",
           "amount": 220,
           "note": "bill payment",
-          "category": "",
-          "platform": "",
-          "rewardRatePct": null,
-          "rewardAmountOverride": null,
-          "surchargeAmount": null
-        },
-        {
-          "id": "repay-goldx-rupay-2",
-          "type": "repay",
-          "date": "2026-09-17",
-          "amount": 245,
-          "note": "",
           "category": "",
           "platform": "",
           "rewardRatePct": null,
@@ -3105,20 +3093,6 @@
       "date": "2026-09-08",
       "amount": 220,
       "note": "bill payment",
-      "category": "",
-      "platform": "",
-      "rewardRatePct": null,
-      "rewardAmountOverride": null,
-      "surchargeAmount": null,
-      "cardId": "owunlcjd",
-      "card": "BOB Uni GoldX (RuPay)"
-    },
-    {
-      "id": "repay-goldx-rupay-2",
-      "type": "repay",
-      "date": "2026-09-17",
-      "amount": 245,
-      "note": "",
       "category": "",
       "platform": "",
       "rewardRatePct": null,
