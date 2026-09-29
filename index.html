@@ -429,7 +429,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v189"></script>
+<script src="./data-source.js?v=v190"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -715,6 +715,51 @@ function feeIsWaived(card){
   const w = card.fee && card.fee.waiver;
   if(!w || w.type!=='transactions') return false;
   return txnCountThisYear(card) >= w.threshold;
+}
+
+// Automatically place an annual/joining-fee expense into the Ledger once the
+// fee's due cycle has reached the card's statement date. This is deliberately
+// deterministic and in-memory: the PWA is read-only and Chat remains the only
+// writer to GitHub. The same generated ID is reused after every refresh, so it
+// can never duplicate on reload.
+function syncAutomaticFeeEntries(){
+  const today=todayStr();
+  (Array.isArray(cards)?cards:[]).forEach(card=>{
+    const fee=card&&card.fee;
+    if(!card || card.isDebit || card.feeOnly || !fee || !feeApplicable(fee) || feeIsWaived(card)) return;
+    const due=feeNextDue(fee);
+    if(!due || due>today) return;
+
+    const parts=String(card.billingDate||'').match(/(\\d{1,2})/);
+    let statementDate=due;
+    if(parts){
+      const day=Math.max(1,Number(parts[1]));
+      const ym=String(due).slice(0,7).split('-');
+      const y=Number(ym[0]), m=Number(ym[1]);
+      const lastDay=new Date(y,m,0).getDate();
+      statementDate=y+'-'+String(m).padStart(2,'0')+'-'+String(Math.min(day,lastDay)).padStart(2,'0');
+    }
+    if(statementDate>today) return;
+
+    const id='auto-fee-'+String(card.id||card.name).replace(/[^a-zA-Z0-9_-]/g,'-')+'-'+due;
+    if((card.entries||[]).some(e=>e&&e.id===id)) return;
+
+    const base=Number(fee.baseAmount)||0;
+    const gstPct=fee.gstPct!=null?Number(fee.gstPct):GST_PCT;
+    const gst=Math.round(base*gstPct)/100;
+    const total=Math.round(base+gst);
+    if(total<=0) return;
+
+    card.entries.push({
+      id,
+      type:'txn',
+      date:statementDate,
+      amount:total,
+      category:'Card Fee',
+      platform:'Annual / Joining Fee',
+      note:'Automatic card fee: base ₹'+base.toFixed(2)+' + GST '+gstPct+'% (₹'+gst.toFixed(2)+') = ₹'+total.toFixed(2)
+    });
+  });
 }
 
 // Transactions/repayments mentioned in chat land here. Claude appends new
@@ -1315,7 +1360,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v189';
+const APP_VERSION='v190';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1814,6 +1859,7 @@ async function loadData(){
   });
 
   let addedAny = await mergeChatEntries();
+  syncAutomaticFeeEntries();
   SEED_ENTRIES.forEach(seed => {
     const card = cards.find(c => c.name === seed.card);
     if(!card || deletedEntryIds.has(seed.id)) return;
