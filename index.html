@@ -1326,7 +1326,7 @@ async function inspectChatKeyHistory(){return getGitHubDataStatus();}
 async function inspectCredentialVaultChatKey(){return getGitHubDataStatus();}
 async function loadChatUpdates(){
   const data=await readGitHubData();
-  await applyLocalDataState(data);
+  await applyLedgerDataState(data);
   window.__chatFeedSource='github';
   return data;
 }
@@ -1335,7 +1335,7 @@ async function loadDeletedEntries(){
   deletedEntryIds=new Set(Array.isArray(data.deletedEntryIds)?data.deletedEntryIds.map(String):[]);
 }
 async function saveDeletedEntries(){
-  try{await saveUnifiedLocalData();return true;}catch(e){return false;}
+  try{await saveUnifiedLedgerData();return true;}catch(e){return false;}
 }
 async function mergeChatEntries(){
   let changed=false,failed=0,added=0,skipped=0;
@@ -1407,7 +1407,7 @@ async function loadRemovedCardNames(){
   removedCardNames=new Set(Array.isArray(data.removedCardNames)?data.removedCardNames:[]);
 }
 async function saveRemovedCardNames(){
-  try{await saveUnifiedLocalData();return true;}catch(e){return false;}
+  try{await saveUnifiedLedgerData();return true;}catch(e){return false;}
 }
 function blankFeeForCard(name){
   const fd=FEE_DEFAULTS[name];
@@ -1560,7 +1560,7 @@ async function loadRecurringPayments(){
   recurringPayments=Array.isArray(data.recurringPayments)?data.recurringPayments:[];
 }
 async function saveRecurringPayments(){
-  try{await saveUnifiedLocalData();return true;}catch(e){showToast('Could not save recurring payments to GitHub');return false;}
+  try{await saveUnifiedLedgerData();return true;}catch(e){showToast('Could not save recurring payments to GitHub');return false;}
 }
 function nextRecurringDate(p){
   const day=Number(p.day)||1, now=new Date();
@@ -1615,8 +1615,8 @@ function renderRecurringPaymentManager(){
   return html;
 }
 async function loadData(){
-  const unifiedLocal=await readGitHubData();
-  await applyLocalDataState(unifiedLocal);
+  const unifiedGitHub=await readGitHubData();
+  await applyLedgerDataState(unifiedGitHub);
   window.__githubDataLoadFailed=false;
   window.__githubDataLoadError='';
   if(!cards || !cards.length){
@@ -1841,12 +1841,12 @@ async function loadCashback(){
 
 
 async function saveCashback(){
-  try{await saveUnifiedLocalData();return true;}catch(e){showToast('Could not save cashback to GitHub');return false;}
+  try{await saveUnifiedLedgerData();return true;}catch(e){showToast('Could not save cashback to GitHub');return false;}
 }
 
 async function saveData(){
   try{
-    await saveUnifiedLocalData();
+    await saveUnifiedLedgerData();
     const el=document.getElementById('saveStatus');
     if(el) el.textContent='Saved to GitHub · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     return true;
@@ -2423,7 +2423,7 @@ function refreshGitHubStatus(){
   const location=window.__githubDataFileLocation||'Not available';
   el.innerHTML='📄 File: '+String(name).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<br>📍 Location: '+String(location).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 }
-async function disconnectLocalDataFileUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect GitHub');}}
+async function disconnectGitHubUI(){try{await disconnectGitHub();}catch(e){showToast(e.message||'Could not disconnect GitHub');}}
 async function refreshKeyFileStatus(){return refreshGitHubStatus();}
 
 
@@ -2434,7 +2434,7 @@ async function refreshGitHubLedgerUI(){
   try{
     const data=await connectGitHub();
     chatUpdates=data;
-    await applyLocalDataState(data);
+    await applyLedgerDataState(data);
     await mergeChatEntries();
     if(typeof render==='function') render();
     await refreshGitHubStatus();
@@ -2459,7 +2459,7 @@ async function encryptTransactionEntry(){
     if(!card){showToast('Choose a card');return;}
     if(!amount||amount<=0){showToast('Enter a valid amount');return;}
     const payload={v:3,id:(crypto.randomUUID?crypto.randomUUID():uid()),kind:'ledger',card,type:mainType==='repayment'?'repay':'txn',date,amount,category,platform,note,cashback,charge};
-    const targetFile=await saveEntryToChosenLocalFile(payload);
+    const targetFile=await saveEntryToGitHub(payload);
     chatUpdates=targetFile;
     window.__githubDataUsingFallback=false;
     await mergeChatEntries();
@@ -2991,7 +2991,7 @@ async function loadDues(){
   normaliseBills();
 }
 async function saveDues(){
-  try{await saveUnifiedLocalData();return true;}catch(e){showToast('Could not save dues to GitHub');return false;}
+  try{await saveUnifiedLedgerData();return true;}catch(e){showToast('Could not save dues to GitHub');return false;}
 }
 function billFor(cardId, dueDate){ return dueBills.find(b=>b.cardId===cardId && b.dueDate===dueDate); }
 function nextBillingDateFor(card){
@@ -3631,9 +3631,9 @@ async function restoreBackup(evt){
     const data=JSON.parse(await file.text());
     if(!Array.isArray(data.cards))throw new Error('Invalid backup');
     if(!confirm('Restore this backup to GitHub? Current GitHub ledger data will be replaced.'))return;
-    const payload=normaliseLocalData(data);
+    const payload=normaliseLedgerData(data);
     await writeGitHubData(payload,'Card Ledger: restore backup');
-    await applyLocalDataState(payload);
+    await applyLedgerDataState(payload);
     await render();
     showToast('Backup restored to GitHub');
   }catch(e){showToast(e.message||'Invalid backup file');}
