@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-09-29T10:15:37.952Z",
+  "updatedAt": "2026-09-29T10:47:52.318Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -340,6 +340,18 @@
           "platform": "",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
+          "surchargeAmount": null
+        },
+        {
+          "id": "slice-zepto-20260927-328",
+          "type": "txn",
+          "date": "2026-09-27",
+          "amount": 328,
+          "note": "",
+          "category": "Grocery",
+          "platform": "Zepto",
+          "rewardRatePct": null,
+          "rewardAmountOverride": 50,
           "surchargeAmount": null
         }
       ],
@@ -3898,6 +3910,20 @@
       "surchargeAmount": null,
       "cardId": "a8m4meex",
       "card": "Union Bank Rupay Platinum"
+    },
+    {
+      "id": "slice-zepto-20260927-328",
+      "type": "txn",
+      "date": "2026-09-27",
+      "amount": 328,
+      "note": "",
+      "category": "Grocery",
+      "platform": "Zepto",
+      "rewardRatePct": null,
+      "rewardAmountOverride": 50,
+      "surchargeAmount": null,
+      "cardId": "2jppy7kd",
+      "card": "Slice Credit Card"
     }
   ],
   "cashback": [
@@ -4236,6 +4262,14 @@
       "amount": 0.09,
       "date": "2026-09-30",
       "note": "PhonePe Digital Platinum — Union Bank debit (daily)"
+    },
+    {
+      "id": "cb-slice-zepto-20260927",
+      "type": "cashback",
+      "category": "Card Cashback",
+      "amount": 50,
+      "date": "2026-09-27",
+      "note": "Slice — Zepto purchase cashback"
     }
   ],
   "dueBills": [],
