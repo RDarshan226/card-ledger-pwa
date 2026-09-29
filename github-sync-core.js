@@ -138,6 +138,10 @@ async function writeGitHubData(data,commitMessage){
 }
 
 async function saveGitHubEntry(payload){
+  // Authenticate before the initial GET. Previously this function tried to read
+  // the GitHub data file anonymously and only authenticated later inside the
+  // PUT path, causing +Entry to fail with a GitHub write error even after login.
+  await requireGitHubToken();
   const current=await fetchGitHubDataFile();
   const data=current.data?normaliseLedgerData(current.data):buildUnifiedLedgerData();
   if(typeof cards!=='undefined'&&Array.isArray(cards)&&cards.length)data.cards=cloneJson(cards,[]);
