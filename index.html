@@ -429,7 +429,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v186"></script>
+<script src="./data-source.js?v=v187"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -2525,7 +2525,7 @@ async function loadLedgerSource(){
   // Reattach every data source transaction after the card-master merge. Match by
   // both card ID and card name so renamed/legacy IDs cannot make the Ledger
   // appear as 0 transactions.
-  cards=attachFlatEntriesToCards(cards,remoteEntries);
+  cards=attachDataEntriesToCards(cards,remoteEntries);
   cards.forEach(c=>{
     const rc=Array.isArray(chatUpdates&&chatUpdates.cards)?chatUpdates.cards.find(x=>x&&String(x.name||'').trim().toLowerCase()===String(c.name||'').trim().toLowerCase()):null;
     if(rc&&Array.isArray(rc.entries)&&rc.entries.length){
