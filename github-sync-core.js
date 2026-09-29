@@ -1,16 +1,7 @@
-/* Card Ledger PWA — UNIFIED LOCAL DATA FILE CORE
- * One user-selected JSON file is the primary private data source.
- * It stores cards, transactions, repayments, fees, dues/statements,
- * cashback/charges and recurring payments together.
- *
- * GitHub remains the app/code distribution channel. Private user data
- * is never uploaded to GitHub by this module.
+/* Card Ledger PWA — GitHub-only data core.
+ * User ledger data is stored in card-ledger-data.json in the repository.
+ * Legacy file/IndexedDB recovery code is intentionally kept outside this file.
  */
-const LOCAL_DATA_DB='card-ledger-local-file-v1';
-const LOCAL_DATA_STORE='handles';
-const LOCAL_DATA_ID='primary';
-const LOCAL_DATA_FALLBACK_ID='fallback-data';
-const LOCAL_DATA_VERSION=4;
 const GITHUB_DATA_REPO='RDarshan226/card-ledger-pwa';
 const GITHUB_DATA_PATH='card-ledger-data.json';
 const GITHUB_DATA_BRANCH='main';
@@ -20,10 +11,13 @@ let githubWritePromise=null;
 function getGitHubToken(){
   try{return String(sessionStorage.getItem(GITHUB_TOKEN_KEY)||'').trim();}catch(e){return '';}
 }
+
 function setGitHubToken(token){
   try{if(token)sessionStorage.setItem(GITHUB_TOKEN_KEY,String(token).trim());else sessionStorage.removeItem(GITHUB_TOKEN_KEY);}catch(e){}
 }
+
 function clearGitHubToken(){setGitHubToken('');}
+
 function githubApiHeaders(write=false){
   const h={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
   const token=getGitHubToken();
@@ -31,6 +25,7 @@ function githubApiHeaders(write=false){
   if(write)h['Content-Type']='application/json';
   return h;
 }
+
 function decodeGitHubBase64(value){
   const raw=String(value||'').replace(/\\s/g,'');
   const bin=atob(raw);
@@ -38,15 +33,18 @@ function decodeGitHubBase64(value){
   for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
   return new TextDecoder().decode(bytes);
 }
+
 function encodeGitHubBase64(value){
   const bytes=new TextEncoder().encode(String(value||''));
   let bin='';
   for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
   return btoa(bin);
 }
+
 function githubDataApiUrl(){
   return 'https://api.github.com/repos/'+GITHUB_DATA_REPO+'/contents/'+encodeURIComponent(GITHUB_DATA_PATH)+'?ref='+encodeURIComponent(GITHUB_DATA_BRANCH);
 }
+
 async function fetchGitHubDataFile(){
   const res=await fetch(githubDataApiUrl(),{headers:githubApiHeaders(false),cache:'no-store'});
   if(res.status===404)return {data:null,sha:null,missing:true};
@@ -59,6 +57,7 @@ async function fetchGitHubDataFile(){
   const parsed=JSON.parse(decodeGitHubBase64(j.content||''));
   return {data:normaliseLocalData(parsed),sha:j.sha||null,missing:false};
 }
+
 async function requireGitHubToken(){
   let token=getGitHubToken();
   if(token)return token;
@@ -67,6 +66,7 @@ async function requireGitHubToken(){
   setGitHubToken(token.trim());
   return getGitHubToken();
 }
+
 async function writeGitHubData(data,commitMessage){
   if(githubWritePromise)return githubWritePromise;
   githubWritePromise=(async()=>{
@@ -95,6 +95,7 @@ async function writeGitHubData(data,commitMessage){
   })();
   try{return await githubWritePromise;}finally{githubWritePromise=null;}
 }
+
 async function saveGitHubEntry(payload){
   const current=await fetchGitHubDataFile();
   const data=current.data?normaliseLocalData(current.data):buildUnifiedLocalData();
@@ -119,58 +120,11 @@ async function saveGitHubEntry(payload){
   window.__localDataRecoveryReason='';
   return saved;
 }
-let localDataDbPromise;
-let chatUpdates={version:LOCAL_DATA_VERSION,entries:[],cashback:[]};
-window.__localDataRecoveryRequired=false;
-window.__localDataRecoveryReason='';
 
-function openLocalDataDB(){
-  if(localDataDbPromise) return localDataDbPromise;
-  localDataDbPromise=new Promise((resolve,reject)=>{
-    const req=indexedDB.open(LOCAL_DATA_DB,1);
-    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(LOCAL_DATA_STORE))req.result.createObjectStore(LOCAL_DATA_STORE);};
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error);
-  });
-  return localDataDbPromise;
-}
-async function saveLocalDataHandle(handle){
-  const db=await openLocalDataDB();
-  return await new Promise((resolve,reject)=>{
-    const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).put(handle,LOCAL_DATA_ID);
-    r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);
-  });
-}
-async function loadLocalDataHandle(){
-  const db=await openLocalDataDB();
-  return await new Promise((resolve,reject)=>{
-    const r=db.transaction(LOCAL_DATA_STORE,'readonly').objectStore(LOCAL_DATA_STORE).get(LOCAL_DATA_ID);
-    r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);
-  });
-}
-async function clearLocalDataHandle(){
-  const db=await openLocalDataDB();
-  return await new Promise((resolve,reject)=>{
-    const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).delete(LOCAL_DATA_ID);
-    r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);
-  });
-}
-async function localFilePermission(handle,request=false){
-  if(!handle)return false;
-  if(typeof handle.queryPermission!=='function')return true;
-  try{
-    let s=await handle.queryPermission({mode:'readwrite'});
-    if(s==='granted')return true;
-    if(request&&typeof handle.requestPermission==='function'){
-      s=await handle.requestPermission({mode:'readwrite'});
-      return s==='granted';
-    }
-  }catch(e){}
-  return false;
-}
 function cloneJson(v,fallback){
   try{return JSON.parse(JSON.stringify(v));}catch(e){return fallback;}
 }
+
 function flattenCardEntries(cards){
   const out=[];
   (Array.isArray(cards)?cards:[]).forEach(c=>{
@@ -181,6 +135,7 @@ function flattenCardEntries(cards){
   });
   return out;
 }
+
 function normaliseLocalData(data){
   const d=data&&typeof data==='object'?data:{};
   const cards=Array.isArray(d.cards)?d.cards:[];
@@ -204,111 +159,7 @@ function normaliseLocalData(data){
     removedCardNames:[...new Set(removedCardNames.map(String))]
   };
 }
-async function readLocalDataFallback(){
-  const db=await openLocalDataDB();
-  return await new Promise((resolve,reject)=>{
-    const r=db.transaction(LOCAL_DATA_STORE,'readonly').objectStore(LOCAL_DATA_STORE).get(LOCAL_DATA_FALLBACK_ID);
-    r.onsuccess=()=>resolve(r.result?normaliseLocalData(r.result):null);
-    r.onerror=()=>reject(r.error);
-  });
-}
-async function writeLocalDataFallback(data){
-  const db=await openLocalDataDB();
-  const normal=normaliseLocalData(data);
-  normal.updatedAt=new Date().toISOString();
-  await new Promise((resolve,reject)=>{
-    const r=db.transaction(LOCAL_DATA_STORE,'readwrite').objectStore(LOCAL_DATA_STORE).put(normal,LOCAL_DATA_FALLBACK_ID);
-    r.onsuccess=()=>resolve(true);r.onerror=()=>reject(r.error);
-  });
-  chatUpdates=normal;
-  return normal;
-}
-async function readLocalDataFile(){
-  // GitHub is the single source of truth. Do not fall back to browser files,
-  // IndexedDB, or the old local-recovery flow.
-  const remote=await fetchGitHubDataFile();
-  if(remote.data)return remote.data;
-  if(typeof cards!=='undefined'&&Array.isArray(cards)&&cards.length)return buildUnifiedLocalData();
-  throw new Error('GitHub Card Ledger data is unavailable.');
-}
-async function writeLocalDataFile(data){
-  // GitHub is now the primary persistence target. Local file support remains
-  // only as a fallback for older data/recovery flows.
-  try{
-    const saved=await writeGitHubData(data,'Card Ledger: save data');
-    window.__localDataUsingFallback=false;
-    return saved;
-  }catch(e){
-    if(getGitHubToken()) throw e;
-  }
-  const handle=await loadLocalDataHandle();
-  if(!handle){
-    const fallback=await readLocalDataFallback();
-    if(fallback){
-      const normal=await writeLocalDataFallback(data);
-      window.__localDataUsingFallback=true;
-      return normal;
-    }
-    throw new Error('No writable Card Ledger data file is selected. Please select the original JSON file again.');
-  }
-  if(!(await localFilePermission(handle,true))) throw new Error('Permission to write the selected Card Ledger file was not granted.');
-  const normal=normaliseLocalData(data);
-  normal.updatedAt=new Date().toISOString();
-  const json=JSON.stringify(normal,null,2)+'\\n';
-  if(typeof handle.createWritable!=='function') throw new Error('This browser cannot directly edit the selected JSON file. Please use a browser with file editing support.');
-  const writable=await handle.createWritable();
-  await writable.write(json);
-  await writable.close();
-  // Verify the browser actually persisted the new contents to the selected file.
-  try{
-    const verifyFile=await handle.getFile();
-    const verifyText=await verifyFile.text();
-    if(verifyText!==json) throw new Error('The selected Card Ledger file could not be verified after writing.');
-  }catch(e){
-    throw new Error(e&&e.message?e.message:'The selected Card Ledger file could not be verified after writing.');
-  }
-  chatUpdates=normal;
-  window.__localDataUsingFallback=false;
-  return normal;
-}
-async function downloadLocalDataSnapshot(data,message){
-  try{
-    const normal=normaliseLocalData(data);
-    normal.updatedAt=new Date().toISOString();
-    const blob=new Blob([JSON.stringify(normal,null,2)+'\\n'],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='card-ledger-data-latest.json';
-    a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),1500);
-    if(message) showToast(message);
-    return true;
-  }catch(e){
-    if(message) showToast('Could not export the latest JSON file');
-    return false;
-  }
-}
-function buildUnifiedLocalData(){
-  return normaliseLocalData({
-    version:LOCAL_DATA_VERSION,
-    cards:typeof cards!=='undefined'&&Array.isArray(cards)?cards:[],
-    dueBills:typeof dueBills!=='undefined'&&Array.isArray(dueBills)?dueBills:[],
-    cashback:typeof cashbackLog!=='undefined'&&Array.isArray(cashbackLog)?cashbackLog:[],
-    recurringPayments:typeof recurringPayments!=='undefined'&&Array.isArray(recurringPayments)?recurringPayments:[],
-    deletedEntryIds:typeof deletedEntryIds!=='undefined'?[...deletedEntryIds]:[],
-    removedCardNames:typeof removedCardNames!=='undefined'?[...removedCardNames]:[]
-  });
-}
-async function hasLocalDataFile(){
-  try{
-    if(await loadLocalDataHandle()) return true;
-    return !!(await readLocalDataFallback());
-  }catch(e){return false;}
-}
-async function saveUnifiedLocalData(){
-  await writeLocalDataFile(buildUnifiedLocalData());
-  return true;
-}
+
 function attachFlatEntriesToCards(localCards, flatEntries){
   const result=cloneJson(localCards,[]);
   const list=Array.isArray(flatEntries)?flatEntries:[];
@@ -323,6 +174,7 @@ function attachFlatEntriesToCards(localCards, flatEntries){
   });
   return result;
 }
+
 async function applyLocalDataState(data){
   const d=normaliseLocalData(data);
   // Cards are the canonical session records. Older unified files may have
@@ -348,131 +200,19 @@ async function applyLocalDataState(data){
   window.__localUnifiedDataLoaded=Array.isArray(d.cards)&&d.cards.length>0;
   return d;
 }
-async function loadLocalDataState(){
-  try{
-    const d=await readLocalDataFile();
-    await applyLocalDataState(d);
-    window.__localDataRecoveryRequired=false;
-    window.__localDataRecoveryReason='';
-    return d;
-  }catch(e){
-    window.__localUnifiedDataLoaded=false;
-    window.__localDataRecoveryRequired=true;
-    window.__localDataRecoveryReason=e&&e.message?e.message:'The local Card Ledger data could not be opened.';
-    return null;
-  }
-}
-async function selectLocalDataFile(){
-  if(window.showOpenFilePicker){
-    const picked=await window.showOpenFilePicker({
-      multiple:false,
-      types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}],
-      excludeAcceptAllOption:false
-    });
-    const handle=picked&&picked[0];
-    if(!handle)throw new Error('No data file selected.');
-    if(!(await localFilePermission(handle,true)))throw new Error('Permission to access the selected data file was not granted.');
-    const file=await handle.getFile();
-    const text=await file.text();
-    let data;
-    if(!text.trim()) throw new Error('The selected file is empty.');
-    try{
-      const parsed=parseLedgerJson(text);
-      if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)) throw new Error('JSON root must be an object.');
-      const hasLedgerShape=Array.isArray(parsed.cards)||Array.isArray(parsed.entries)||Array.isArray(parsed.dueBills)||Array.isArray(parsed.cashback)||Array.isArray(parsed.cashbackLog)||Array.isArray(parsed.recurringPayments);
-      if(!hasLedgerShape) throw new Error('This JSON does not contain Card Ledger data.');
-      data=normaliseLocalData(parsed);
-    }catch(e){
-      throw new Error(e&&e.message?e.message:'The selected file is not valid Card Ledger JSON.');
-    }
-    await saveLocalDataHandle(handle);
-    const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
-    await applyLocalDataState(data);
-    if(!hadCards && typeof cards!=='undefined' && Array.isArray(cards) && cards.length){
-      const current=buildUnifiedLocalData();
-      data={...data,cards:current.cards};
-    }
-    data=normaliseLocalData(data);
-    await writeLocalDataFile(data);
-    if(typeof window.__reloadAfterLocalFileSelection==='function') await window.__reloadAfterLocalFileSelection();
-    await refreshLocalDataStatus('✓ Unified local data file selected · '+handle.name);
-    showToast('Unified Card Ledger data file selected');
-    return data;
-  }
-  // Brave/other Chromium fallback: use the normal Android file picker and keep
-  // the imported JSON in IndexedDB. The app remains fully usable and private;
-  // use Backup Now to export the latest JSON back to a file.
-  return await new Promise((resolve,reject)=>{
-    const input=document.createElement('input');
-    input.type='file'; input.accept='application/json,.json'; input.style.display='none';
-    input.onchange=async()=>{
-      try{
-        const file=input.files&&input.files[0];
-        if(!file) throw new Error('No data file selected.');
-        const text=await file.text();
-        let data;
-        if(!text.trim()) throw new Error('The selected file is empty.');
-        try{
-          const parsed=JSON.parse(text);
-          if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)) throw new Error('JSON root must be an object.');
-          const hasLedgerShape=Array.isArray(parsed.cards)||Array.isArray(parsed.entries)||Array.isArray(parsed.dueBills)||Array.isArray(parsed.cashback)||Array.isArray(parsed.cashbackLog)||Array.isArray(parsed.recurringPayments);
-          if(!hasLedgerShape) throw new Error('This JSON does not contain Card Ledger data.');
-          data=normaliseLocalData(parsed);
-        }catch(e){
-          throw new Error(e&&e.message?e.message:'The selected file is not valid Card Ledger JSON.');
-        }
-        await clearLocalDataHandle();
-        const hadCards=Array.isArray(data.cards)&&data.cards.length>0;
-        await applyLocalDataState(data);
-        if(!hadCards && typeof cards!=='undefined' && Array.isArray(cards) && cards.length){
-          const current=buildUnifiedLocalData();
-          data={...data,cards:current.cards};
-        }
-        data=normaliseLocalData(data);
-        await writeLocalDataFallback(data);
-        if(typeof window.__reloadAfterLocalFileSelection==='function') await window.__reloadAfterLocalFileSelection();
-        await refreshLocalDataStatus('✓ Brave-compatible local data imported · '+file.name);
-        showToast('Local data imported for Brave');
-        resolve(data);
-      }catch(e){reject(e);}
-      finally{input.remove();}
-    };
-    document.body.appendChild(input);
-    input.click();
+
+function buildUnifiedLocalData(){
+  return normaliseLocalData({
+    version:LOCAL_DATA_VERSION,
+    cards:typeof cards!=='undefined'&&Array.isArray(cards)?cards:[],
+    dueBills:typeof dueBills!=='undefined'&&Array.isArray(dueBills)?dueBills:[],
+    cashback:typeof cashbackLog!=='undefined'&&Array.isArray(cashbackLog)?cashbackLog:[],
+    recurringPayments:typeof recurringPayments!=='undefined'&&Array.isArray(recurringPayments)?recurringPayments:[],
+    deletedEntryIds:typeof deletedEntryIds!=='undefined'?[...deletedEntryIds]:[],
+    removedCardNames:typeof removedCardNames!=='undefined'?[...removedCardNames]:[]
   });
 }
-async function createLocalDataFile(){
-  if(window.showSaveFilePicker){
-    const handle=await window.showSaveFilePicker({
-      suggestedName:'card-ledger-data.json',
-      types:[{description:'Card Ledger data',accept:{'application/json':['.json']}}]
-    });
-    if(!handle)throw new Error('No data file selected.');
-    if(!(await localFilePermission(handle,true)))throw new Error('Permission to write the selected data file was not granted.');
-    await saveLocalDataHandle(handle);
-    const data=buildUnifiedLocalData();
-    await writeLocalDataFile(data);
-    await refreshLocalDataStatus('✓ Unified local data file created · '+handle.name);
-    showToast('Unified Card Ledger data file created');
-    return data;
-  }
-  const data=buildUnifiedLocalData();
-  await clearLocalDataHandle();
-  await writeLocalDataFallback(data);
-  await refreshLocalDataStatus('✓ Brave-compatible local storage active');
-  showToast('Brave-compatible local storage created · use Backup Now to export');
-  return data;
-}
-async function refreshLocalDataStatus(message){
-  const el=document.getElementById('githubStatus');
-  if(!el)return;
-  try{
-    const h=await loadLocalDataHandle();
-    el.className='github-status '+(h?'connected':'');
-    const fallback=await readLocalDataFallback();
-    el.textContent=message||(h?'✓ Unified local data file · '+(h.name||'Card Ledger data'):(fallback?'✓ Brave-compatible local storage':'○ No local data file selected'));
-  }catch(e){el.textContent=message||'○ No local data file selected';}
-}
+
 async function connectGitHub(){
   try{
     await requireGitHubToken();
@@ -489,99 +229,11 @@ async function connectGitHub(){
     return seed;
   }catch(e){throw e;}
 }
+
 async function disconnectGitHub(){
   clearGitHubToken();
   await refreshLocalDataStatus('○ GitHub data connection cleared');
   showToast('GitHub token cleared from this browser session');
-}
-async function uploadEncryptedPayload(payload){
-  const p=typeof payload==='string'?JSON.parse(payload):payload;
-  const data=await readLocalDataFile();
-  if(p&&p.id&&data.entries.some(x=>x&&x.id===p.id))return {already:true};
-  data.entries.push(p);
-  await writeLocalDataFile(data);
-  return {already:false,local:true};
-}
-async function loadChatUpdates(){
-  try{
-    chatUpdates=await readLocalDataFile();
-    window.chatUpdatesForSecurity=chatUpdates.entries;
-    window.__chatFeedSource='local-file';
-    return chatUpdates;
-  }catch(e){
-    chatUpdates=normaliseLocalData(null);
-    window.__chatFeedSource='none';
-    return chatUpdates;
-  }
-}
-function parseLedgerJson(text){
-  const raw=String(text||'').replace(/^\\uFEFF/,'').trimStart();
-  if(!raw) throw new Error('The selected Card Ledger data file is empty.');
-  try{return JSON.parse(raw);}catch(firstError){
-    const end=findFirstJsonValueEnd(raw);
-    if(end>0){
-      const first=raw.slice(0,end);
-      try{
-        const parsed=JSON.parse(first);
-        // Some older exported files contain a second JSON value appended after
-        // the valid ledger object. Keep the valid first object instead of
-        // failing with "Unexpected non-whitespace character after JSON".
-        return parsed;
-      }catch(e){}
-    }
-    throw firstError;
-  }
-}
-
-function findFirstJsonValueEnd(text){
-  const s=String(text||'').replace(/^\\uFEFF/,'').trimStart();
-  if(!s) return -1;
-  const offset=text.indexOf(s);
-  let depth=0,inString=false,escaped=false;
-  for(let i=0;i<s.length;i++){
-    const ch=s[i];
-    if(inString){
-      if(escaped) escaped=false;
-      else if(ch==='\\\\') escaped=true;
-      else if(ch==='"') inString=false;
-      continue;
-    }
-    if(ch==='"'){inString=true;continue;}
-    if(ch==='{'||ch==='['){depth++;continue;}
-    if(ch==='}'||ch===']'){
-      depth--;
-      if(depth===0) return offset+i+1;
-      if(depth<0) return -1;
-    }
-  }
-  return -1;
-}
-
-async function saveEntryToChosenLocalFile(payload){
-  return await saveGitHubEntry(payload);
-}
-
-async function saveTransactionToLocalFile(payload){
-  const data=await readLocalDataFile();
-  // New transaction is inserted into the canonical card record when the card
-  // is known; flat entries remains a compatibility mirror.
-  if(typeof cards!=='undefined' && Array.isArray(cards)){
-    const card=cards.find(c=>c && (c.id===payload.cardId || c.name===payload.card));
-    if(card){
-      card.entries=Array.isArray(card.entries)?card.entries:[];
-      if(!card.entries.some(e=>e&&e.id===payload.id)) card.entries.push(payload);
-    }
-  }
-  if(!data.entries.some(x=>x&&x.id===payload.id)) data.entries.push(payload);
-  if(typeof cards!=='undefined' && Array.isArray(cards)) data.cards=cloneJson(cards,[]);
-  data.entries=flattenCardEntries(data.cards).concat(data.entries.filter(e=>!flattenCardEntries(data.cards).some(x=>x.id===e.id)));
-  if(typeof dueBills!=='undefined') data.dueBills=dueBills;
-  if(typeof cashbackLog!=='undefined') data.cashback=cashbackLog;
-  if(typeof recurringPayments!=='undefined') data.recurringPayments=recurringPayments;
-  await writeLocalDataFile(data);
-  const savedHandle=await loadLocalDataHandle();
-  await refreshLocalDataStatus(savedHandle?'✓ Updated original file · '+savedHandle.name:'✓ Saved to local storage');
-  return true;
 }
 
 async function getGitHubDataStatus(){
@@ -590,5 +242,26 @@ async function getGitHubDataStatus(){
     return {connected:!!getGitHubToken(),exists:!remote.missing,entries:remote.data&&Array.isArray(remote.data.entries)?remote.data.entries.length:0};
   }catch(e){return {connected:false,exists:false,error:e&&e.message?e.message:'GitHub unavailable'};}
 }
-window.getGitHubDataStatus=getGitHubDataStatus;
-window.clearGitHubToken=clearGitHubToken;
+
+async function readGitHubData(){
+  const remote=await fetchGitHubDataFile();
+  if(!remote.data) throw new Error('GitHub Card Ledger data file was not found.');
+  return remote.data;
+}
+async function saveUnifiedLocalData(){
+  const saved=await writeGitHubData(buildUnifiedLocalData(),'Card Ledger: save data');
+  await applyLocalDataState(saved);
+  return true;
+}
+async function saveEntryToChosenLocalFile(payload){
+  return await saveGitHubEntry(payload);
+}
+async function loadChatUpdates(){
+  const data=await readGitHubData();
+  await applyLocalDataState(data);
+  window.__chatFeedSource='github';
+  return data;
+}
+window.__localDataRecoveryRequired=false;
+window.__localDataRecoveryReason='';
+window.__localDataUsingFallback=false;
