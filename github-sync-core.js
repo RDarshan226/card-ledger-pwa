@@ -74,7 +74,7 @@ async function writeGitHubData(data,commitMessage){
     const current=await fetchGitHubDataFile();
     const normal=normaliseLocalData(data);
     normal.updatedAt=new Date().toISOString();
-    const body={message:commitMessage||'Update Card Ledger data',content:encodeGitHubBase64(JSON.stringify(normal,null,2)+'\\n'),branch:GITHUB_DATA_BRANCH};
+    const body={message:commitMessage||'Update Card Ledger data',content:encodeGitHubBase64(JSON.stringify(normal,null,2)+'\n'),branch:GITHUB_DATA_BRANCH};
     if(current.sha)body.sha=current.sha;
     let res=await fetch('https://api.github.com/repos/'+GITHUB_DATA_REPO+'/contents/'+GITHUB_DATA_PATH,{method:'PUT',headers:githubApiHeaders(true),body:JSON.stringify(body)});
     if(!res.ok && res.status===422){
