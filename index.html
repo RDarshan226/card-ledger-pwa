@@ -425,11 +425,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">data source database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v181 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v182 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v181"></script>
+<script src="./data-source.js?v=v182"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1314,7 +1314,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v181';
+const APP_VERSION='v182';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1614,9 +1614,7 @@ function renderRecurringPaymentManager(){
   return html;
 }
 async function loadData(){
-  // Require the data source API token at startup so the app never silently opens
-  // against an unauthenticated/public read. The token remains only in this
-  // browser session; after it is cleared, the next opening asks again.
+  // Load the published ledger data directly. This PWA has no write/auth connection.
   await requiredata sourceToken();
   const unifieddata source=await readLedgerData();
   await applyLedgerDataState(unifieddata source);
