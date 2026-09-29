@@ -426,11 +426,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">GitHub database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v179 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v180 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./github-sync-core.js?v=v179"></script>
+<script src="./github-sync-core.js?v=v180"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1315,7 +1315,7 @@ let GITHUB_CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v179';
+const APP_VERSION='v180';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -2519,10 +2519,8 @@ function showToast(msg){ const t=document.getElementById('toast'); if(!t)return;
 async function init(){try{setVersionUI();dataReadyPromise=loadLedgerSource();await dataReadyPromise;initTheme();await render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and GitHub Card Ledger data could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
 
 async function loadLedgerSource(){
-  // CORE HYDRATION: local saved records contain private entries/fees; the
-  // GitHub master contains authoritative card metadata. Merge them by card
-  // name, preserve all local history, then persist the merged card records so
-  // every tab sees exactly the same card objects on the next render.
+  // CORE HYDRATION: GitHub is the single source of truth. The PWA is read-only;
+  // transaction changes are uploaded from Chat using the connected GitHub tool.
   await loadData();
 
   try{
