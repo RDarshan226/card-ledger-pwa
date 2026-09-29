@@ -404,7 +404,7 @@
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v152</span></div>
-  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="loadLedgerSource().then(()=>{render();showToast('data source card data refreshed')})" title="Refresh data source data">↻ Refresh</button></div></div>
+  <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
     <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Add Transaction</button>
@@ -2451,6 +2451,18 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 function inr(n){ const v=Math.round((n||0)*100)/100; return '₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0}); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function showToast(msg){ const t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(showToast._h); showToast._h=setTimeout(()=>t.classList.remove('show'),1600); }
+async function refreshLatestLedgerData(){
+  const btn=document.querySelector('.main-sync');
+  if(btn)btn.disabled=true;
+  try{
+    await loadLedgerSource();
+    await render();
+    showToast('Latest transactions synced');
+  }catch(e){
+    console.error('Latest transaction refresh failed',e);
+    showToast('Could not sync latest transactions');
+  }finally{if(btn)btn.disabled=false;}
+}
 async function init(){try{setVersionUI();dataReadyPromise=loadLedgerSource();await dataReadyPromise;initTheme();await render();setTimeout(()=>{try{checkStatementNotifications();}catch(e){}},0);}catch(e){console.error('Card Ledger startup error',e);const app=document.getElementById('app');if(app)app.innerHTML='<div class="panel"><h2>Card Ledger could not start</h2><div class="sub">The card master and data source Card Ledger data could not be loaded together.</div><button class="tab-btn" onclick="location.reload()">Retry</button></div>';}}
 
 async function loadLedgerSource(){
