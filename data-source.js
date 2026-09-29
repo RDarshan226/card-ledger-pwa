@@ -1,6 +1,6 @@
 /* Card Ledger PWA — read-only published data source.
- * No API token, authentication, repository-write, or connection-management
- * code exists here. The PWA reads the published JSON files served with it.
+ * No authentication or repository-write/connection-management code exists here.
+ * The PWA reads the published JSON files served with it. Chat is the only writer.
  * Chat is the only writer.
  */
 const LEDGER_DATA_VERSION=4;
