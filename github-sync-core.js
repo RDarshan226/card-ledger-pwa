@@ -5,7 +5,7 @@ const GITHUB_DATA_REPO='RDarshan226/card-ledger-pwa';
 const GITHUB_DATA_PATH='card-ledger-data.json';
 const GITHUB_DATA_BRANCH='main';
 const GITHUB_TOKEN_KEY='card-ledger-github-token-v1';
-const GITHUB_AUTH_VERSION='v179';
+const GITHUB_AUTH_VERSION='v180';
 function githubAuthVersion(){try{return String(sessionStorage.getItem('card-ledger-github-auth-version')||'');}catch(e){return '';}}
 function setGithubAuthVersion(){try{sessionStorage.setItem('card-ledger-github-auth-version',GITHUB_AUTH_VERSION);}catch(e){}}
 const LEDGER_DATA_VERSION=4;
