@@ -484,6 +484,18 @@
           "surchargeAmount": null,
           "cardId": "psw7cqxt",
           "card": "Amazon ICICI"
+        },
+        {
+          "id": "amazon-icici-amazonfresh-431-20260930",
+          "type": "txn",
+          "date": "2026-09-30",
+          "amount": 431,
+          "note": "Amazon Fresh purchase",
+          "category": "Grocery",
+          "platform": "Amazon Fresh",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4180,6 +4192,20 @@
       "surchargeAmount": null,
       "cardId": "vkkef24j",
       "card": "Jupiter Edge+"
+    },
+    {
+      "id": "amazon-icici-amazonfresh-431-20260930",
+      "type": "txn",
+      "date": "2026-09-30",
+      "amount": 431,
+      "note": "Amazon Fresh purchase",
+      "category": "Grocery",
+      "platform": "Amazon Fresh",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
     }
   ],
   "cashback": [
