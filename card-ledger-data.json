@@ -1016,7 +1016,7 @@
           "amount": 500,
           "note": "PVR/Inox Voucher",
           "category": "Vouchers",
-          "platform": "PVR/Inox",
+          "platform": "Uni app",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
@@ -4252,7 +4252,7 @@
       "amount": 500,
       "note": "PVR/Inox Voucher",
       "category": "Vouchers",
-      "platform": "PVR/Inox",
+      "platform": "Uni app",
       "rewardRatePct": null,
       "rewardAmountOverride": null,
       "surchargeAmount": null,
