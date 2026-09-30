@@ -496,6 +496,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-amazonfresh-579-20260930",
+          "type": "txn",
+          "date": "2026-09-30",
+          "amount": 579,
+          "note": "Amazon Fresh purchase",
+          "category": "Grocery",
+          "platform": "Amazon Fresh",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4198,6 +4210,20 @@
       "type": "txn",
       "date": "2026-09-30",
       "amount": 431,
+      "note": "Amazon Fresh purchase",
+      "category": "Grocery",
+      "platform": "Amazon Fresh",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
+    },
+    {
+      "id": "amazon-icici-amazonfresh-579-20260930",
+      "type": "txn",
+      "date": "2026-09-30",
+      "amount": 579,
       "note": "Amazon Fresh purchase",
       "category": "Grocery",
       "platform": "Amazon Fresh",
