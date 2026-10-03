@@ -1639,6 +1639,18 @@
           "surchargeAmount": null,
           "cardId": "nfr5g5fi",
           "card": "Axis Neo"
+        },
+        {
+          "id": "axis-neo-purchase-401-69-20261003",
+          "type": "txn",
+          "date": "2026-10-03",
+          "amount": 401.69,
+          "note": "",
+          "category": "Other",
+          "platform": "",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4258,6 +4270,20 @@
       "surchargeAmount": null,
       "cardId": "asttyfhd",
       "card": "BOB Uni GoldX (Visa)"
+    },
+    {
+      "id": "axis-neo-purchase-401-69-20261003",
+      "type": "txn",
+      "date": "2026-10-03",
+      "amount": 401.69,
+      "note": "",
+      "category": "Other",
+      "platform": "",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "nfr5g5fi",
+      "card": "Axis Neo"
     }
   ],
   "cashback": [
