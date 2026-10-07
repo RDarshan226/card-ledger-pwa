@@ -1744,6 +1744,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "tata-neu-plus-repay-333-20261007",
+          "type": "repay",
+          "date": "2026-10-07",
+          "amount": 333,
+          "note": "Paid via BHIM",
+          "category": "",
+          "platform": "BHIM",
+          "rewardRatePct": null,
+          "rewardAmountOverride": 10,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4310,6 +4322,20 @@
       "surchargeAmount": null,
       "cardId": "gd3rqdrd",
       "card": "IDFC Power+"
+    },
+    {
+      "id": "tata-neu-plus-repay-333-20261007",
+      "type": "repay",
+      "date": "2026-10-07",
+      "amount": 333,
+      "note": "Paid via BHIM",
+      "category": "",
+      "platform": "BHIM",
+      "rewardRatePct": null,
+      "rewardAmountOverride": 10,
+      "surchargeAmount": null,
+      "cardId": "nis5k46b",
+      "card": "SBI Tata Neu Plus"
     }
   ],
   "cashback": [
@@ -4672,6 +4698,14 @@
       "amount": 9.81,
       "date": "2026-09-21",
       "note": "Slice bill payment cashback — Kotak app"
+    },
+    {
+      "id": "cb-tata-neu-plus-20261007-10",
+      "type": "cashback",
+      "category": "Card Cashback",
+      "amount": 10,
+      "date": "2026-10-07",
+      "note": "SBI Tata Neu Plus repayment cashback"
     }
   ],
   "dueBills": [],
