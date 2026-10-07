@@ -144,6 +144,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "idfc-powerplus-blinkit-211-20261007",
+          "type": "txn",
+          "date": "2026-10-07",
+          "amount": 211,
+          "note": "Blinkit purchase",
+          "category": "Grocery",
+          "platform": "Blinkit",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4284,6 +4296,20 @@
       "surchargeAmount": null,
       "cardId": "nfr5g5fi",
       "card": "Axis Neo"
+    },
+    {
+      "id": "idfc-powerplus-blinkit-211-20261007",
+      "type": "txn",
+      "date": "2026-10-07",
+      "amount": 211,
+      "note": "Blinkit purchase",
+      "category": "Grocery",
+      "platform": "Blinkit",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "gd3rqdrd",
+      "card": "IDFC Power+"
     }
   ],
   "cashback": [
