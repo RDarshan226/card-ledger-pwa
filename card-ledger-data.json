@@ -156,6 +156,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "idfc-powerplus-water-bill-paytm-758-20261008",
+          "type": "txn",
+          "date": "2026-10-08",
+          "amount": 758,
+          "note": "Water bill payment",
+          "category": "Bills & Utilities",
+          "platform": "Paytm",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4440,6 +4452,20 @@
       "surchargeAmount": null,
       "cardId": "asttyfhd",
       "card": "BOB Uni GoldX (Visa)"
+    },
+    {
+      "id": "idfc-powerplus-water-bill-paytm-758-20261008",
+      "type": "txn",
+      "date": "2026-10-08",
+      "amount": 758,
+      "note": "Water bill payment",
+      "category": "Bills & Utilities",
+      "platform": "Paytm",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "gd3rqdrd",
+      "card": "IDFC Power+"
     }
   ],
   "cashback": [
