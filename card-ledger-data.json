@@ -1056,6 +1056,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "bobuni-visa-repay-500-20261008",
+          "type": "repay",
+          "date": "2026-10-08",
+          "amount": 500,
+          "note": "BOB Uni Visa bill paid via BHIM",
+          "category": "",
+          "platform": "BHIM",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4414,6 +4426,20 @@
       "surchargeAmount": null,
       "cardId": "owunlcjd",
       "card": "BOB Uni GoldX (RuPay)"
+    },
+    {
+      "id": "bobuni-visa-repay-500-20261008",
+      "type": "repay",
+      "date": "2026-10-08",
+      "amount": 500,
+      "note": "BOB Uni Visa bill paid via BHIM",
+      "category": "",
+      "platform": "BHIM",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "asttyfhd",
+      "card": "BOB Uni GoldX (Visa)"
     }
   ],
   "cashback": [
