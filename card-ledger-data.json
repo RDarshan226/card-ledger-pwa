@@ -1032,6 +1032,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "bobuni-visa-visa-app-500-20261008",
+          "type": "txn",
+          "date": "2026-10-08",
+          "amount": 500,
+          "note": "Purchase via Visa app",
+          "category": "Other",
+          "platform": "Visa app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4336,6 +4348,20 @@
       "surchargeAmount": null,
       "cardId": "nis5k46b",
       "card": "SBI Tata Neu Plus"
+    },
+    {
+      "id": "bobuni-visa-visa-app-500-20261008",
+      "type": "txn",
+      "date": "2026-10-08",
+      "amount": 500,
+      "note": "Purchase via Visa app",
+      "category": "Other",
+      "platform": "Visa app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "asttyfhd",
+      "card": "BOB Uni GoldX (Visa)"
     }
   ],
   "cashback": [
