@@ -1290,6 +1290,18 @@
           "surchargeAmount": null,
           "cardId": "owunlcjd",
           "card": "BOB Uni GoldX (RuPay)"
+        },
+        {
+          "id": "bobuni-rupay-repay-345-20261008",
+          "type": "repay",
+          "date": "2026-10-08",
+          "amount": 345,
+          "note": "BOB Uni RuPay bill paid via BHIM app",
+          "category": "",
+          "platform": "BHIM app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4388,6 +4400,20 @@
       "surchargeAmount": null,
       "cardId": "psw7cqxt",
       "card": "Amazon ICICI"
+    },
+    {
+      "id": "bobuni-rupay-repay-345-20261008",
+      "type": "repay",
+      "date": "2026-10-08",
+      "amount": 345,
+      "note": "BOB Uni RuPay bill paid via BHIM app",
+      "category": "",
+      "platform": "BHIM app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "owunlcjd",
+      "card": "BOB Uni GoldX (RuPay)"
     }
   ],
   "cashback": [
