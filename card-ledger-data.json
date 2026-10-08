@@ -520,6 +520,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-repay-1670-20261008",
+          "type": "repay",
+          "date": "2026-10-08",
+          "amount": 1670,
+          "note": "Amazon Pay ICICI bill paid via Kotak app",
+          "category": "",
+          "platform": "Kotak app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": 16.7,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4362,6 +4374,20 @@
       "surchargeAmount": null,
       "cardId": "asttyfhd",
       "card": "BOB Uni GoldX (Visa)"
+    },
+    {
+      "id": "amazon-icici-repay-1670-20261008",
+      "type": "repay",
+      "date": "2026-10-08",
+      "amount": 1670,
+      "note": "Amazon Pay ICICI bill paid via Kotak app",
+      "category": "",
+      "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": 16.7,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
     }
   ],
   "cashback": [
@@ -4732,6 +4758,14 @@
       "amount": 10,
       "date": "2026-10-07",
       "note": "SBI Tata Neu Plus repayment cashback"
+    },
+    {
+      "id": "cb-amazon-icici-repay-20261008-16-70",
+      "type": "cashback",
+      "category": "Card Cashback",
+      "amount": 16.7,
+      "date": "2026-10-08",
+      "note": "Kotak app cashback on Amazon ICICI bill payment"
     }
   ],
   "dueBills": [],
