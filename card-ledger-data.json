@@ -544,6 +544,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": 16.7,
           "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-recharge-1499-20261012",
+          "type": "txn",
+          "date": "2026-10-12",
+          "amount": 1499,
+          "note": "Mobile recharge",
+          "category": "Bills & Utilities",
+          "platform": "Amazon",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4492,6 +4504,20 @@
       "surchargeAmount": null,
       "cardId": "asttyfhd",
       "card": "BOB Uni GoldX (Visa)"
+    },
+    {
+      "id": "amazon-icici-recharge-1499-20261012",
+      "type": "txn",
+      "date": "2026-10-12",
+      "amount": 1499,
+      "note": "Mobile recharge",
+      "category": "Bills & Utilities",
+      "platform": "Amazon",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
     }
   ],
   "cashback": [
