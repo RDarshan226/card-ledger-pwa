@@ -3018,6 +3018,40 @@
         "payments": [],
         "tracked": false
       }
+    },
+    {
+      "id": "icici-coral-20261014",
+      "name": "ICICI Coral",
+      "limit": 150000,
+      "billingDate": "",
+      "limitGroup": null,
+      "network": "",
+      "tier": "",
+      "bin": "",
+      "openedMonth": 10,
+      "openedYear": 2026,
+      "isDebit": false,
+      "feeOnly": false,
+      "isInsurance": false,
+      "entries": [],
+      "fee": {
+        "baseAmount": 0,
+        "gstPct": 18,
+        "rewardRatePct": 1,
+        "rewardRateConfirmed": false,
+        "perTxnCapAmount": 0,
+        "voucherSurchargePct": 0,
+        "redemptionFeeAmount": 0,
+        "capResetBasis": "calendar",
+        "surchargeRules": [],
+        "rewardRules": [],
+        "monthlyRewardCap": 0,
+        "bestCategory": "",
+        "nextDueOverride": null,
+        "waiver": null,
+        "payments": [],
+        "tracked": false
+      }
     }
   ],
   "entries": [
