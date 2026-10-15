@@ -556,6 +556,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-amazonfresh-604-20261015",
+          "type": "txn",
+          "date": "2026-10-15",
+          "amount": 604,
+          "note": "Amazon Fresh purchase",
+          "category": "Grocery",
+          "platform": "Amazon Fresh",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4547,6 +4559,20 @@
       "note": "Mobile recharge",
       "category": "Bills & Utilities",
       "platform": "Amazon",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
+    },
+    {
+      "id": "amazon-icici-amazonfresh-604-20261015",
+      "type": "txn",
+      "date": "2026-10-15",
+      "amount": 604,
+      "note": "Amazon Fresh purchase",
+      "category": "Grocery",
+      "platform": "Amazon Fresh",
       "rewardRatePct": null,
       "rewardAmountOverride": null,
       "surchargeAmount": null,
