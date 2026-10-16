@@ -1662,6 +1662,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "roar-bookmyshow-2840-44-20261016",
+          "type": "txn",
+          "date": "2026-10-16",
+          "amount": 2840.44,
+          "note": "BookMyShow purchase; cashback ₹284.04 from Roar and ₹15 from Paytm",
+          "category": "Entertainment",
+          "platform": "BookMyShow",
+          "rewardRatePct": null,
+          "rewardAmountOverride": 284.04,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4578,6 +4590,20 @@
       "surchargeAmount": null,
       "cardId": "psw7cqxt",
       "card": "Amazon ICICI"
+    },
+    {
+      "id": "roar-bookmyshow-2840-44-20261016",
+      "type": "txn",
+      "date": "2026-10-16",
+      "amount": 2840.44,
+      "note": "BookMyShow purchase; cashback ₹284.04 from Roar and ₹15 from Paytm",
+      "category": "Entertainment",
+      "platform": "BookMyShow",
+      "rewardRatePct": null,
+      "rewardAmountOverride": 284.04,
+      "surchargeAmount": null,
+      "cardId": "l7u4t32f",
+      "card": "Roar Bank"
     }
   ],
   "cashback": [
@@ -4956,6 +4982,22 @@
       "amount": 16.7,
       "date": "2026-10-08",
       "note": "Kotak app cashback on Amazon ICICI bill payment"
+    },
+    {
+      "id": "cb-roar-bookmyshow-284-04-20261016",
+      "type": "cashback",
+      "category": "Card Cashback",
+      "amount": 284.04,
+      "date": "2026-10-16",
+      "note": "Roar cashback on BookMyShow purchase"
+    },
+    {
+      "id": "cb-paytm-bookmyshow-15-20261016",
+      "type": "cashback",
+      "category": "Other Cashback",
+      "amount": 15,
+      "date": "2026-10-16",
+      "note": "Paytm cashback on BookMyShow purchase"
     }
   ],
   "dueBills": [],
