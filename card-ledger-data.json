@@ -1674,6 +1674,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": 284.04,
           "surchargeAmount": null
+        },
+        {
+          "id": "roar-repay-2840-44-20261016",
+          "type": "repay",
+          "date": "2026-10-16",
+          "amount": 2840.44,
+          "note": "Roar bill payment",
+          "category": "",
+          "platform": "",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4601,6 +4613,20 @@
       "platform": "BookMyShow",
       "rewardRatePct": null,
       "rewardAmountOverride": 284.04,
+      "surchargeAmount": null,
+      "cardId": "l7u4t32f",
+      "card": "Roar Bank"
+    },
+    {
+      "id": "roar-repay-2840-44-20261016",
+      "type": "repay",
+      "date": "2026-10-16",
+      "amount": 2840.44,
+      "note": "Roar bill payment",
+      "category": "",
+      "platform": "",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
       "surchargeAmount": null,
       "cardId": "l7u4t32f",
       "card": "Roar Bank"
