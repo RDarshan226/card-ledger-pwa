@@ -403,6 +403,18 @@
           "surchargeAmount": null,
           "cardId": "2jppy7kd",
           "card": "Slice Credit Card"
+        },
+        {
+          "id": "slice-cycle-maintenance-50-20261020",
+          "type": "txn",
+          "date": "2026-10-20",
+          "amount": 50,
+          "note": "Cycle maintenance",
+          "category": "Transport",
+          "platform": "",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4656,6 +4668,20 @@
       "surchargeAmount": null,
       "cardId": "gd3rqdrd",
       "card": "IDFC Power+"
+    },
+    {
+      "id": "slice-cycle-maintenance-50-20261020",
+      "type": "txn",
+      "date": "2026-10-20",
+      "amount": 50,
+      "note": "Cycle maintenance",
+      "category": "Transport",
+      "platform": "",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "2jppy7kd",
+      "card": "Slice Credit Card"
     }
   ],
   "cashback": [
