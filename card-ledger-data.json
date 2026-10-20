@@ -580,6 +580,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-mobile-accessories-517-33-20261020",
+          "type": "txn",
+          "date": "2026-10-20",
+          "amount": 517.33,
+          "note": "Mobile accessories",
+          "category": "Electronics",
+          "platform": "Amazon",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4682,6 +4694,20 @@
       "surchargeAmount": null,
       "cardId": "mube3d80",
       "card": "HDFC MoneyBack+"
+    },
+    {
+      "id": "amazon-icici-mobile-accessories-517-33-20261020",
+      "type": "txn",
+      "date": "2026-10-20",
+      "amount": 517.33,
+      "note": "Mobile accessories",
+      "category": "Electronics",
+      "platform": "Amazon",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
     }
   ],
   "cashback": [
