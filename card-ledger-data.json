@@ -2018,6 +2018,18 @@
           "surchargeAmount": null,
           "cardId": "mube3d80",
           "card": "HDFC MoneyBack+"
+        },
+        {
+          "id": "hdfc-moneyback-flipkart-mobile-17705-20261020",
+          "type": "txn",
+          "date": "2026-10-20",
+          "amount": 17705,
+          "note": "Mobile purchase",
+          "category": "Electronics",
+          "platform": "Flipkart",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4656,6 +4668,20 @@
       "surchargeAmount": null,
       "cardId": "gd3rqdrd",
       "card": "IDFC Power+"
+    },
+    {
+      "id": "hdfc-moneyback-flipkart-mobile-17705-20261020",
+      "type": "txn",
+      "date": "2026-10-20",
+      "amount": 17705,
+      "note": "Mobile purchase",
+      "category": "Electronics",
+      "platform": "Flipkart",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "mube3d80",
+      "card": "HDFC MoneyBack+"
     }
   ],
   "cashback": [
