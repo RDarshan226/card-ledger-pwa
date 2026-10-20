@@ -168,6 +168,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "idfc-powerplus-repay-969-20261020",
+          "type": "repay",
+          "date": "2026-10-20",
+          "amount": 969,
+          "note": "IDFC Power+ bill payment via Amazon Pay",
+          "category": "",
+          "platform": "Amazon Pay",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4630,6 +4642,20 @@
       "surchargeAmount": null,
       "cardId": "l7u4t32f",
       "card": "Roar Bank"
+    },
+    {
+      "id": "idfc-powerplus-repay-969-20261020",
+      "type": "repay",
+      "date": "2026-10-20",
+      "amount": 969,
+      "note": "IDFC Power+ bill payment via Amazon Pay",
+      "category": "",
+      "platform": "Amazon Pay",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "gd3rqdrd",
+      "card": "IDFC Power+"
     }
   ],
   "cashback": [
