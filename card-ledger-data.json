@@ -403,6 +403,18 @@
           "surchargeAmount": null,
           "cardId": "2jppy7kd",
           "card": "Slice Credit Card"
+        },
+        {
+          "id": "slice-repay-328-paytm-20261021",
+          "type": "repay",
+          "date": "2026-10-21",
+          "amount": 328,
+          "note": "Slice credit card bill repayment via Paytm",
+          "category": "Card Repayment",
+          "platform": "Paytm",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4708,6 +4720,20 @@
       "surchargeAmount": null,
       "cardId": "psw7cqxt",
       "card": "Amazon ICICI"
+    },
+    {
+      "id": "slice-repay-328-paytm-20261021",
+      "type": "repay",
+      "date": "2026-10-21",
+      "amount": 328,
+      "note": "Slice credit card bill repayment via Paytm",
+      "category": "Card Repayment",
+      "platform": "Paytm",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "2jppy7kd",
+      "card": "Slice Credit Card"
     }
   ],
   "cashback": [
