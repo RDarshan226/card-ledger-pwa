@@ -2005,6 +2005,18 @@
           "surchargeAmount": null,
           "cardId": "96j4vdo6",
           "card": "IndusInd Visa Platinum"
+        },
+        {
+          "id": "indusind-visa-platinum-repay-546-cheq-20261023",
+          "type": "repay",
+          "date": "2026-10-23",
+          "amount": 546,
+          "note": "IndusInd Visa Platinum bill repayment via CheQ",
+          "category": "Card Repayment",
+          "platform": "CheQ",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4760,6 +4772,20 @@
       "surchargeAmount": null,
       "cardId": "nfr5g5fi",
       "card": "Axis Neo"
+    },
+    {
+      "id": "indusind-visa-platinum-repay-546-cheq-20261023",
+      "type": "repay",
+      "date": "2026-10-23",
+      "amount": 546,
+      "note": "IndusInd Visa Platinum bill repayment via CheQ",
+      "category": "Card Repayment",
+      "platform": "CheQ",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "96j4vdo6",
+      "card": "IndusInd Visa Platinum"
     }
   ],
   "cashback": [
