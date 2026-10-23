@@ -1819,6 +1819,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "axis-neo-repay-401-69-cheq-20261023",
+          "type": "repay",
+          "date": "2026-10-23",
+          "amount": 401.69,
+          "note": "Axis Neo bill repayment via CheQ",
+          "category": "Card Repayment",
+          "platform": "CheQ",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4734,6 +4746,20 @@
       "surchargeAmount": null,
       "cardId": "2jppy7kd",
       "card": "Slice Credit Card"
+    },
+    {
+      "id": "axis-neo-repay-401-69-cheq-20261023",
+      "type": "repay",
+      "date": "2026-10-23",
+      "amount": 401.69,
+      "note": "Axis Neo bill repayment via CheQ",
+      "category": "Card Repayment",
+      "platform": "CheQ",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "nfr5g5fi",
+      "card": "Axis Neo"
     }
   ],
   "cashback": [
