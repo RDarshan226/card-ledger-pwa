@@ -2078,6 +2078,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "hdfc-moneyback-repay-10-cheq-20261024",
+          "type": "repay",
+          "date": "2026-10-24",
+          "amount": 10,
+          "note": "HDFC MoneyBack+ bill repayment via CheQ",
+          "category": "Card Repayment",
+          "platform": "CheQ",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4786,6 +4798,20 @@
       "surchargeAmount": null,
       "cardId": "96j4vdo6",
       "card": "IndusInd Visa Platinum"
+    },
+    {
+      "id": "hdfc-moneyback-repay-10-cheq-20261024",
+      "type": "repay",
+      "date": "2026-10-24",
+      "amount": 10,
+      "note": "HDFC MoneyBack+ bill repayment via CheQ",
+      "category": "Card Repayment",
+      "platform": "CheQ",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "mube3d80",
+      "card": "HDFC MoneyBack+"
     }
   ],
   "cashback": [
