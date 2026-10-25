@@ -426,11 +426,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">data source database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v198 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v199 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v198"></script>
+<script src="./data-source.js?v=v199"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1361,7 +1361,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v198';
+const APP_VERSION='v199';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1963,21 +1963,15 @@ function renderCardsList(){
     const creditCards=cards.filter(c=>c&&!c.isDebit&&!c.feeOnly&&(!safeRemoved.has(c.name)||DEFAULT_CARDS.includes(c.name)));
     const debitCards=cards.filter(c=>c&&c.name===DEBIT_CARD_NAME&&!safeRemoved.has(c.name));
     let html='<div class="panel"><div class="tab-heading-row"><h2>Cards List</h2><span class="sub">'+creditCards.length+' credit cards</span></div><div class="sub">Manage cards, limits, billing dates and entries here.</div></div>';
-    const outstandingBills=projectedLedgerDues().sort((a,b)=>String(a.billDate||'9999-12-31').localeCompare(String(b.billDate||'9999-12-31')));
-    html+='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Bills</h2><span class="sub">Sorted by statement date</span></div>';
-    if(!outstandingBills.length) html+='<div class="sub">No outstanding bills.</div>';
-    else{
-      html+='<div class="due-list">';
-      outstandingBills.forEach(x=>{
-        const d=new Date(x.billDate+'T00:00:00');
-        html+='<div class="due-item"><div class="due-day">'+x.billDate.slice(8)+'</div><div><div class="due-card">'+x.card.name+'</div><div class="due-meta">Next statement date '+d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'</div></div><div class="due-amt">'+inr(x.amount)+'</div><div class="due-min hide-sm">Outstanding</div><div class="due-paid hide-sm"></div><div class="due-status"><span class="status-badge soon">Unpaid</span></div><div class="due-actions"></div></div>';
-      });
-      html+='</div>';
-    }
-    html+='</div>';
+    const dueByCard=new Map();
+    projectedLedgerDues().forEach(x=>{
+      const key=x.card&&(x.card.id||x.card.name);
+      if(key) dueByCard.set(key,(dueByCard.get(key)||0)+(Number(x.amount)||0));
+    });
     html+='<div class="panel"><div class="toolbar"><input type="text" id="search" placeholder="Find a card…" value="'+String(filterText||'').replace(/"/g,'&quot;')+'" oninput="onSearch(this.value)"><button class="sort-btn '+(sortByUtil?'active':'')+'" onclick="toggleSort()">'+(sortByUtil?'⇅ Sorted by usage':'⇅ Sort by usage')+'</button></div>';
     let list=creditCards.filter(c=>String(c.name||'').toLowerCase().includes(String(filterText||'').toLowerCase()));
     if(sortByUtil) list=[...list].sort((a,b)=>{const pa=Number(a.limit)>0?utilised(a)/Number(a.limit):-1;const pb=Number(b.limit)>0?utilised(b)/Number(b.limit):-1;return pb-pa;});
+    else list=[...list].sort((a,b)=>(dueByCard.get(b.id)||dueByCard.get(b.name)||0)-(dueByCard.get(a.id)||dueByCard.get(a.name)||0));
     html+='<div class="ledger">';
     if(!list.length) html+='<div class="no-match">No card matches that search.</div>';
     list.forEach(card=>{html+=renderRow(card);});
