@@ -426,11 +426,11 @@
   <span id="saveStatus" style="font-size:12px;opacity:.7;margin-left:auto">data source database</span>
 </div>
 <div id="app"><div class="loading">opening the ledger…</div></div>
-  <div class="footnote">Card Ledger v197 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
+  <div class="footnote">Card Ledger v198 · Use ＋ Entry for expenses, repayments, cashback and charges. Changes auto-save and refresh the rolling backup.</div>
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v197"></script>
+<script src="./data-source.js?v=v198"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1361,7 +1361,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v197';
+const APP_VERSION='v198';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1936,7 +1936,8 @@ function renderLedger(){
     const totalOutstanding=dues.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
     const cardsWithOutstanding=dues.length;
     const nextDue=dues.length?dues[0].billDate:null;
-    let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k">Next statement date</div><div class="v">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div></div>';
+    const amountDueOnNextStatement=nextDue?dues.filter(x=>x.billDate===nextDue).reduce((sum,x)=>sum+(Number(x.amount)||0),0):0;
+    let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k">Next statement date</div><div class="v">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v">'+inr(amountDueOnNextStatement)+'</div></div></div>';
     if(dues.length){
       html+='<div class="tab-heading-row" style="margin-top:18px"><h3>Outstanding by Card</h3><span class="sub">Sorted by statement date</span></div><div class="due-list">';
       dues.forEach(x=>{
