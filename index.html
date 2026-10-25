@@ -407,6 +407,7 @@
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
+    <button class="tab-btn" id="tab-cards" onclick="setTab('cards')">Cards List</button>
     <button class="tab-btn" id="tab-entry" onclick="setTab('entry')">＋ Add Transaction</button>
     <button class="tab-btn" id="tab-secure" onclick="setTab('secure')" style="display:none">☁️ data source Data</g/button>
     <button class="tab-btn" id="tab-analysis" onclick="setTab('analysis')">Spend Analysis</button>
@@ -429,7 +430,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v193"></script>
+<script src="./data-source.js?v=v194"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1360,7 +1361,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v193';
+const APP_VERSION='v194';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1914,97 +1915,56 @@ function initTheme(){
   applyTheme(saved);
 }
 
-function renderLedger(){
-  const app = document.getElementById('app');
-  if(!app) return;
-  try{
-  // Ledger owns its own data hydration. A failure in another tab/data feed
-  // must never prevent the core card list from being displayed.
-  try{
-    if(!Array.isArray(cards)) cards=[];
-    cards=cards.filter(c=>c&&typeof c==='object');
-  }catch(_e){ cards=[]; }
-  // Never allow a stale/empty data source to make the Ledger disappear.
-  // DEFAULT_CARDS is the emergency display source; saved records are preferred.
-  const safeRemoved = removedCardNames instanceof Set ? removedCardNames : new Set();
-  if(!Array.isArray(cards) || !cards.length){
-    cards=DEFAULT_CARDS.map(name=>({id:uid(),name,limit:Number((DEFAULTS[name]||{}).limit)||0,billingDate:(DEFAULTS[name]||{}).billingDate||'',limitGroup:(DEFAULTS[name]||{}).limitGroup||null,isDebit:false,entries:[],fee:null}));
-  }
+function ensureLedgerCards(){
+  try{if(!Array.isArray(cards)) cards=[];cards=cards.filter(c=>c&&typeof c==='object');}catch(_e){cards=[];}
+  const safeRemoved=removedCardNames instanceof Set?removedCardNames:new Set();
+  if(!cards.length) cards=DEFAULT_CARDS.map(name=>({id:uid(),name,limit:Number((DEFAULTS[name]||{}).limit)||0,billingDate:(DEFAULTS[name]||{}).billingDate||'',limitGroup:(DEFAULTS[name]||{}).limitGroup||null,isDebit:false,entries:[],fee:null}));
   DEFAULT_CARDS.forEach(name=>{
-    if(!safeRemoved.has(name) && !cards.some(c=>c&&c.name===name)){
+    if(!safeRemoved.has(name)&&!cards.some(c=>c&&c.name===name)){
       const d=DEFAULTS[name]||{};
       cards.push({id:uid(),name,limit:Number(d.limit)||0,billingDate:d.billingDate||'',limitGroup:d.limitGroup||null,isDebit:false,entries:[],fee:null});
     }
   });
-  const creditCards = cards.filter(c=>c&&!c.isDebit&&!c.feeOnly&&(!safeRemoved.has(c.name)||DEFAULT_CARDS.includes(c.name)));
-  const debitCards = cards.filter(c=>c&&c.name===DEBIT_CARD_NAME&&!safeRemoved.has(c.name));
-
-  const seenGroups = new Set();
-  let totalLimit = 0;
-  creditCards.forEach(c=>{
-    if(c.limitGroup){ if(seenGroups.has(c.limitGroup)) return; seenGroups.add(c.limitGroup); }
-    totalLimit += Number(c.limit)||0;
-  });
-  const totalUsed = creditCards.reduce((sum,c)=>sum + Math.max(0,utilised(c)),0);
-  const pct = totalLimit > 0 ? Math.round((totalUsed/totalLimit)*100) : 0;
-  const over = pct >= 90;
-
-  let html = `<div class="cover">
-    <div class="cover-figures">
-      <div class="cover-line"><span class="cover-label">Total utilised</span><span class="cover-amt total">${inr(totalUsed)}</span></div>
-      <div class="cover-line"><span class="cover-label">Combined limit</span><span class="cover-amt">${inr(totalLimit)}</span></div>
-      <div class="cover-line"><span class="cover-label">Headroom left</span><span class="cover-amt">${inr(Math.max(0,totalLimit-totalUsed))}</span></div>
-    </div>
-    <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
-  </div>`;
-
-  // Put ledger-derived unpaid dues at the top of the main Ledger tab.
-  // Only cards with positive outstanding are included, sorted by next statement date.
-  const mainLedgerDues = projectedLedgerDues()
-    .sort((a,b)=>String(a.billDate||'9999-12-31').localeCompare(String(b.billDate||'9999-12-31')));
-  html += '<div class="panel"><div class="tab-heading-row"><h2>Outstanding bill dues</h2><span class="sub">Sorted by statement date</span></div>';
-  if(!mainLedgerDues.length){
-    html += '<div class="sub">No outstanding bill dues.</div>';
-  }else{
-    html += '<div class="due-list">';
-    mainLedgerDues.forEach(x=>{
-      const d=new Date(x.billDate+'T00:00:00');
-      html += '<div class="due-item"><div class="due-day">'+x.billDate.slice(8)+'</div><div><div class="due-card">'+x.card.name+'</div><div class="due-meta">Next statement date '+d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'</div></div><div class="due-amt">'+inr(x.amount)+'</div><div class="due-min hide-sm">Outstanding</div><div class="due-paid hide-sm"></div><div class="due-status"><span class="status-badge soon">Unpaid</span></div><div class="due-actions"></div></div>';
-    });
-    html += '</div>';
-  }
-  html += '</div>';
-
-  html += `<div class="toolbar">
-    <input type="text" id="search" placeholder="Find a card…" value="${String(filterText||'').replace(/"/g,'&quot;')}" oninput="onSearch(this.value)">
-    <button class="sort-btn ${sortByUtil?'active':''}" onclick="toggleSort()">${sortByUtil ? '⇅ Sorted by usage' : '⇅ Sort by usage'}</button>
-  </div>`;
-
-  let list = creditCards.filter(c=>c.name.toLowerCase().includes(String(filterText||'').toLowerCase()));
-  if(sortByUtil){
-    list=[...list].sort((a,b)=>{
-      const pa=(Number(a.limit)||0)>0?utilised(a)/Number(a.limit):-1;
-      const pb=(Number(b.limit)||0)>0?utilised(b)/Number(b.limit):-1;
-      return pb-pa;
-    });
-  }
-
-  html += '<div class="ledger">';
-  if(!list.length) html += '<div class="no-match">No card matches that search.</div>';
-  list.forEach(card=>{ html += renderRow(card); });
-  html += '</div>';
-
-  if(!filterText){
-    html += `<div class="section-label">Tracked for analysis only</div><div class="ledger">${debitCards.map(c=>renderRow(c)).join('')}</div>`;
-  }
-
-  html += addCardFormHTML('ledger');
-
-  app.innerHTML=html;
+}
+function renderLedger(){
+  const app=document.getElementById('app'); if(!app)return;
+  try{
+    ensureLedgerCards();
+    const dues=projectedLedgerDues();
+    const totalOutstanding=dues.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
+    const cardsWithOutstanding=dues.length;
+    const nextDue=dues.length?dues[0].billDate:null;
+    let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k">Next statement date</div><div class="v">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div></div>';
+    html+=totalOutstanding>0?'<div class="sub">Detailed outstanding bills and card management are available in <b>Cards List</b>.</div>':'<div class="sub">No current card outstanding recorded.</div>';
+    html+='</div>';
+    app.innerHTML=html;
   }catch(error){
-    console.error('Ledger render failed:',error);
-    const safe=Array.isArray(cards)?cards.filter(c=>c&&typeof c==='object'):[];
-    app.innerHTML='<div class="panel"><h2>Card Ledger</h2><div class="sub">Ledger loaded in safe mode. '+safe.length+' card records found.</div><div class="ledger">'+safe.map(c=>'<div class="row"><div class="row-main"><div><div class="row-name">'+String(c.name||'Unnamed card')+'</div><div class="row-sub">'+(c.billingDate?'Bill date · '+String(c.billingDate):'Bill date not set')+'</div></div><div class="row-amts"><div class="row-used">₹'+Math.round(Math.max(0,utilised(c)||0)).toLocaleString('en-IN')+'</div><div class="row-limit">'+(c.limit?'of ₹'+Math.round(c.limit).toLocaleString('en-IN'):'limit not set')+'</div></div></div></div>').join('')+'</div><div class="sub" style="margin-top:10px">Technical error: '+String(error&&error.message||error)+'</div></div>';
+    console.error('Ledger summary render failed:',error);
+    app.innerHTML='<div class="panel"><h2>Outstanding Summary</h2><div class="sub">Summary could not be calculated. Please refresh the ledger.</div></div>';
+  }
+}
+function renderCardsList(){
+  const app=document.getElementById('app'); if(!app)return;
+  try{
+    ensureLedgerCards();
+    const safeRemoved=removedCardNames instanceof Set?removedCardNames:new Set();
+    const creditCards=cards.filter(c=>c&&!c.isDebit&&!c.feeOnly&&(!safeRemoved.has(c.name)||DEFAULT_CARDS.includes(c.name)));
+    const debitCards=cards.filter(c=>c&&c.name===DEBIT_CARD_NAME&&!safeRemoved.has(c.name));
+    let html='<div class="panel"><div class="tab-heading-row"><h2>Cards List</h2><span class="sub">'+creditCards.length+' credit cards</span></div><div class="sub">Manage cards, limits, billing dates and entries here.</div>';
+    html+='<div class="toolbar"><input type="text" id="search" placeholder="Find a card…" value="'+String(filterText||'').replace(/"/g,'&quot;')+'" oninput="onSearch(this.value)"><button class="sort-btn '+(sortByUtil?'active':'')+'" onclick="toggleSort()">'+(sortByUtil?'⇅ Sorted by usage':'⇅ Sort by usage')+'</button></div>';
+    let list=creditCards.filter(c=>String(c.name||'').toLowerCase().includes(String(filterText||'').toLowerCase()));
+    if(sortByUtil) list=[...list].sort((a,b)=>{const pa=Number(a.limit)>0?utilised(a)/Number(a.limit):-1;const pb=Number(b.limit)>0?utilised(b)/Number(b.limit):-1;return pb-pa;});
+    html+='<div class="ledger">';
+    if(!list.length) html+='<div class="no-match">No card matches that search.</div>';
+    list.forEach(card=>{html+=renderRow(card);});
+    html+='</div>';
+    if(!filterText) html+='<div class="section-label">Tracked for analysis only</div><div class="ledger">'+debitCards.map(c=>renderRow(c)).join('')+'</div>';
+    html+='</div>';
+    html+=addCardFormHTML('cards');
+    app.innerHTML=html;
+  }catch(error){
+    console.error('Cards List render failed:',error);
+    app.innerHTML='<div class="panel"><h2>Cards List</h2><div class="sub">Card list could not be displayed. Please refresh the ledger.</div></div>';
   }
 }
 
@@ -2397,7 +2357,7 @@ function setTab(t){
   return renderActiveTab(epoch);
 }
 function updateTabSelection(){
-  const map={ledger:'tab-ledger',entry:'tab-entry',analysis:'tab-analysis',fees:'tab-fees',dues:'tab-dues',recurring:'tab-recurring',cashback:'tab-cashback',rewards:'tab-rewards',accounts:'tab-accounts',alerts:'tab-alerts',secure:'tab-secure'};
+  const map={ledger:'tab-ledger',cards:'tab-cards',entry:'tab-entry',analysis:'tab-analysis',fees:'tab-fees',dues:'tab-dues',recurring:'tab-recurring',cashback:'tab-cashback',rewards:'tab-rewards',accounts:'tab-accounts',alerts:'tab-alerts',secure:'tab-secure'};
   Object.keys(map).forEach(k=>{const el=document.getElementById(map[k]);if(el)el.classList.toggle('active',activeTab===k);});
 }
 function tabFailure(name,error){
@@ -2435,6 +2395,7 @@ function renderActiveTab(epoch=renderEpoch){
   const guard=()=>epoch===renderEpoch && activeTab===name.toLowerCase();
   try{
     if(activeTab==='ledger'){ try{ renderLedger(); }catch(e){ console.error('Card Ledger Ledger render error',e); if(guard()) tabFailure('Ledger',e); } return Promise.resolve(); }
+    if(activeTab==='cards'){ try{ renderCardsList(); }catch(e){ console.error('Card Ledger Cards List render error',e); if(guard()) tabFailure('Cards List',e); } return Promise.resolve(); }
     if(activeTab==='entry'){ document.getElementById('app').innerHTML=renderQuickEntryPanel(); populateEntryCardDropdown(); updateTransactionEntryFields(); return; }
     if(activeTab==='analysis') return renderAnalysis();
     if(activeTab==='fees') return renderFees();
