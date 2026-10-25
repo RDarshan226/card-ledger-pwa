@@ -429,7 +429,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v192"></script>
+<script src="./data-source.js?v=v193"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1360,7 +1360,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v192';
+const APP_VERSION='v193';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1958,6 +1958,23 @@ function renderLedger(){
     <div class="stamp ${over?'over':''}"><span class="pct">${pct}%</span><span class="cap">of limit used</span></div>
   </div>`;
 
+  // Put ledger-derived unpaid dues at the top of the main Ledger tab.
+  // Only cards with positive outstanding are included, sorted by next statement date.
+  const mainLedgerDues = projectedLedgerDues()
+    .sort((a,b)=>String(a.billDate||'9999-12-31').localeCompare(String(b.billDate||'9999-12-31')));
+  html += '<div class="panel"><div class="tab-heading-row"><h2>Outstanding bill dues</h2><span class="sub">Sorted by statement date</span></div>';
+  if(!mainLedgerDues.length){
+    html += '<div class="sub">No outstanding bill dues.</div>';
+  }else{
+    html += '<div class="due-list">';
+    mainLedgerDues.forEach(x=>{
+      const d=new Date(x.billDate+'T00:00:00');
+      html += '<div class="due-item"><div class="due-day">'+x.billDate.slice(8)+'</div><div><div class="due-card">'+x.card.name+'</div><div class="due-meta">Next statement date '+d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'</div></div><div class="due-amt">'+inr(x.amount)+'</div><div class="due-min hide-sm">Outstanding</div><div class="due-paid hide-sm"></div><div class="due-status"><span class="status-badge soon">Unpaid</span></div><div class="due-actions"></div></div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
   html += `<div class="toolbar">
     <input type="text" id="search" placeholder="Find a card…" value="${String(filterText||'').replace(/"/g,'&quot;')}" oninput="onSearch(this.value)">
     <button class="sort-btn ${sortByUtil?'active':''}" onclick="toggleSort()">${sortByUtil ? '⇅ Sorted by usage' : '⇅ Sort by usage'}</button>
@@ -1980,25 +1997,6 @@ function renderLedger(){
   if(!filterText){
     html += `<div class="section-label">Tracked for analysis only</div><div class="ledger">${debitCards.map(c=>renderRow(c)).join('')}</div>`;
   }
-
-  // Main Ledger tab: show only unpaid bill balances, ordered by statement date.
-  const ledgerOutstandingBills = (Array.isArray(dueBills)?dueBills:[])
-    .map(b=>({...b, remaining:Math.max(0,(Number(b.totalDue)||0)-(Number(b.paidAmount)||0))}))
-    .filter(b=>b.remaining>0)
-    .sort((a,b)=>String(a.statementDate||a.dueDate||'9999-12-31').localeCompare(String(b.statementDate||b.dueDate||'9999-12-31'))||String(a.dueDate||'').localeCompare(String(b.dueDate||'')));
-  html += '<div class="section-label">Outstanding bill dues · sorted by statement date</div><div class="panel">';
-  if(!ledgerOutstandingBills.length){
-    html += '<div class="sub">No outstanding bill dues.</div>';
-  }else{
-    html += '<div class="due-list">';
-    ledgerOutstandingBills.forEach(b=>{
-      const statement=b.statementDate||'—';
-      const due=b.dueDate||'—';
-      html += '<div class="due-item"><div class="due-day">'+(due!=='—'?due.slice(8):'—')+'</div><div><div class="due-card">'+String(b.cardName||'Card')+'</div><div class="due-meta">Statement '+statement+' · Due '+due+'</div></div><div class="due-amt">'+inr(b.remaining)+'</div><div class="due-min hide-sm">Outstanding</div><div class="due-paid hide-sm"></div><div class="due-status"><span class="status-badge soon">Unpaid</span></div><div class="due-actions"><button onclick="openBillPayment(\''+b.id+'\',event)">pay/edit</button></div></div>';
-    });
-    html += '</div>';
-  }
-  html += '</div>';
 
   html += addCardFormHTML('ledger');
 
