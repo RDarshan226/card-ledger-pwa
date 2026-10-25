@@ -429,7 +429,7 @@
 </div>
 <div id="toast"></div>
 
-<script src="./data-source.js?v=v190"></script>
+<script src="./data-source.js?v=v191"></script>
 <script>
 let dueBills = [];
 let backupSeq = 0;
@@ -1360,7 +1360,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v190';
+const APP_VERSION='v191';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -3036,7 +3036,7 @@ function renderDues(){
   const [y,m]=monthVal.split('-').map(Number);
   const monthStart=y+'-'+String(m).padStart(2,'0')+'-01',monthEnd=y+'-'+String(m).padStart(2,'0')+'-'+String(daysInMonth(y,m-1)).padStart(2,'0');
   const cardsForDues=masterCards().filter(c=>!c.isDebit&&!c.feeOnly);
-  const monthBills=dueBills.filter(b=>b.dueDate>=monthStart&&b.dueDate<=monthEnd).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const monthBills=dueBills.filter(b=>b.dueDate>=monthStart&&b.dueDate<=monthEnd&&Math.max(0,Number(b.totalDue)-Number(b.paidAmount))>0).sort((a,b)=>(a.statementDate||a.dueDate).localeCompare(b.statementDate||b.dueDate)||(a.dueDate||'').localeCompare(b.dueDate||''));
   const outstanding=monthBills.reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0),total=monthBills.reduce((s,b)=>s+b.totalDue,0),paid=monthBills.reduce((s,b)=>s+Math.min(b.totalDue,b.paidAmount),0);
   const overdue=monthBills.filter(b=>dueStatus(b).cls==='overdue').reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0);
   const upcoming=monthBills.filter(b=>['soon','today'].includes(dueStatus(b).cls)).reduce((s,b)=>s+Math.max(0,b.totalDue-b.paidAmount),0);
