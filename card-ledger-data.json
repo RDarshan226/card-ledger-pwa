@@ -604,6 +604,18 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-repay-2000-kotak-20261025",
+          "type": "repay",
+          "date": "2026-10-25",
+          "amount": 2000,
+          "note": "Amazon ICICI bill repayment via Kotak app; earned ₹20 cashback",
+          "category": "Card Repayment",
+          "platform": "Kotak app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4812,6 +4824,20 @@
       "surchargeAmount": null,
       "cardId": "mube3d80",
       "card": "HDFC MoneyBack+"
+    },
+    {
+      "id": "amazon-icici-repay-2000-kotak-20261025",
+      "type": "repay",
+      "date": "2026-10-25",
+      "amount": 2000,
+      "note": "Amazon ICICI bill repayment via Kotak app; earned ₹20 cashback",
+      "category": "Card Repayment",
+      "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
     }
   ],
   "cashback": [
@@ -5206,6 +5232,14 @@
       "amount": 15,
       "date": "2026-10-16",
       "note": "Paytm cashback on BookMyShow purchase"
+    },
+    {
+      "id": "amazon-icici-kotak-cashback-20-20261025",
+      "type": "cashback",
+      "category": "Card Repayment Cashback",
+      "amount": 20,
+      "date": "2026-10-25",
+      "note": "₹20 cashback earned for Amazon ICICI bill payment via Kotak app"
     }
   ],
   "dueBills": [],
