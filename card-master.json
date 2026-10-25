@@ -1,5 +1,5 @@
 {
-  "version": "v127",
+  "version": "v128",
   "source": "GitHub unified card master — single authoritative source for card details used by all card-related tabs",
   "cards": [
     {
@@ -421,6 +421,21 @@
       "isDebit": true,
       "feeOnly": true,
       "isInsurance": true
+    },
+    {
+      "id": "github-card-28-icici-coral",
+      "name": "ICICI Coral",
+      "limit": 150000,
+      "billingDate": "2nd",
+      "limitGroup": null,
+      "network": "",
+      "tier": "",
+      "bin": "",
+      "openedMonth": 10,
+      "openedYear": 2026,
+      "isDebit": false,
+      "feeOnly": false,
+      "isInsurance": false
     }
   ]
 }
