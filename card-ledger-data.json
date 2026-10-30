@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-09-29T11:10:48.754Z",
+  "updatedAt": "2026-10-30T15:44:00.000Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -613,6 +613,18 @@
           "note": "Amazon ICICI bill repayment via Kotak app; earned ₹20 cashback",
           "category": "Card Repayment",
           "platform": "Kotak app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-amazonfresh-508-20261030",
+          "type": "txn",
+          "date": "2026-10-30",
+          "amount": 508,
+          "note": "Amazon Fresh purchase",
+          "category": "Grocery",
+          "platform": "Amazon Fresh",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
@@ -4833,6 +4845,20 @@
       "note": "Amazon ICICI bill repayment via Kotak app; earned ₹20 cashback",
       "category": "Card Repayment",
       "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
+    },
+    {
+      "id": "amazon-icici-amazonfresh-508-20261030",
+      "type": "txn",
+      "date": "2026-10-30",
+      "amount": 508,
+      "note": "Amazon Fresh purchase",
+      "category": "Grocery",
+      "platform": "Amazon Fresh",
       "rewardRatePct": null,
       "rewardAmountOverride": null,
       "surchargeAmount": null,
