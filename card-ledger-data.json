@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-10-30T15:44:00.000Z",
+  "updatedAt": "2026-10-31T05:25:00.000Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -177,6 +177,18 @@
           "note": "IDFC Power+ bill payment via Amazon Pay",
           "category": "",
           "platform": "Amazon Pay",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
+        },
+        {
+          "id": "idfc-powerplus-zepto-159-20261031",
+          "type": "txn",
+          "date": "2026-10-31",
+          "amount": 159,
+          "note": "Zepto purchase",
+          "category": "Grocery",
+          "platform": "Zepto",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
@@ -4864,6 +4876,20 @@
       "surchargeAmount": null,
       "cardId": "psw7cqxt",
       "card": "Amazon ICICI"
+    },
+    {
+      "id": "idfc-powerplus-zepto-159-20261031",
+      "type": "txn",
+      "date": "2026-10-31",
+      "amount": 159,
+      "note": "Zepto purchase",
+      "category": "Grocery",
+      "platform": "Zepto",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "gd3rqdrd",
+      "card": "IDFC Power+"
     }
   ],
   "cashback": [
