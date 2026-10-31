@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-10-31T06:00:35.727Z",
+  "updatedAt": "2026-10-31T18:04:42.981Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -637,6 +637,18 @@
           "note": "Amazon Fresh purchase",
           "category": "Grocery",
           "platform": "Amazon Fresh",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-repay-1128-kotak-20261031",
+          "type": "repay",
+          "date": "2026-10-31",
+          "amount": 1128,
+          "note": "Amazon ICICI bill repayment via Kotak",
+          "category": "Card Repayment",
+          "platform": "Kotak",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
@@ -4916,6 +4928,20 @@
       "surchargeAmount": null,
       "cardId": "vkkef24j",
       "card": "Jupiter Edge+"
+    },
+    {
+      "id": "amazon-icici-repay-1128-kotak-20261031",
+      "type": "repay",
+      "date": "2026-10-31",
+      "amount": 1128,
+      "note": "Amazon ICICI bill repayment via Kotak",
+      "category": "Card Repayment",
+      "platform": "Kotak",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
     }
   ],
   "cashback": [
