@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-10-31T18:04:42.981Z",
+  "updatedAt": "2026-10-31T18:14:38.213Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -189,6 +189,18 @@
           "note": "Zepto purchase",
           "category": "Grocery",
           "platform": "Zepto",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
+        },
+        {
+          "id": "idfc-powerplus-repay-159-kotak-20261031",
+          "type": "repay",
+          "date": "2026-10-31",
+          "amount": 159,
+          "note": "IDFC Power+ bill payment via Kotak",
+          "category": "Card Repayment",
+          "platform": "Kotak",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
@@ -4942,6 +4954,20 @@
       "surchargeAmount": null,
       "cardId": "psw7cqxt",
       "card": "Amazon ICICI"
+    },
+    {
+      "id": "idfc-powerplus-repay-159-kotak-20261031",
+      "type": "repay",
+      "date": "2026-10-31",
+      "amount": 159,
+      "note": "IDFC Power+ bill payment via Kotak",
+      "category": "Card Repayment",
+      "platform": "Kotak",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "gd3rqdrd",
+      "card": "IDFC Power+"
     }
   ],
   "cashback": [
@@ -5344,6 +5370,14 @@
       "amount": 20,
       "date": "2026-10-25",
       "note": "₹20 cashback earned for Amazon ICICI bill payment via Kotak app"
+    },
+    {
+      "id": "idfc-powerplus-kotak-cashback-159-20261031",
+      "type": "cashback",
+      "category": "Card Repayment Cashback",
+      "amount": 1.59,
+      "date": "2026-10-31",
+      "note": "₹1.59 cashback earned for IDFC Power+ bill payment via Kotak"
     }
   ],
   "dueBills": [],
