@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-10-31T05:25:00.000Z",
+  "updatedAt": "2026-10-31T06:00:35.727Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -810,6 +810,18 @@
           "surchargeAmount": null,
           "cardId": "vkkef24j",
           "card": "Jupiter Edge+"
+        },
+        {
+          "id": "jupiter-edge-blinkit-427-20261031",
+          "type": "txn",
+          "date": "2026-10-31",
+          "amount": 427,
+          "note": "Blinkit purchase",
+          "category": "Grocery",
+          "platform": "Blinkit",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null
         }
       ],
       "fee": {
@@ -4890,6 +4902,20 @@
       "surchargeAmount": null,
       "cardId": "gd3rqdrd",
       "card": "IDFC Power+"
+    },
+    {
+      "id": "jupiter-edge-blinkit-427-20261031",
+      "type": "txn",
+      "date": "2026-10-31",
+      "amount": 427,
+      "note": "Blinkit purchase",
+      "category": "Grocery",
+      "platform": "Blinkit",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "vkkef24j",
+      "card": "Jupiter Edge+"
     }
   ],
   "cashback": [
