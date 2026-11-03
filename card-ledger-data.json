@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-10-31T18:14:38.213Z",
+  "updatedAt": "2026-11-03T16:59:52.919Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -664,6 +664,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "amazon-icici-amazon-1000-20261103",
+          "type": "txn",
+          "date": "2026-11-03",
+          "amount": 1000,
+          "note": "Amazon purchase",
+          "category": "Shopping",
+          "platform": "Amazon",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "psw7cqxt",
+          "card": "Amazon ICICI"
         }
       ],
       "fee": {
@@ -4968,6 +4982,20 @@
       "surchargeAmount": null,
       "cardId": "gd3rqdrd",
       "card": "IDFC Power+"
+    },
+    {
+      "id": "amazon-icici-amazon-1000-20261103",
+      "type": "txn",
+      "date": "2026-11-03",
+      "amount": 1000,
+      "note": "Amazon purchase",
+      "category": "Shopping",
+      "platform": "Amazon",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "psw7cqxt",
+      "card": "Amazon ICICI"
     }
   ],
   "cashback": [
