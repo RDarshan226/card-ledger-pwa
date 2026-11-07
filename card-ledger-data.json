@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-03T16:59:52.919Z",
+  "updatedAt": "2026-11-07T07:49:07.453Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -1808,6 +1808,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "roar-bank-bookmyshow-332-42-20261107",
+          "type": "txn",
+          "date": "2026-11-07",
+          "amount": 332.42,
+          "note": "BookMyShow purchase",
+          "category": "Entertainment",
+          "platform": "BookMyShow",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "l7u4t32f",
+          "card": "Roar Bank"
         }
       ],
       "fee": {
@@ -4996,6 +5010,20 @@
       "surchargeAmount": null,
       "cardId": "psw7cqxt",
       "card": "Amazon ICICI"
+    },
+    {
+      "id": "roar-bank-bookmyshow-332-42-20261107",
+      "type": "txn",
+      "date": "2026-11-07",
+      "amount": 332.42,
+      "note": "BookMyShow purchase",
+      "category": "Entertainment",
+      "platform": "BookMyShow",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "l7u4t32f",
+      "card": "Roar Bank"
     }
   ],
   "cashback": [
