@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-12T14:05:33.726Z",
+  "updatedAt": "2026-11-12T14:07:24.695Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -1845,6 +1845,20 @@
           "note": "BookMyShow purchase",
           "category": "Entertainment",
           "platform": "BookMyShow",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "l7u4t32f",
+          "card": "Roar Bank"
+        },
+        {
+          "id": "roar-repay-332-42-20261112",
+          "type": "repay",
+          "date": "2026-11-12",
+          "amount": 332.42,
+          "note": "Roar Bank bill repayment",
+          "category": "Card Repayment",
+          "platform": "",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null,
@@ -5080,6 +5094,20 @@
       "surchargeAmount": null,
       "cardId": "psw7cqxt",
       "card": "Amazon ICICI"
+    },
+    {
+      "id": "roar-repay-332-42-20261112",
+      "type": "repay",
+      "date": "2026-11-12",
+      "amount": 332.42,
+      "note": "Roar Bank bill repayment",
+      "category": "Card Repayment",
+      "platform": "",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "l7u4t32f",
+      "card": "Roar Bank"
     }
   ],
   "cashback": [
