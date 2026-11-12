@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-07T07:49:07.453Z",
+  "updatedAt": "2026-11-12T09:00:19.934Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -204,6 +204,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "idfc-powerplus-water-bill-1020-20261112",
+          "type": "txn",
+          "date": "2026-11-12",
+          "amount": 1020,
+          "note": "Water bill payment",
+          "category": "Bills & Utilities",
+          "platform": "",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "gd3rqdrd",
+          "card": "IDFC Power+"
         }
       ],
       "fee": {
@@ -5024,6 +5038,20 @@
       "surchargeAmount": null,
       "cardId": "l7u4t32f",
       "card": "Roar Bank"
+    },
+    {
+      "id": "idfc-powerplus-water-bill-1020-20261112",
+      "type": "txn",
+      "date": "2026-11-12",
+      "amount": 1020,
+      "note": "Water bill payment",
+      "category": "Bills & Utilities",
+      "platform": "",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "gd3rqdrd",
+      "card": "IDFC Power+"
     }
   ],
   "cashback": [
