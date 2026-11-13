@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-12T14:07:24.695Z",
+  "updatedAt": "2026-11-13T15:45:15.759Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -453,6 +453,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "slice-play-store-29-20261113",
+          "type": "txn",
+          "date": "2026-11-13",
+          "amount": 29,
+          "note": "Google Play Store purchase",
+          "category": "Entertainment",
+          "platform": "Google Play Store",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "2jppy7kd",
+          "card": "Slice Credit Card"
         }
       ],
       "fee": {
@@ -5108,6 +5122,20 @@
       "surchargeAmount": null,
       "cardId": "l7u4t32f",
       "card": "Roar Bank"
+    },
+    {
+      "id": "slice-play-store-29-20261113",
+      "type": "txn",
+      "date": "2026-11-13",
+      "amount": 29,
+      "note": "Google Play Store purchase",
+      "category": "Entertainment",
+      "platform": "Google Play Store",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "2jppy7kd",
+      "card": "Slice Credit Card"
     }
   ],
   "cashback": [
