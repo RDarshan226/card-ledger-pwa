@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-13T15:45:15.759Z",
+  "updatedAt": "2026-11-14T13:06:28.534Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -462,6 +462,20 @@
           "note": "Google Play Store purchase",
           "category": "Entertainment",
           "platform": "Google Play Store",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "2jppy7kd",
+          "card": "Slice Credit Card"
+        },
+        {
+          "id": "slice-purchase-20-20261114",
+          "type": "txn",
+          "date": "2026-11-14",
+          "amount": 20,
+          "note": "",
+          "category": "Other",
+          "platform": "",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null,
@@ -5131,6 +5145,20 @@
       "note": "Google Play Store purchase",
       "category": "Entertainment",
       "platform": "Google Play Store",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "2jppy7kd",
+      "card": "Slice Credit Card"
+    },
+    {
+      "id": "slice-purchase-20-20261114",
+      "type": "txn",
+      "date": "2026-11-14",
+      "amount": 20,
+      "note": "",
+      "category": "Other",
+      "platform": "",
       "rewardRatePct": null,
       "rewardAmountOverride": null,
       "surchargeAmount": null,
