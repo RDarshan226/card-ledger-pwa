@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-20T08:34:08.447Z",
+  "updatedAt": "2026-11-20T08:34:43.163Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -213,6 +213,20 @@
           "note": "Water bill payment",
           "category": "Bills & Utilities",
           "platform": "",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "gd3rqdrd",
+          "card": "IDFC Power+"
+        },
+        {
+          "id": "idfc-powerplus-repay-1020-kotak-20261120",
+          "type": "repay",
+          "date": "2026-11-20",
+          "amount": 1020,
+          "note": "IDFC Power+ bill repayment via Kotak app; earned ₹10.20 cashback",
+          "category": "Card Repayment",
+          "platform": "Kotak app",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null,
@@ -5164,6 +5178,20 @@
       "surchargeAmount": null,
       "cardId": "2jppy7kd",
       "card": "Slice Credit Card"
+    },
+    {
+      "id": "idfc-powerplus-repay-1020-kotak-20261120",
+      "type": "repay",
+      "date": "2026-11-20",
+      "amount": 1020,
+      "note": "IDFC Power+ bill repayment via Kotak app; earned ₹10.20 cashback",
+      "category": "Card Repayment",
+      "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "gd3rqdrd",
+      "card": "IDFC Power+"
     }
   ],
   "cashback": [
@@ -5574,6 +5602,14 @@
       "amount": 1.59,
       "date": "2026-10-31",
       "note": "₹1.59 cashback earned for IDFC Power+ bill payment via Kotak"
+    },
+    {
+      "id": "idfc-powerplus-kotak-cashback-1020-20261120",
+      "type": "cashback",
+      "category": "Card Repayment Cashback",
+      "amount": 10.2,
+      "date": "2026-11-20",
+      "note": "₹10.20 cashback earned for IDFC Power+ bill payment via Kotak app"
     }
   ],
   "dueBills": [],
