@@ -3005,7 +3005,7 @@ function nextBillingDateFor(card){
   const now=new Date(); let y=now.getFullYear(),m=now.getMonth();
   let candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));
   if(candidate<new Date(now.getFullYear(),now.getMonth(),now.getDate())){m++;if(m>11){m=0;y++;}candidate=new Date(y,m,Math.min(day,daysInMonth(y,m)));}
-  return candidate.toISOString().slice(0,10);
+  return candidate.getFullYear()+'-'+String(candidate.getMonth()+1).padStart(2,'0')+'-'+String(candidate.getDate()).padStart(2,'0');
 }
 function projectedLedgerDues(){return cards.filter(c=>!c.isDebit&&!c.feeOnly).map(c=>({card:c,amount:Math.max(0,utilised(c)),billDate:nextBillingDateFor(c)})).filter(x=>x.amount>0&&x.billDate).sort((a,b)=>a.billDate.localeCompare(b.billDate));}
 function masterCards(){
