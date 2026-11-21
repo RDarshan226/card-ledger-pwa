@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-21T06:22:02.285Z",
+  "updatedAt": "2026-11-21T17:52:20.714Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -544,7 +544,22 @@
       "isDebit": false,
       "feeOnly": false,
       "isInsurance": false,
-      "entries": [],
+      "entries": [
+        {
+          "id": "au-ixigo-ixigo-app-368-20261121",
+          "type": "txn",
+          "date": "2026-11-21",
+          "amount": 368,
+          "note": "Ixigo app payment",
+          "category": "Travel",
+          "platform": "Ixigo app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "9af73eeg",
+          "card": "AU Ixigo"
+        }
+      ],
       "fee": {
         "baseAmount": 0,
         "gstPct": 18,
@@ -5220,6 +5235,20 @@
       "surchargeAmount": null,
       "cardId": "2jppy7kd",
       "card": "Slice Credit Card"
+    },
+    {
+      "id": "au-ixigo-ixigo-app-368-20261121",
+      "type": "txn",
+      "date": "2026-11-21",
+      "amount": 368,
+      "note": "Ixigo app payment",
+      "category": "Travel",
+      "platform": "Ixigo app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "9af73eeg",
+      "card": "AU Ixigo"
     }
   ],
   "cashback": [
