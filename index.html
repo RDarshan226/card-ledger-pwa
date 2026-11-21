@@ -1930,19 +1930,30 @@ function renderLedger(){
   const app=document.getElementById('app'); if(!app)return;
   try{
     ensureLedgerCards();
+    const today=todayStr();
     const dues=projectedLedgerDues()
       .filter(x=>Number(x.amount)>0)
-      .sort((a,b)=>String(a.billDate||'9999-12-31').localeCompare(String(b.billDate||'9999-12-31')));
+      .map(x=>{
+        const billingText=masterBillingDate(x.card)||x.card.billingDate||'';
+        const match=String(billingText).match(/\\d+/);
+        const day=match?Math.min(Number(match[0]),daysInMonth(new Date().getFullYear(),new Date().getMonth())):0;
+        const statementDate=day?new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
+        return {...x,statementDate,isOverdue:!!statementDate&&statementDate<=today};
+      })
+      .sort((a,b)=>(Number(b.isOverdue)-Number(a.isOverdue))||String(a.billDate||'9999-12-31').localeCompare(String(b.billDate||'9999-12-31')));
     const totalOutstanding=dues.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
     const cardsWithOutstanding=dues.length;
-    const nextDue=dues.length?dues[0].billDate:null;
-    const amountDueOnNextStatement=nextDue?dues.filter(x=>x.billDate===nextDue).reduce((sum,x)=>sum+(Number(x.amount)||0),0):0;
+    const nextDue=dues.find(x=>!x.isOverdue)?.billDate||null;
+    const amountDueOnNextStatement=nextDue?dues.filter(x=>!x.isOverdue&&x.billDate===nextDue).reduce((sum,x)=>sum+(Number(x.amount)||0),0):0;
     let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">Next statement date</div><div class="v" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v" style="color:#22d3ee;text-shadow:0 0 2px rgba(34,211,238,.65),0 0 4px rgba(34,211,238,.35)">'+inr(amountDueOnNextStatement)+'</div></div></div>';
     if(dues.length){
       html+='<div class="tab-heading-row" style="margin-top:18px"><h3>Outstanding by Card</h3><span class="sub">Sorted by statement date</span></div><div class="due-list">';
       dues.forEach(x=>{
-        const statementDate=x.billDate?new Date(x.billDate+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'Not set';
-        html+='<div class="due-item"><div class="due-day">'+(x.billDate?x.billDate.slice(8,10):'—')+'</div><div><div class="due-card">'+x.card.name+'</div><div class="due-meta">Statement date · '+statementDate+'</div></div><div class="due-amt">'+inr(x.amount)+'</div><div class="due-min hide-sm">Outstanding</div><div class="due-paid hide-sm"></div><div class="due-status"><span class="status-badge soon">Due</span></div><div class="due-actions"></div></div>';
+        const displayDate=x.isOverdue?x.statementDate:x.billDate;
+        const statementDate=displayDate?new Date(displayDate+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'Not set';
+        const overdueStyle=x.isOverdue?' style="background:rgba(239,68,68,.13);border-left:4px solid #ef4444;color:#ef4444"':'';
+        const badge=x.isOverdue?'<span class="status-badge due" style="background:#7f1d1d;color:#fff;font-weight:700">OVERDUE</span>':'<span class="status-badge soon">Due</span>';
+        html+='<div class="due-item'+(x.isOverdue?' overdue':'')+'"'+overdueStyle+'><div class="due-day">'+(displayDate?displayDate.slice(8,10):'—')+'</div><div><div class="due-card"'+(x.isOverdue?' style="color:#ef4444"':'')+'>'+x.card.name+'</div><div class="due-meta"'+(x.isOverdue?' style="color:#f87171"':'')+'>Statement date · '+statementDate+'</div></div><div class="due-amt"'+(x.isOverdue?' style="color:#ef4444"':'')+'>'+inr(x.amount)+'</div><div class="due-min hide-sm">Outstanding</div><div class="due-paid hide-sm"></div><div class="due-status">'+badge+'</div><div class="due-actions"></div></div>';
       });
       html+='</div>';
     }else{
