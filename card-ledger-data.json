@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-20T08:34:43.163Z",
+  "updatedAt": "2026-11-21T06:22:02.285Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -490,6 +490,20 @@
           "note": "",
           "category": "Other",
           "platform": "",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "2jppy7kd",
+          "card": "Slice Credit Card"
+        },
+        {
+          "id": "slice-repay-49-supermoney-20261121",
+          "type": "repay",
+          "date": "2026-11-21",
+          "amount": 49,
+          "note": "Slice Credit Card bill repayment via SuperMoney app",
+          "category": "Card Repayment",
+          "platform": "SuperMoney app",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null,
@@ -5192,6 +5206,20 @@
       "surchargeAmount": null,
       "cardId": "gd3rqdrd",
       "card": "IDFC Power+"
+    },
+    {
+      "id": "slice-repay-49-supermoney-20261121",
+      "type": "repay",
+      "date": "2026-11-21",
+      "amount": 49,
+      "note": "Slice Credit Card bill repayment via SuperMoney app",
+      "category": "Card Repayment",
+      "platform": "SuperMoney app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "2jppy7kd",
+      "card": "Slice Credit Card"
     }
   ],
   "cashback": [
