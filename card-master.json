@@ -1,5 +1,5 @@
 {
-  "version": "v128",
+  "version": "v129",
   "source": "GitHub unified card master — single authoritative source for card details used by all card-related tabs",
   "cards": [
     {
@@ -261,7 +261,7 @@
       "id": "github-card-17-hdfc-moneyback",
       "name": "HDFC MoneyBack+",
       "limit": 45000,
-      "billingDate": "24th",
+      "billingDate": "23rd",
       "limitGroup": null,
       "network": "",
       "tier": "",
