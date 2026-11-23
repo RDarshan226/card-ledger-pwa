@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-23T05:42:42.352Z",
+  "updatedAt": "2026-11-23T09:00:00+05:30",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -1974,7 +1974,7 @@
       "id": "nfr5g5fi",
       "name": "Axis Neo",
       "limit": 69000,
-      "billingDate": "10th",
+      "billingDate": "22nd",
       "limitGroup": null,
       "network": "RuPay",
       "tier": "Platinum",
@@ -2269,7 +2269,7 @@
       "id": "mube3d80",
       "name": "HDFC MoneyBack+",
       "limit": 45000,
-      "billingDate": "24th",
+      "billingDate": "22nd",
       "limitGroup": null,
       "network": "",
       "tier": "",
@@ -5700,5 +5700,187 @@
   "dueBills": [],
   "recurringPayments": [],
   "deletedEntryIds": [],
-  "removedCardNames": []
+  "removedCardNames": [],
+  "statementSnapshots": [
+    {
+      "id": "8gcl42aa-2026-11-07",
+      "cardId": "8gcl42aa",
+      "cardName": "SBI SimplyClick",
+      "statementDate": "2026-11-07",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "mn9s1swh-2026-11-01",
+      "cardId": "mn9s1swh",
+      "cardName": "IDFC Millenia",
+      "statementDate": "2026-11-01",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "gd3rqdrd-2026-11-20",
+      "cardId": "gd3rqdrd",
+      "cardName": "IDFC Power+",
+      "statementDate": "2026-11-20",
+      "month": "2026-11",
+      "amount": 1020,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "2jppy7kd-2026-11-21",
+      "cardId": "2jppy7kd",
+      "cardName": "Slice Credit Card",
+      "statementDate": "2026-11-21",
+      "month": "2026-11",
+      "amount": 49,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "9af73eeg-2026-11-19",
+      "cardId": "9af73eeg",
+      "cardName": "AU Ixigo",
+      "statementDate": "2026-11-19",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "rck91wmo-2026-11-06",
+      "cardId": "rck91wmo",
+      "cardName": "Kotak 811 DD",
+      "statementDate": "2026-11-06",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "psw7cqxt-2026-11-12",
+      "cardId": "psw7cqxt",
+      "cardName": "Amazon ICICI",
+      "statementDate": "2026-11-12",
+      "month": "2026-11",
+      "amount": 1000.33,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "j3qyazyg-2026-11-20",
+      "cardId": "j3qyazyg",
+      "cardName": "Yes Bank Finbooster",
+      "statementDate": "2026-11-20",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "asttyfhd-2026-11-07",
+      "cardId": "asttyfhd",
+      "cardName": "BOB Uni GoldX (Visa)",
+      "statementDate": "2026-11-07",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "owunlcjd-2026-11-07",
+      "cardId": "owunlcjd",
+      "cardName": "BOB Uni GoldX (RuPay)",
+      "statementDate": "2026-11-07",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "hm9nu9mk-2026-11-01",
+      "cardId": "hm9nu9mk",
+      "cardName": "RBL Duet",
+      "statementDate": "2026-11-01",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "l7u4t32f-2026-11-01",
+      "cardId": "l7u4t32f",
+      "cardName": "Roar Bank",
+      "statementDate": "2026-11-01",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "nfr5g5fi-2026-11-22",
+      "cardId": "nfr5g5fi",
+      "cardName": "Axis Neo",
+      "statementDate": "2026-11-22",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "vtumd219-2026-11-21",
+      "cardId": "vtumd219",
+      "cardName": "DCB Niyo Credit",
+      "statementDate": "2026-11-21",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "nis5k46b-2026-11-07",
+      "cardId": "nis5k46b",
+      "cardName": "SBI Tata Neu Plus",
+      "statementDate": "2026-11-07",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "96j4vdo6-2026-11-22",
+      "cardId": "96j4vdo6",
+      "cardName": "IndusInd Visa Platinum",
+      "statementDate": "2026-11-22",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "mube3d80-2026-11-22",
+      "cardId": "mube3d80",
+      "cardName": "HDFC MoneyBack+",
+      "statementDate": "2026-11-22",
+      "month": "2026-11",
+      "amount": 17705,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    },
+    {
+      "id": "icici-coral-20261014-2026-11-02",
+      "cardId": "icici-coral-20261014",
+      "cardName": "ICICI Coral",
+      "statementDate": "2026-11-02",
+      "month": "2026-11",
+      "amount": 0,
+      "capturedAt": "2026-11-23",
+      "source": "ledger"
+    }
+  ]
 }
