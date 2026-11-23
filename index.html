@@ -400,10 +400,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v211</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v212</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v209</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v210</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -468,7 +468,7 @@ const DEFAULTS = {
   "Axis Neo":             { limit: 69000,  billingDate: "22nd" },
   "SBI Tata Neu Plus":    { limit: 74000,  billingDate: "7th", limitGroup: "sbi-shared" },
   "IndusInd Visa Platinum": { limit: 59000, billingDate: "22nd" },
-  "HDFC MoneyBack+": { limit: 0, billingDate: "24th" }
+  "HDFC MoneyBack+": { limit: 0, billingDate: "23rd" }
 };
 
 const DEFAULT_CARDS = [
@@ -1362,7 +1362,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v209';
+const APP_VERSION='v210';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
