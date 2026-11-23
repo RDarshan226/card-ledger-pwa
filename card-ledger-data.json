@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-23T03:37:54.343Z",
+  "updatedAt": "2026-11-23T05:42:42.352Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -2269,7 +2269,7 @@
       "id": "mube3d80",
       "name": "HDFC MoneyBack+",
       "limit": 45000,
-      "billingDate": "23rd",
+      "billingDate": "24th",
       "limitGroup": null,
       "network": "",
       "tier": "",
