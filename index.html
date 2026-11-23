@@ -1961,22 +1961,31 @@ function renderLedger(){
     // Statement-cycle utilisation is based on purchases/refunds, never reduced by bill repayments.
     // Current month = day after previous statement through this month's statement date.
     // Next month = day after this month's statement through next month's statement date.
+    // Monthly utilisation follows the statement cycle that produces each month's bill.
+    // November = October statement cycle; December = November statement cycle.
     const cycleTotals={current:0,next:0};
-    const cycleBounds=(day,offset)=>{
+    const cycleDetails={current:new Map(),next:new Map()};
+    const cycleBounds=(day,statementMonthOffset)=>{
       const now=new Date();
       const y=now.getFullYear(),m=now.getMonth();
-      const stmt=new Date(y,m+offset,Math.min(day,daysInMonth(y,m+offset)));
-      const prev=new Date(y,m+offset-1,Math.min(day,daysInMonth(y,m+offset-1)));
+      const stmtMonth=new Date(y,m+statementMonthOffset,1);
+      const sy=stmtMonth.getFullYear(),sm=stmtMonth.getMonth();
+      const prevMonth=new Date(sy,sm-1,1);
+      const stmt=new Date(sy,sm,Math.min(day,daysInMonth(sy,sm)));
+      const prev=new Date(prevMonth.getFullYear(),prevMonth.getMonth(),Math.min(day,daysInMonth(prevMonth.getFullYear(),prevMonth.getMonth())));
       const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       return {start:iso(prev),end:iso(stmt)};
     };
-    // Use the published flat ledger feed as the primary source. It is kept in
-    // sync with card entries and avoids stale per-card arrays after data refresh.
     const allUtilisationEntries=Array.isArray(window.chatUpdatesForSecurity)&&window.chatUpdatesForSecurity.length
       ? window.chatUpdatesForSecurity
-      : utilisationCards.flatMap(c=>(Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name})));
+      : utilisationCards.flatMap(c=>(Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id})));
     const seenUtilisationEntries=new Set();
     const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
+    const addUtilisationEntry=(monthKey,card,e,signed)=>{
+      if(!cycleDetails[monthKey].has(card.name))cycleDetails[monthKey].set(card.name,[]);
+      cycleDetails[monthKey].get(card.name).push({...e,_signed:signed});
+      cycleTotals[monthKey]+=signed;
+    };
     allUtilisationEntries.forEach(e=>{
       if(!e||!e.id||seenUtilisationEntries.has(String(e.id)))return;
       seenUtilisationEntries.add(String(e.id));
@@ -1984,25 +1993,43 @@ function renderLedger(){
       if(!card)return;
       const day=parseDay(masterBillingDate(card)||card.billingDate||'');
       if(!day)return;
-      const current=cycleBounds(day,0),next=cycleBounds(day,1);
+      const current=cycleBounds(day,-1),next=cycleBounds(day,0);
       const date=String(e.date||'');
       const amount=Number(e.amount)||0;
       const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
-      if(!signed||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
-      if(date>current.start&&date<=current.end)cycleTotals.current+=signed;
-      else if(date>next.start&&date<=next.end)cycleTotals.next+=signed;
+      if(!signed||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
+      if(date>current.start&&date<=current.end)addUtilisationEntry('current',card,e,signed);
+      else if(date>next.start&&date<=next.end)addUtilisationEntry('next',card,e,signed);
     });
     cycleTotals.current=Math.max(0,cycleTotals.current);
     cycleTotals.next=Math.max(0,cycleTotals.next);
-    const meter=(label,amount)=>{
+    const meter=(key,label,amount)=>{
       const pct=combinedLimit>0?amount/combinedLimit*100:0;
       const width=Math.min(100,Math.max(0,pct));
       const color=pct>25?'#ff4d6d':pct>=20?'#f59e0b':'#22d3ee';
-      return '<div style="flex:1 1 260px;min-width:0;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.35))"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft)">'+label+'</div><div style="font-size:20px;font-weight:800;color:'+color+';margin-top:4px;text-shadow:0 0 8px '+color+'55">'+pct.toFixed(2)+'%</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:700">'+inr(amount)+'</div><div style="font-size:10px;color:var(--ink-soft)">of '+inr(combinedLimit)+'</div></div></div><div style="position:relative;height:10px;border-radius:20px;background:var(--line);margin-top:12px;overflow:visible"><div style="height:100%;width:'+width+'%;border-radius:20px;background:'+color+';box-shadow:0 0 10px '+color+'88"></div><div style="position:absolute;left:25%;top:-4px;height:18px;border-left:2px dashed #ff4d6d" title="25% warning threshold"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font:10px IBM Plex Mono,monospace;color:var(--ink-soft)"><span>0%</span><span style="color:#ff6b81">25% alert</span><span>100%</span></div></div>';
+      const expanded=openUtilisationDetail===key;
+      return '<div role="button" tabindex="0" aria-expanded="'+expanded+'" onclick="toggleUtilisationDetail(\\''+key+'\\')" onkeydown="if(event.key===\\'Enter\\'||event.key===\\' \\'){event.preventDefault();toggleUtilisationDetail(\\''+key+'\\')}" title="Tap to view card-wise transactions" style="cursor:pointer;flex:1 1 260px;min-width:0;padding:13px 14px;border:1px solid '+(expanded?'rgba(34,211,238,.65)':'var(--line)')+';border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.35));box-shadow:'+(expanded?'0 0 12px rgba(34,211,238,.12)':'none')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft)">'+label+'</div><div style="font-size:20px;font-weight:800;color:'+color+';margin-top:4px;text-shadow:0 0 8px '+color+'55">'+pct.toFixed(2)+'%</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:700">'+inr(amount)+'</div><div style="font-size:10px;color:var(--ink-soft)">of '+inr(combinedLimit)+'</div></div></div><div style="position:relative;height:10px;border-radius:20px;background:var(--line);margin-top:12px;overflow:visible"><div style="height:100%;width:'+width+'%;border-radius:20px;background:'+color+';box-shadow:0 0 10px '+color+'88"></div><div style="position:absolute;left:25%;top:-4px;height:18px;border-left:2px dashed #ff4d6d" title="25% warning threshold"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font:10px IBM Plex Mono,monospace;color:var(--ink-soft)"><span>0%</span><span style="color:#ff6b81">25% alert</span><span>100%</span></div><div style="font-size:10px;color:var(--ink-soft);margin-top:8px;text-align:right">'+(expanded?'Tap to close':'Tap for card-wise transaction breakup')+' ▾</div></div>';
     };
-    const monthLabel=new Date().toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
-    const nextMonthLabel=new Date(new Date().getFullYear(),new Date().getMonth()+1,1).toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
-    const utilisationMeter='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">'+meter('CURRENT MONTH · '+monthLabel,cycleTotals.current)+meter('NEXT MONTH · '+nextMonthLabel,cycleTotals.next)+'</div>';
+    const detailHtml=key=>{
+      const groups=[...cycleDetails[key].entries()].filter(([,items])=>items.length).sort((a,b)=>a[0].localeCompare(b[0]));
+      if(!groups.length)return '<div class="sub" style="margin-top:10px">No purchases or refunds recorded in this statement cycle.</div>';
+      let html='<div style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.25))"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px">CARD-WISE STATEMENT BREAKUP</div>';
+      groups.forEach(([name,items])=>{
+        const total=items.reduce((sum,e)=>sum+e._signed,0);
+        html+='<div style="padding:10px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><span>'+name+'</span><span>'+inr(total)+'</span></div>';
+        items.sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(e=>{
+          const refund=e.type==='refund';
+          const title=e.platform||e.note||e.category||(refund?'Refund':'Purchase');
+          html+='<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0 0 8px;font-size:11px;color:var(--ink-soft)"><span style="min-width:0;overflow-wrap:anywhere">'+String(e.date).slice(5)+' · '+title+(refund?' · Refund':'')+'</span><span style="white-space:nowrap;color:'+(refund?'#22c55e':'var(--ink)')+'">'+(refund?'−':'')+inr(Math.abs(e._signed))+'</span></div>';
+        });
+        html+='</div>';
+      });
+      html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;font-size:12px;font-weight:800"><span>Cycle total</span><span>'+inr(cycleTotals[key])+'</span></div></div>';
+      return html;
+    };
+    const monthLabel=new Date(new Date().getFullYear(),new Date().getMonth()-1,1).toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
+    const nextMonthLabel=new Date().toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
+    const utilisationMeter='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">'+meter('current','CURRENT MONTH · '+monthLabel,cycleTotals.current)+meter('next','NEXT MONTH · '+nextMonthLabel,cycleTotals.next)+'</div>'+(openUtilisationDetail?detailHtml(openUtilisationDetail):'');
     const currentPct=combinedLimit>0?cycleTotals.current/combinedLimit*100:0;
     const nextPct=combinedLimit>0?cycleTotals.next/combinedLimit*100:0;
     const warnings=[];
@@ -3641,6 +3668,8 @@ function renderAlerts(){
 }
 loadNotificationSettings();
 /* ---------------- Account Ages ---------------- */
+let openUtilisationDetail = null;
+function toggleUtilisationDetail(key){openUtilisationDetail=openUtilisationDetail===key?null:key;render();}
 let openAccountMonth = null;
 function toggleAccountMonth(key){ openAccountMonth = (openAccountMonth===key) ? null : key; render(); }
 
