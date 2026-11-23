@@ -400,10 +400,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v206</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v207</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v206</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v207</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1361,7 +1361,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v206';
+const APP_VERSION='v207';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1959,9 +1959,15 @@ function renderLedger(){
       totalUtilised+=Math.max(0,Number(utilised(c))||0);
     });
     const combinedLimit=individualLimit+[...limitGroups.values()].reduce((sum,n)=>sum+n,0);
-    const overallUtilisation=combinedLimit>0?(totalUtilised/combinedLimit)*100:0;
-    const utilisationWarning=overallUtilisation>25?'<div style="margin-top:14px;padding:13px 15px;border:1px solid rgba(255,77,109,.65);border-left:4px solid #ff4d6d;border-radius:10px;background:rgba(127,29,29,.22);color:#ff879b;box-shadow:0 0 16px rgba(255,77,109,.12)"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.08em">⚠ HIGH CREDIT UTILISATION</div><div style="font-size:13px;font-weight:600;margin-top:5px">Total utilisation is '+overallUtilisation.toFixed(2)+'% — above the 25% threshold.</div><div style="font-size:11px;margin-top:4px;color:var(--ink-soft)">Used '+inr(totalUtilised)+' of '+inr(combinedLimit)+' combined credit limit. Consider repaying balances to bring utilisation to 25% or below.</div></div>':'';
-    let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">Next statement date</div><div class="v" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v" style="color:#22d3ee;text-shadow:0 0 2px rgba(34,211,238,.65),0 0 4px rgba(34,211,238,.35)">'+inr(amountDueOnNextStatement)+'</div></div></div>'+utilisationWarning;
+    // Monthly outstanding meter uses the current net outstanding against the combined available credit limit.
+    const monthlyOutstanding=Math.max(0,totalOutstanding);
+    const monthlyUtilisation=combinedLimit>0?(monthlyOutstanding/combinedLimit)*100:0;
+    const overallUtilisation=monthlyUtilisation;
+    const meterWidth=Math.min(100,Math.max(0,monthlyUtilisation));
+    const meterColor=monthlyUtilisation>25?'#ff4d6d':monthlyUtilisation>=20?'#f59e0b':'#22d3ee';
+    const utilisationMeter='<div style="margin-top:16px;padding:14px 15px;border:1px solid var(--line);border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.35))"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.07em;color:var(--ink-soft)">MONTHLY OUTSTANDING UTILISATION</div><div style="font-size:20px;font-weight:800;color:'+meterColor+';margin-top:4px;text-shadow:0 0 8px '+meterColor+'55">'+monthlyUtilisation.toFixed(2)+'%</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:700">'+inr(monthlyOutstanding)+' / '+inr(combinedLimit)+'</div><div style="font-size:10px;color:var(--ink-soft);margin-top:3px">Outstanding / combined limit</div></div></div><div style="position:relative;height:11px;border-radius:20px;background:var(--line);margin-top:13px;overflow:visible"><div style="height:100%;width:'+meterWidth+'%;border-radius:20px;background:'+meterColor+';box-shadow:0 0 10px '+meterColor+'88;transition:width .3s"></div><div style="position:absolute;left:25%;top:-4px;height:19px;border-left:2px dashed #ff4d6d" title="25% warning threshold"></div></div><div style="display:flex;justify-content:space-between;margin-top:7px;font:10px IBM Plex Mono,monospace;color:var(--ink-soft)"><span>0%</span><span style="color:#ff6b81">25% alert threshold</span><span>100%</span></div></div>';
+    const utilisationWarning=overallUtilisation>25?'<div style="margin-top:12px;padding:13px 15px;border:1px solid rgba(255,77,109,.65);border-left:4px solid #ff4d6d;border-radius:10px;background:rgba(127,29,29,.22);color:#ff879b;box-shadow:0 0 16px rgba(255,77,109,.12)"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.08em">⚠ HIGH CREDIT UTILISATION</div><div style="font-size:13px;font-weight:600;margin-top:5px">Monthly outstanding utilisation is '+overallUtilisation.toFixed(2)+'% — above the 25% threshold.</div><div style="font-size:11px;margin-top:4px;color:var(--ink-soft)">Outstanding '+inr(monthlyOutstanding)+' of '+inr(combinedLimit)+' combined credit limit. Consider repaying balances to bring utilisation to 25% or below.</div></div>':'';
+    let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">Next statement date</div><div class="v" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v" style="color:#22d3ee;text-shadow:0 0 2px rgba(34,211,238,.65),0 0 4px rgba(34,211,238,.35)">'+inr(amountDueOnNextStatement)+'</div></div></div>'+utilisationMeter+utilisationWarning;
     if(dues.length){
       html+='<div class="tab-heading-row" style="margin-top:18px"><h3>Outstanding by Card</h3><span class="sub">Sorted by statement date</span></div><div class="due-list">';
       dues.forEach(x=>{
