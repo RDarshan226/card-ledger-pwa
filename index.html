@@ -1982,12 +1982,16 @@ function renderLedger(){
     const seenUtilisationEntries=new Set();
     const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
     const utilisationCardById=new Map(utilisationCards.map(c=>[String(c.id||''),c]));
+    const openingHistoryByCard=new Map();
+    const currentCycleStartByCard=new Map();
+    const nowForUtilisation=new Date();
+    const previousMonthEndDate=new Date(nowForUtilisation.getFullYear(),nowForUtilisation.getMonth(),0);
+    const previousMonthEnd=previousMonthEndDate.getFullYear()+'-'+String(previousMonthEndDate.getMonth()+1).padStart(2,'0')+'-'+String(previousMonthEndDate.getDate()).padStart(2,'0');
     const addUtilisationEntry=(monthKey,card,e,signed)=>{
       if(!cycleDetails[monthKey].has(card.name))cycleDetails[monthKey].set(card.name,[]);
       cycleDetails[monthKey].get(card.name).push({...e,_signed:signed});
       cycleTotals[monthKey]+=signed;
     };
-    const openingEntriesByCard=new Map();
     allUtilisationEntries.forEach(e=>{
       if(!e||!e.id||seenUtilisationEntries.has(String(e.id)))return;
       seenUtilisationEntries.add(String(e.id));
@@ -1996,30 +2000,37 @@ function renderLedger(){
       const day=parseDay(masterBillingDate(card)||card.billingDate||'');
       if(!day)return;
       const current=cycleBounds(day,0),next=cycleBounds(day,1);
+      currentCycleStartByCard.set(card.name,current.start);
       const date=String(e.date||'');
       const amount=Number(e.amount)||0;
+      if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
       const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
-      const openingSigned=e.type==='refund'?-amount:(e.type==='repay'?-amount:(e.type==='txn'?amount:0));
-      if(openingSigned&&date<=current.start){
-        if(!openingEntriesByCard.has(card.name))openingEntriesByCard.set(card.name,[]);
-        openingEntriesByCard.get(card.name).push({...e,_signed:openingSigned});
+      const balanceSigned=e.type==='refund'?-amount:(e.type==='repay'?-amount:(e.type==='txn'?amount:0));
+      if(balanceSigned&&date<=previousMonthEnd){
+        if(!openingHistoryByCard.has(card.name))openingHistoryByCard.set(card.name,[]);
+        openingHistoryByCard.get(card.name).push({...e,_signed:balanceSigned});
       }
-      if(!signed||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+      if(!signed)return;
       if(date>current.start&&date<=current.end)addUtilisationEntry('current',card,e,signed);
       else if(date>next.start&&date<=next.end)addUtilisationEntry('next',card,e,signed);
     });
-    // Carry forward any unpaid balance already outstanding at the start of this month's statement cycle.
-    // This captures older unpaid statements (for example, the HDFC MoneyBack+ October purchase due in November)
-    // without counting balances that were already repaid before the cycle began.
-    openingEntriesByCard.forEach((items,cardName)=>{
-      const openingNet=items.reduce((sum,e)=>sum+e._signed,0);
+    // Add the unpaid balance carried into the current calendar month, while keeping
+    // purchases already counted in this statement cycle from being double-counted.
+    // Repayments made during the current month do not erase monthly utilisation.
+    openingHistoryByCard.forEach((items,cardName)=>{
+      const historyNet=items.reduce((sum,e)=>sum+e._signed,0);
+      const currentItems=cycleDetails.current.get(cardName)||[];
+      const currentSpendBeforeMonthEnd=currentItems.filter(e=>String(e.date||'')<=previousMonthEnd).reduce((sum,e)=>sum+e._signed,0);
+      const openingNet=Math.max(0,historyNet-currentSpendBeforeMonthEnd);
       if(openingNet>0){
+        const start=currentCycleStartByCard.get(cardName)||'0000-00-00';
+        const detailItems=items.filter(e=>e.type==='repay'||((e.type==='txn'||e.type==='refund')&&String(e.date||'')<=start));
         if(!cycleDetails.current.has(cardName))cycleDetails.current.set(cardName,[]);
-        cycleDetails.current.get(cardName).push(...items);
+        cycleDetails.current.get(cardName).push(...detailItems);
         cycleTotals.current+=openingNet;
       }
     });
-    cycleTotals.current=Math.max(0,cycleTotals.current);
+        cycleTotals.current=Math.max(0,cycleTotals.current);
     cycleTotals.next=Math.max(0,cycleTotals.next);
     const meter=(key,label,amount)=>{
       const pct=combinedLimit>0?amount/combinedLimit*100:0;
