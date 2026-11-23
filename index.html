@@ -457,7 +457,7 @@ const DEFAULTS = {
   "Slice Credit Card":    { limit: 127500, billingDate: "21st" },
   "Roar Bank":            { limit: 100000, billingDate: "1st" },
   "RBL Duet":             { limit: 46000,  billingDate: "" },
-  "AU Ixigo":             { limit: 15000,  billingDate: "18th" },
+  "AU Ixigo":             { limit: 15000,  billingDate: "19th" },
   "Jupiter Edge+":        { limit: 30000,  billingDate: "27th" },
   "Amazon ICICI":         { limit: 150000, billingDate: "12th" },
   "DCB Niyo Credit":      { limit: 5000,   billingDate: "21st" },
@@ -1937,8 +1937,11 @@ function renderLedger(){
         const billingText=masterBillingDate(x.card)||x.card.billingDate||'';
         const match=String(billingText).match(/\d+/);
         const day=match?Math.min(Number(match[0]),daysInMonth(new Date().getFullYear(),new Date().getMonth())):0;
-        const statementDate=day?new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
-        return {...x,statementDate,isOverdue:!!statementDate&&statementDate<=today};
+        // These are projected outstanding balances for the next statement,
+        // so always display the upcoming statement date (not the already-passed
+        // statement date in the current month) and do not mark them overdue.
+        const statementDate=x.billDate||'';
+        return {...x,statementDate,isOverdue:false};
       })
       .sort((a,b)=>(Number(b.isOverdue)-Number(a.isOverdue))||String(a.billDate||'9999-12-31').localeCompare(String(b.billDate||'9999-12-31')));
     const totalOutstanding=dues.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
