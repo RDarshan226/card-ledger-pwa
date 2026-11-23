@@ -1976,9 +1976,12 @@ function renderLedger(){
       const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       return {start:iso(prev),end:iso(stmt)};
     };
-    const allUtilisationEntries=Array.isArray(window.chatUpdatesForSecurity)&&window.chatUpdatesForSecurity.length
-      ? window.chatUpdatesForSecurity
-      : utilisationCards.flatMap(c=>(Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id})));
+    // Use the saved per-card ledger as the authoritative source. The chat-update
+    // feed can omit card metadata on older entries, which caused opening bills
+    // (including the first HDFC MoneyBack+ bill) to disappear from utilisation.
+    const allUtilisationEntries=utilisationCards.flatMap(c=>
+      (Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id}))
+    );
     const seenUtilisationEntries=new Set();
     const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
     const utilisationCardById=new Map(utilisationCards.map(c=>[String(c.id||''),c]));
