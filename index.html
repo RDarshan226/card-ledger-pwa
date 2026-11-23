@@ -438,6 +438,7 @@ let cashbackLog = [];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 let cards = [];
 let chatUpdates = {};
+let statementSnapshots = [];
 let openId = null;
 let editingEntry = null; // { cardId, entryId } while an existing transaction is being edited
 let editingCardId = null;
@@ -464,10 +465,10 @@ const DEFAULTS = {
   "BOB Uni GoldX (Visa)":  { limit: 65000, billingDate: "7th", limitGroup: "bob-unigoldx" },
   "BOB Uni GoldX (RuPay)": { limit: 65000, billingDate: "7th", limitGroup: "bob-unigoldx" },
   "Yes Bank Finbooster":  { limit: 115000, billingDate: "20th" },
-  "Axis Neo":             { limit: 69000,  billingDate: "10th" },
+  "Axis Neo":             { limit: 69000,  billingDate: "22nd" },
   "SBI Tata Neu Plus":    { limit: 74000,  billingDate: "7th", limitGroup: "sbi-shared" },
   "IndusInd Visa Platinum": { limit: 59000, billingDate: "22nd" },
-  "HDFC MoneyBack+": { limit: 0, billingDate: "24th" }
+  "HDFC MoneyBack+": { limit: 0, billingDate: "22nd" }
 };
 
 const DEFAULT_CARDS = [
@@ -1961,55 +1962,46 @@ function renderLedger(){
       }
     });
     const combinedLimit=individualLimit+[...limitGroups.values()].reduce((sum,n)=>sum+n,0);
-    // Monthly utilisation is the balance at the beginning of each card's statement date.
-    // Repayment entries are deliberately ignored; include transactions/refunds dated
-    // strictly before the statement date. Activity on or after that date is in the next cycle.
+    // Monthly utilisation is based on a separate snapshot for each card's statement date.
+    // Transactions before the date add to the balance; refunds and repayments reduce it.
     const cycleTotals={current:0,next:0};
     const cycleDetails={current:new Map(),next:new Map()};
-    // Read every available copy of the published ledger feed. Some older records
-    // exist in the top-level entries array but are not attached to card.entries.
     const cardEntryCopies=utilisationCards.flatMap(c=>
       (Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id}))
     );
     const feedEntryCopies=(Array.isArray(chatUpdates&&chatUpdates.entries)?chatUpdates.entries:[])
-      .filter(e=>e&&e.id&&e.card)
-      .map(e=>({...e,card:String(e.card),cardId:e.cardId||''}));
+      .filter(e=>e&&e.id&&e.card).map(e=>({...e,card:String(e.card),cardId:e.cardId||''}));
     const feedCardCopies=(Array.isArray(chatUpdates&&chatUpdates.cards)?chatUpdates.cards:[])
       .flatMap(c=>(Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id})));
     const allUtilisationEntries=[...cardEntryCopies,...feedEntryCopies,...feedCardCopies]
       .filter((e,i,arr)=>e&&e.id&&arr.findIndex(x=>String(x.id)===String(e.id))===i);
-    const seenUtilisationEntries=new Set();
-    const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
-    const utilisationCardById=new Map(utilisationCards.map(c=>[String(c.id||''),c]));
     const snapshotDate=(day,monthOffset)=>{
-      const now=new Date();
-      const month=new Date(now.getFullYear(),now.getMonth()+monthOffset,1);
-      const y=month.getFullYear(),m=month.getMonth();
-      const d=Math.min(day,daysInMonth(y,m));
+      const now=new Date(),month=new Date(now.getFullYear(),now.getMonth()+monthOffset,1);
+      const y=month.getFullYear(),m=month.getMonth(),d=Math.min(day,daysInMonth(y,m));
       return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     };
     const signedEntry=e=>{
       const amount=Number(e.amount)||0;
       if(e.type==='txn')return amount;
-      if(e.type==='refund')return -amount;
-      if(e.type==='repay')return 0;
+      if(e.type==='refund'||e.type==='repay')return -amount;
       return 0;
     };
     const addSnapshot=(key,card,cutoff)=>{
-      const entries=allUtilisationEntries.filter(e=>{
-        if(!e||!e.id||String(e.date||'')>=cutoff||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||'')))return false;
-        const matched=utilisationCardByName.get(String(e.card||'').trim().toLowerCase())||utilisationCardById.get(String(e.cardId||''));
-        return matched&&matched.name===card.name&&['txn','refund'].includes(e.type);
+      const matchedEntries=allUtilisationEntries.filter(e=>{
+        if(!e||!e.id||!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(e.date||''))||String(e.date)>=cutoff)return false;
+        const matched=utilisationCards.find(c=>
+          (e.cardId&&String(e.cardId)===String(c.id))||
+          (!e.cardId&&String(e.card||'').trim().toLowerCase()===String(c.name||'').trim().toLowerCase())||
+          (e.card&&String(e.card).trim().toLowerCase()===String(c.name||'').trim().toLowerCase())
+        );
+        return matched&&String(matched.id)===String(card.id)&&['txn','refund','repay'].includes(e.type);
       });
-      const unique=entries.filter(e=>{
-        const id=String(e.id);
-        if(seenUtilisationEntries.has(key+'|'+id))return false;
-        seenUtilisationEntries.add(key+'|'+id);
-        return true;
-      });
-      const balance=unique.reduce((sum,e)=>sum+signedEntry(e),0);
-      cycleTotals[key]+=balance;
-      if(unique.length)cycleDetails[key].set(card.name,unique.map(e=>({...e,_signed:signedEntry(e)})));
+      const calculated=Math.max(0,matchedEntries.reduce((sum,e)=>sum+signedEntry(e),0));
+      const saved=(Array.isArray(statementSnapshots)?statementSnapshots:[])
+        .find(x=>String(x.cardId||'')===String(card.id)&&String(x.statementDate||'')===cutoff);
+      const amount=saved?Math.max(0,Number(saved.amount)||0):calculated;
+      cycleTotals[key]+=amount;
+      cycleDetails[key].set(card.name,{amount,cutoff,saved:!!saved,items:matchedEntries.map(e=>({...e,_signed:signedEntry(e)}))});
     };
     utilisationCards.forEach(card=>{
       if(card.isDebit||card.feeOnly)return;
@@ -2018,8 +2010,6 @@ function renderLedger(){
       addSnapshot('current',card,snapshotDate(day,0));
       addSnapshot('next',card,snapshotDate(day,1));
     });
-    cycleTotals.current=Math.max(0,cycleTotals.current);
-    cycleTotals.next=Math.max(0,cycleTotals.next);
     const meter=(key,label,amount)=>{
       const pct=combinedLimit>0?amount/combinedLimit*100:0;
       const width=Math.min(100,Math.max(0,pct));
@@ -2028,21 +2018,19 @@ function renderLedger(){
       return '<div role="button" tabindex="0" aria-expanded="'+expanded+'" onclick="toggleUtilisationDetail(\''+key+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleUtilisationDetail(\''+key+'\')}" title="Tap to view card-wise transactions" style="cursor:pointer;flex:1 1 260px;min-width:0;padding:13px 14px;border:1px solid '+(expanded?'rgba(34,211,238,.65)':'var(--line)')+';border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.35));box-shadow:'+(expanded?'0 0 12px rgba(34,211,238,.12)':'none')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft)">'+label+'</div><div style="font-size:20px;font-weight:800;color:'+color+';margin-top:4px;text-shadow:0 0 8px '+color+'55">'+pct.toFixed(2)+'%</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:700">'+inr(amount)+'</div><div style="font-size:10px;color:var(--ink-soft)">of '+inr(combinedLimit)+'</div></div></div><div style="position:relative;height:10px;border-radius:20px;background:var(--line);margin-top:12px;overflow:visible"><div style="height:100%;width:'+width+'%;border-radius:20px;background:'+color+';box-shadow:0 0 10px '+color+'88"></div><div style="position:absolute;left:25%;top:-4px;height:18px;border-left:2px dashed #ff4d6d" title="25% warning threshold"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font:10px IBM Plex Mono,monospace;color:var(--ink-soft)"><span>0%</span><span style="color:#ff6b81">25% alert</span><span>100%</span></div><div style="font-size:10px;color:var(--ink-soft);margin-top:8px;text-align:right">'+(expanded?'Tap to close':'Tap for card-wise transaction breakup')+' ▾</div></div>';
     };
     const detailHtml=key=>{
-      const groups=[...cycleDetails[key].entries()].filter(([,items])=>items.length).sort((a,b)=>a[0].localeCompare(b[0]));
-      if(!groups.length)return '<div class="sub" style="margin-top:10px">No purchases or refunds recorded in this statement cycle.</div>';
-      let html='<div style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.25))"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px">CARD-WISE STATEMENT BREAKUP</div>';
-      groups.forEach(([name,items])=>{
-        const total=items.reduce((sum,e)=>sum+e._signed,0);
-        html+='<div style="padding:10px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><span>'+name+'</span><span>'+inr(total)+'</span></div>';
-        items.sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(e=>{
-          const deduction=e._signed<0;
-          const tag=e.type==='refund'?' · Refund':(e.type==='repay'?' · Repayment':'');
+      const groups=[...cycleDetails[key].entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+      if(!groups.length)return '<div class="sub" style="margin-top:10px">No statement dates are configured.</div>';
+      let html='<div style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.25))"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px">CARD-WISE STATEMENT SNAPSHOTS</div>';
+      groups.forEach(([name,snapshot])=>{
+        html+='<div style="padding:10px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><span>'+name+'</span><span>'+inr(snapshot.amount)+'</span></div><div style="font-size:10px;color:var(--ink-soft);margin-top:3px">Statement date: '+snapshot.cutoff+' · '+(snapshot.saved?'Saved snapshot':'Provisional until statement date')+'</div>';
+        snapshot.items.sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(e=>{
+          const deduction=e._signed<0,tag=e.type==='refund'?' · Refund':(e.type==='repay'?' · Repayment':'');
           const title=e.platform||e.note||e.category||(e.type==='refund'?'Refund':(e.type==='repay'?'Repayment':'Purchase'));
           html+='<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0 0 8px;font-size:11px;color:var(--ink-soft)"><span style="min-width:0;overflow-wrap:anywhere">'+String(e.date).slice(5)+' · '+title+tag+'</span><span style="white-space:nowrap;color:'+(deduction?'#22c55e':'var(--ink)')+'">'+(deduction?'−':'')+inr(Math.abs(e._signed))+'</span></div>';
         });
         html+='</div>';
       });
-      html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;font-size:12px;font-weight:800"><span>Cycle total</span><span>'+inr(cycleTotals[key])+'</span></div></div>';
+      html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;font-size:12px;font-weight:800"><span>Combined statement balance</span><span>'+inr(cycleTotals[key])+'</span></div><div class="sub" style="margin-top:8px">The snapshot is the balance immediately before the statement date. Same-day activity is excluded; repayments and refunds before the date reduce the balance.</div></div>';
       return html;
     };
     const monthLabel=new Date().toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
