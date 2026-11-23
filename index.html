@@ -1987,6 +1987,7 @@ function renderLedger(){
       cycleDetails[monthKey].get(card.name).push({...e,_signed:signed});
       cycleTotals[monthKey]+=signed;
     };
+    const openingEntriesByCard=new Map();
     allUtilisationEntries.forEach(e=>{
       if(!e||!e.id||seenUtilisationEntries.has(String(e.id)))return;
       seenUtilisationEntries.add(String(e.id));
@@ -1994,13 +1995,29 @@ function renderLedger(){
       if(!card)return;
       const day=parseDay(masterBillingDate(card)||card.billingDate||'');
       if(!day)return;
-      const current=cycleBounds(day,-1),next=cycleBounds(day,0);
+      const current=cycleBounds(day,0),next=cycleBounds(day,1);
       const date=String(e.date||'');
       const amount=Number(e.amount)||0;
       const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
+      const openingSigned=e.type==='refund'?-amount:(e.type==='repay'?-amount:(e.type==='txn'?amount:0));
+      if(openingSigned&&date<=current.start){
+        if(!openingEntriesByCard.has(card.name))openingEntriesByCard.set(card.name,[]);
+        openingEntriesByCard.get(card.name).push({...e,_signed:openingSigned});
+      }
       if(!signed||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
       if(date>current.start&&date<=current.end)addUtilisationEntry('current',card,e,signed);
       else if(date>next.start&&date<=next.end)addUtilisationEntry('next',card,e,signed);
+    });
+    // Carry forward any unpaid balance already outstanding at the start of this month's statement cycle.
+    // This captures older unpaid statements (for example, the HDFC MoneyBack+ October purchase due in November)
+    // without counting balances that were already repaid before the cycle began.
+    openingEntriesByCard.forEach((items,cardName)=>{
+      const openingNet=items.reduce((sum,e)=>sum+e._signed,0);
+      if(openingNet>0){
+        if(!cycleDetails.current.has(cardName))cycleDetails.current.set(cardName,[]);
+        cycleDetails.current.get(cardName).push(...items);
+        cycleTotals.current+=openingNet;
+      }
     });
     cycleTotals.current=Math.max(0,cycleTotals.current);
     cycleTotals.next=Math.max(0,cycleTotals.next);
@@ -2019,9 +2036,10 @@ function renderLedger(){
         const total=items.reduce((sum,e)=>sum+e._signed,0);
         html+='<div style="padding:10px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><span>'+name+'</span><span>'+inr(total)+'</span></div>';
         items.sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(e=>{
-          const refund=e.type==='refund';
-          const title=e.platform||e.note||e.category||(refund?'Refund':'Purchase');
-          html+='<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0 0 8px;font-size:11px;color:var(--ink-soft)"><span style="min-width:0;overflow-wrap:anywhere">'+String(e.date).slice(5)+' · '+title+(refund?' · Refund':'')+'</span><span style="white-space:nowrap;color:'+(refund?'#22c55e':'var(--ink)')+'">'+(refund?'−':'')+inr(Math.abs(e._signed))+'</span></div>';
+          const deduction=e._signed<0;
+          const tag=e.type==='refund'?' · Refund':(e.type==='repay'?' · Repayment':'');
+          const title=e.platform||e.note||e.category||(e.type==='refund'?'Refund':(e.type==='repay'?'Repayment':'Purchase'));
+          html+='<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0 0 8px;font-size:11px;color:var(--ink-soft)"><span style="min-width:0;overflow-wrap:anywhere">'+String(e.date).slice(5)+' · '+title+tag+'</span><span style="white-space:nowrap;color:'+(deduction?'#22c55e':'var(--ink)')+'">'+(deduction?'−':'')+inr(Math.abs(e._signed))+'</span></div>';
         });
         html+='</div>';
       });
