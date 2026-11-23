@@ -400,10 +400,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v152</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v206</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v152</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v206</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1361,7 +1361,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v205';
+const APP_VERSION='v206';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1945,7 +1945,23 @@ function renderLedger(){
     const cardsWithOutstanding=dues.length;
     const nextDue=dues.find(x=>!x.isOverdue)?.billDate||null;
     const amountDueOnNextStatement=nextDue?dues.filter(x=>!x.isOverdue&&x.billDate===nextDue).reduce((sum,x)=>sum+(Number(x.amount)||0),0):0;
-    let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">Next statement date</div><div class="v" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v" style="color:#22d3ee;text-shadow:0 0 2px rgba(34,211,238,.65),0 0 4px rgba(34,211,238,.35)">'+inr(amountDueOnNextStatement)+'</div></div></div>';
+    // Calculate portfolio utilisation against unique credit limits; shared-limit cards count once in the denominator.
+    const removed=removedCardNames instanceof Set?removedCardNames:new Set();
+    const utilisationCards=cards.filter(c=>c&&!c.isDebit&&!c.feeOnly&&(!removed.has(c.name)||DEFAULT_CARDS.includes(c.name)));
+    const limitGroups=new Map();
+    let individualLimit=0,totalUtilised=0;
+    utilisationCards.forEach(c=>{
+      const limit=Math.max(0,Number(c.limit)||0);
+      if(limit>0){
+        if(c.limitGroup) limitGroups.set(c.limitGroup,Math.max(limitGroups.get(c.limitGroup)||0,limit));
+        else individualLimit+=limit;
+      }
+      totalUtilised+=Math.max(0,Number(utilised(c))||0);
+    });
+    const combinedLimit=individualLimit+[...limitGroups.values()].reduce((sum,n)=>sum+n,0);
+    const overallUtilisation=combinedLimit>0?(totalUtilised/combinedLimit)*100:0;
+    const utilisationWarning=overallUtilisation>25?'<div style="margin-top:14px;padding:13px 15px;border:1px solid rgba(255,77,109,.65);border-left:4px solid #ff4d6d;border-radius:10px;background:rgba(127,29,29,.22);color:#ff879b;box-shadow:0 0 16px rgba(255,77,109,.12)"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.08em">⚠ HIGH CREDIT UTILISATION</div><div style="font-size:13px;font-weight:600;margin-top:5px">Total utilisation is '+overallUtilisation.toFixed(2)+'% — above the 25% threshold.</div><div style="font-size:11px;margin-top:4px;color:var(--ink-soft)">Used '+inr(totalUtilised)+' of '+inr(combinedLimit)+' combined credit limit. Consider repaying balances to bring utilisation to 25% or below.</div></div>':'';
+    let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">Next statement date</div><div class="v" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v" style="color:#22d3ee;text-shadow:0 0 2px rgba(34,211,238,.65),0 0 4px rgba(34,211,238,.35)">'+inr(amountDueOnNextStatement)+'</div></div></div>'+utilisationWarning;
     if(dues.length){
       html+='<div class="tab-heading-row" style="margin-top:18px"><h3>Outstanding by Card</h3><span class="sub">Sorted by statement date</span></div><div class="due-list">';
       dues.forEach(x=>{
