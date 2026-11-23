@@ -1996,7 +1996,7 @@ function renderLedger(){
     };
     const addSnapshot=(key,card,cutoff)=>{
       const entries=allUtilisationEntries.filter(e=>{
-        if(!e||!e.id||String(e.date||'')>cutoff||!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(e.date||'')))return false;
+        if(!e||!e.id||String(e.date||'')>cutoff||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||'')))return false;
         const matched=utilisationCardByName.get(String(e.card||'').trim().toLowerCase())||utilisationCardById.get(String(e.cardId||''));
         return matched&&matched.name===card.name&&['txn','refund','repay'].includes(e.type);
       });
