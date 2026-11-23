@@ -1988,7 +1988,7 @@ function renderLedger(){
     };
     const addSnapshot=(key,card,cutoff)=>{
       const matchedEntries=allUtilisationEntries.filter(e=>{
-        if(!e||!e.id||!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(e.date||''))||String(e.date)>=cutoff)return false;
+        if(!e||!e.id||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||''))||String(e.date)>=cutoff)return false;
         const matched=utilisationCards.find(c=>
           (e.cardId&&String(e.cardId)===String(c.id))||
           (!e.cardId&&String(e.card||'').trim().toLowerCase()===String(c.name||'').trim().toLowerCase())||
