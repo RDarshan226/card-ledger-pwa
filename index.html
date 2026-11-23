@@ -1958,83 +1958,54 @@ function renderLedger(){
       }
     });
     const combinedLimit=individualLimit+[...limitGroups.values()].reduce((sum,n)=>sum+n,0);
-    // Statement-cycle utilisation is based on purchases/refunds, never reduced by bill repayments.
-    // Current month = day after previous statement through this month's statement date.
-    // Next month = day after this month's statement through next month's statement date.
-    // Monthly utilisation follows the statement cycle that produces each month's bill.
-    // November = October statement cycle; December = November statement cycle.
+    // Monthly utilisation is a statement-date balance snapshot for each card.
+    // Count all purchases/opening balances, subtract refunds and repayments posted
+    // on or before that card's statement date. Later activity belongs to a later snapshot.
     const cycleTotals={current:0,next:0};
     const cycleDetails={current:new Map(),next:new Map()};
-    const cycleBounds=(day,statementMonthOffset)=>{
-      const now=new Date();
-      const y=now.getFullYear(),m=now.getMonth();
-      const stmtMonth=new Date(y,m+statementMonthOffset,1);
-      const sy=stmtMonth.getFullYear(),sm=stmtMonth.getMonth();
-      const prevMonth=new Date(sy,sm-1,1);
-      const stmt=new Date(sy,sm,Math.min(day,daysInMonth(sy,sm)));
-      const prev=new Date(prevMonth.getFullYear(),prevMonth.getMonth(),Math.min(day,daysInMonth(prevMonth.getFullYear(),prevMonth.getMonth())));
-      const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-      return {start:iso(prev),end:iso(stmt)};
-    };
-    // Use the saved per-card ledger as the authoritative source. The chat-update
-    // feed can omit card metadata on older entries, which caused opening bills
-    // (including the first HDFC MoneyBack+ bill) to disappear from utilisation.
     const allUtilisationEntries=utilisationCards.flatMap(c=>
       (Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id}))
     );
     const seenUtilisationEntries=new Set();
     const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
     const utilisationCardById=new Map(utilisationCards.map(c=>[String(c.id||''),c]));
-    const openingHistoryByCard=new Map();
-    const currentCycleStartByCard=new Map();
-    const nowForUtilisation=new Date();
-    const previousMonthEndDate=new Date(nowForUtilisation.getFullYear(),nowForUtilisation.getMonth(),0);
-    const previousMonthEnd=previousMonthEndDate.getFullYear()+'-'+String(previousMonthEndDate.getMonth()+1).padStart(2,'0')+'-'+String(previousMonthEndDate.getDate()).padStart(2,'0');
-    const addUtilisationEntry=(monthKey,card,e,signed)=>{
-      if(!cycleDetails[monthKey].has(card.name))cycleDetails[monthKey].set(card.name,[]);
-      cycleDetails[monthKey].get(card.name).push({...e,_signed:signed});
-      cycleTotals[monthKey]+=signed;
+    const snapshotDate=(day,monthOffset)=>{
+      const now=new Date();
+      const month=new Date(now.getFullYear(),now.getMonth()+monthOffset,1);
+      const y=month.getFullYear(),m=month.getMonth();
+      const d=Math.min(day,daysInMonth(y,m));
+      return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     };
-    allUtilisationEntries.forEach(e=>{
-      if(!e||!e.id||seenUtilisationEntries.has(String(e.id)))return;
-      seenUtilisationEntries.add(String(e.id));
-      const card=utilisationCardByName.get(String(e.card||'').trim().toLowerCase())||utilisationCardById.get(String(e.cardId||''));
-      if(!card)return;
+    const signedEntry=e=>{
+      const amount=Number(e.amount)||0;
+      if(e.type==='txn')return amount;
+      if(e.type==='refund'||e.type==='repay')return -amount;
+      return 0;
+    };
+    const addSnapshot=(key,card,cutoff)=>{
+      const entries=allUtilisationEntries.filter(e=>{
+        if(!e||!e.id||String(e.date||'')>cutoff||!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(e.date||'')))return false;
+        const matched=utilisationCardByName.get(String(e.card||'').trim().toLowerCase())||utilisationCardById.get(String(e.cardId||''));
+        return matched&&matched.name===card.name&&['txn','refund','repay'].includes(e.type);
+      });
+      const unique=entries.filter(e=>{
+        const id=String(e.id);
+        if(seenUtilisationEntries.has(key+'|'+id))return false;
+        seenUtilisationEntries.add(key+'|'+id);
+        return true;
+      });
+      const balance=unique.reduce((sum,e)=>sum+signedEntry(e),0);
+      cycleTotals[key]+=balance;
+      if(unique.length)cycleDetails[key].set(card.name,unique.map(e=>({...e,_signed:signedEntry(e)})));
+    };
+    utilisationCards.forEach(card=>{
+      if(card.isDebit||card.feeOnly)return;
       const day=parseDay(masterBillingDate(card)||card.billingDate||'');
       if(!day)return;
-      const current=cycleBounds(day,0),next=cycleBounds(day,1);
-      currentCycleStartByCard.set(card.name,current.start);
-      const date=String(e.date||'');
-      const amount=Number(e.amount)||0;
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
-      const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
-      // Utilisation is purchases less refunds; repayments never reduce it.
-      const balanceSigned=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
-      if(balanceSigned&&date<=previousMonthEnd){
-        if(!openingHistoryByCard.has(card.name))openingHistoryByCard.set(card.name,[]);
-        openingHistoryByCard.get(card.name).push({...e,_signed:balanceSigned});
-      }
-      if(!signed)return;
-      if(date>current.start&&date<=current.end)addUtilisationEntry('current',card,e,signed);
-      else if(date>next.start&&date<=next.end)addUtilisationEntry('next',card,e,signed);
+      addSnapshot('current',card,snapshotDate(day,0));
+      addSnapshot('next',card,snapshotDate(day,1));
     });
-    // Add the unpaid balance carried into the current calendar month, while keeping
-    // purchases already counted in this statement cycle from being double-counted.
-    // Repayments made during the current month do not erase monthly utilisation.
-    openingHistoryByCard.forEach((items,cardName)=>{
-      const historyNet=items.reduce((sum,e)=>sum+e._signed,0);
-      const currentItems=cycleDetails.current.get(cardName)||[];
-      const currentSpendBeforeMonthEnd=currentItems.filter(e=>String(e.date||'')<=previousMonthEnd).reduce((sum,e)=>sum+e._signed,0);
-      const openingNet=Math.max(0,historyNet-currentSpendBeforeMonthEnd);
-      if(openingNet>0){
-        const start=currentCycleStartByCard.get(cardName)||'0000-00-00';
-        const detailItems=items.filter(e=>e.type==='repay'||((e.type==='txn'||e.type==='refund')&&String(e.date||'')<=start));
-        if(!cycleDetails.current.has(cardName))cycleDetails.current.set(cardName,[]);
-        cycleDetails.current.get(cardName).push(...detailItems);
-        cycleTotals.current+=openingNet;
-      }
-    });
-        cycleTotals.current=Math.max(0,cycleTotals.current);
+    cycleTotals.current=Math.max(0,cycleTotals.current);
     cycleTotals.next=Math.max(0,cycleTotals.next);
     const meter=(key,label,amount)=>{
       const pct=combinedLimit>0?amount/combinedLimit*100:0;
