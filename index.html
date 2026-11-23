@@ -1963,9 +1963,18 @@ function renderLedger(){
     // on or before that card's statement date. Later activity belongs to a later snapshot.
     const cycleTotals={current:0,next:0};
     const cycleDetails={current:new Map(),next:new Map()};
-    const allUtilisationEntries=utilisationCards.flatMap(c=>
+    // Read every available copy of the published ledger feed. Some older records
+    // exist in the top-level entries array but are not attached to card.entries.
+    const cardEntryCopies=utilisationCards.flatMap(c=>
       (Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id}))
     );
+    const feedEntryCopies=(Array.isArray(chatUpdates&&chatUpdates.entries)?chatUpdates.entries:[])
+      .filter(e=>e&&e.id&&e.card)
+      .map(e=>({...e,card:String(e.card),cardId:e.cardId||''}));
+    const feedCardCopies=(Array.isArray(chatUpdates&&chatUpdates.cards)?chatUpdates.cards:[])
+      .flatMap(c=>(Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id})));
+    const allUtilisationEntries=[...cardEntryCopies,...feedEntryCopies,...feedCardCopies]
+      .filter((e,i,arr)=>e&&e.id&&arr.findIndex(x=>String(x.id)===String(e.id))===i);
     const seenUtilisationEntries=new Set();
     const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
     const utilisationCardById=new Map(utilisationCards.map(c=>[String(c.id||''),c]));
