@@ -1961,9 +1961,9 @@ function renderLedger(){
       }
     });
     const combinedLimit=individualLimit+[...limitGroups.values()].reduce((sum,n)=>sum+n,0);
-    // Monthly utilisation is a statement-date balance snapshot for each card.
-    // Count all purchases/opening balances, subtract refunds and repayments posted
-    // on or before that card's statement date. Later activity belongs to a later snapshot.
+    // Monthly utilisation is the balance at the beginning of each card's statement date.
+    // Repayment entries are deliberately ignored; include transactions/refunds dated
+    // strictly before the statement date. Activity on or after that date is in the next cycle.
     const cycleTotals={current:0,next:0};
     const cycleDetails={current:new Map(),next:new Map()};
     // Read every available copy of the published ledger feed. Some older records
@@ -1991,14 +1991,15 @@ function renderLedger(){
     const signedEntry=e=>{
       const amount=Number(e.amount)||0;
       if(e.type==='txn')return amount;
-      if(e.type==='refund'||e.type==='repay')return -amount;
+      if(e.type==='refund')return -amount;
+      if(e.type==='repay')return 0;
       return 0;
     };
     const addSnapshot=(key,card,cutoff)=>{
       const entries=allUtilisationEntries.filter(e=>{
-        if(!e||!e.id||String(e.date||'')>cutoff||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||'')))return false;
+        if(!e||!e.id||String(e.date||'')>=cutoff||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||'')))return false;
         const matched=utilisationCardByName.get(String(e.card||'').trim().toLowerCase())||utilisationCardById.get(String(e.cardId||''));
-        return matched&&matched.name===card.name&&['txn','refund','repay'].includes(e.type);
+        return matched&&matched.name===card.name&&['txn','refund'].includes(e.type);
       });
       const unique=entries.filter(e=>{
         const id=String(e.id);
