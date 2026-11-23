@@ -34,6 +34,7 @@ function normaliseLedgerData(data){
     cards:cloneData(cards,[]),entries:entries.length?cloneData(entries,[]):flattenDataCardEntries(cards),
     cashback:cloneData(Array.isArray(d.cashback)?d.cashback:(Array.isArray(d.cashbackLog)?d.cashbackLog:[]),[]),
     dueBills:cloneData(Array.isArray(d.dueBills)?d.dueBills:[],[]),
+    statementSnapshots:cloneData(Array.isArray(d.statementSnapshots)?d.statementSnapshots:[],[]),
     recurringPayments:cloneData(Array.isArray(d.recurringPayments)?d.recurringPayments:[],[]),
     deletedEntryIds:[...new Set((Array.isArray(d.deletedEntryIds)?d.deletedEntryIds:[]).map(String))],
     removedCardNames:[...new Set((Array.isArray(d.removedCardNames)?d.removedCardNames:[]).map(String))]
@@ -57,6 +58,7 @@ async function applyLedgerDataState(data){
     d.cards=cloneData(cards,[]); d.entries=flattenDataCardEntries(cards);
   }
   if(typeof dueBills!=='undefined'&&Array.isArray(d.dueBills))dueBills=cloneData(d.dueBills,[]);
+  if(typeof statementSnapshots!=='undefined')statementSnapshots=cloneData(d.statementSnapshots,[]);
   if(typeof cashbackLog!=='undefined'&&Array.isArray(d.cashback))cashbackLog=cloneData(d.cashback,[]);
   if(typeof recurringPayments!=='undefined'&&Array.isArray(d.recurringPayments))recurringPayments=cloneData(d.recurringPayments,[]);
   if(typeof deletedEntryIds!=='undefined')deletedEntryIds=new Set(d.deletedEntryIds.map(String));
