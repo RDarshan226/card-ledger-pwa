@@ -731,7 +731,7 @@ function syncAutomaticFeeEntries(){
     const due=feeNextDue(fee);
     if(!due || due>today) return;
 
-    const parts=String(card.billingDate||'').match(/(\\d{1,2})/);
+    const parts=String(card.billingDate||'').match(/(\d{1,2})/);
     let statementDate=due;
     if(parts){
       const day=Math.max(1,Number(parts[1]));
@@ -1935,7 +1935,7 @@ function renderLedger(){
       .filter(x=>Number(x.amount)>0)
       .map(x=>{
         const billingText=masterBillingDate(x.card)||x.card.billingDate||'';
-        const match=String(billingText).match(/\\d+/);
+        const match=String(billingText).match(/\d+/);
         const day=match?Math.min(Number(match[0]),daysInMonth(new Date().getFullYear(),new Date().getMonth())):0;
         const statementDate=day?new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
         return {...x,statementDate,isOverdue:!!statementDate&&statementDate<=today};
@@ -1981,6 +1981,7 @@ function renderLedger(){
       : utilisationCards.flatMap(c=>(Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name,cardId:e.cardId||c.id})));
     const seenUtilisationEntries=new Set();
     const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
+    const utilisationCardById=new Map(utilisationCards.map(c=>[String(c.id||''),c]));
     const addUtilisationEntry=(monthKey,card,e,signed)=>{
       if(!cycleDetails[monthKey].has(card.name))cycleDetails[monthKey].set(card.name,[]);
       cycleDetails[monthKey].get(card.name).push({...e,_signed:signed});
@@ -1989,7 +1990,7 @@ function renderLedger(){
     allUtilisationEntries.forEach(e=>{
       if(!e||!e.id||seenUtilisationEntries.has(String(e.id)))return;
       seenUtilisationEntries.add(String(e.id));
-      const card=utilisationCardByName.get(String(e.card||'').trim().toLowerCase());
+      const card=utilisationCardByName.get(String(e.card||'').trim().toLowerCase())||utilisationCardById.get(String(e.cardId||''));
       if(!card)return;
       const day=parseDay(masterBillingDate(card)||card.billingDate||'');
       if(!day)return;
@@ -1997,7 +1998,7 @@ function renderLedger(){
       const date=String(e.date||'');
       const amount=Number(e.amount)||0;
       const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
-      if(!signed||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
+      if(!signed||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
       if(date>current.start&&date<=current.end)addUtilisationEntry('current',card,e,signed);
       else if(date>next.start&&date<=next.end)addUtilisationEntry('next',card,e,signed);
     });
@@ -2008,7 +2009,7 @@ function renderLedger(){
       const width=Math.min(100,Math.max(0,pct));
       const color=pct>25?'#ff4d6d':pct>=20?'#f59e0b':'#22d3ee';
       const expanded=openUtilisationDetail===key;
-      return '<div role="button" tabindex="0" aria-expanded="'+expanded+'" onclick="toggleUtilisationDetail(\\''+key+'\\')" onkeydown="if(event.key===\\'Enter\\'||event.key===\\' \\'){event.preventDefault();toggleUtilisationDetail(\\''+key+'\\')}" title="Tap to view card-wise transactions" style="cursor:pointer;flex:1 1 260px;min-width:0;padding:13px 14px;border:1px solid '+(expanded?'rgba(34,211,238,.65)':'var(--line)')+';border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.35));box-shadow:'+(expanded?'0 0 12px rgba(34,211,238,.12)':'none')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft)">'+label+'</div><div style="font-size:20px;font-weight:800;color:'+color+';margin-top:4px;text-shadow:0 0 8px '+color+'55">'+pct.toFixed(2)+'%</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:700">'+inr(amount)+'</div><div style="font-size:10px;color:var(--ink-soft)">of '+inr(combinedLimit)+'</div></div></div><div style="position:relative;height:10px;border-radius:20px;background:var(--line);margin-top:12px;overflow:visible"><div style="height:100%;width:'+width+'%;border-radius:20px;background:'+color+';box-shadow:0 0 10px '+color+'88"></div><div style="position:absolute;left:25%;top:-4px;height:18px;border-left:2px dashed #ff4d6d" title="25% warning threshold"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font:10px IBM Plex Mono,monospace;color:var(--ink-soft)"><span>0%</span><span style="color:#ff6b81">25% alert</span><span>100%</span></div><div style="font-size:10px;color:var(--ink-soft);margin-top:8px;text-align:right">'+(expanded?'Tap to close':'Tap for card-wise transaction breakup')+' ▾</div></div>';
+      return '<div role="button" tabindex="0" aria-expanded="'+expanded+'" onclick="toggleUtilisationDetail(\''+key+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleUtilisationDetail(\''+key+'\')}" title="Tap to view card-wise transactions" style="cursor:pointer;flex:1 1 260px;min-width:0;padding:13px 14px;border:1px solid '+(expanded?'rgba(34,211,238,.65)':'var(--line)')+';border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.35));box-shadow:'+(expanded?'0 0 12px rgba(34,211,238,.12)':'none')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft)">'+label+'</div><div style="font-size:20px;font-weight:800;color:'+color+';margin-top:4px;text-shadow:0 0 8px '+color+'55">'+pct.toFixed(2)+'%</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:700">'+inr(amount)+'</div><div style="font-size:10px;color:var(--ink-soft)">of '+inr(combinedLimit)+'</div></div></div><div style="position:relative;height:10px;border-radius:20px;background:var(--line);margin-top:12px;overflow:visible"><div style="height:100%;width:'+width+'%;border-radius:20px;background:'+color+';box-shadow:0 0 10px '+color+'88"></div><div style="position:absolute;left:25%;top:-4px;height:18px;border-left:2px dashed #ff4d6d" title="25% warning threshold"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font:10px IBM Plex Mono,monospace;color:var(--ink-soft)"><span>0%</span><span style="color:#ff6b81">25% alert</span><span>100%</span></div><div style="font-size:10px;color:var(--ink-soft);margin-top:8px;text-align:right">'+(expanded?'Tap to close':'Tap for card-wise transaction breakup')+' ▾</div></div>';
     };
     const detailHtml=key=>{
       const groups=[...cycleDetails[key].entries()].filter(([,items])=>items.length).sort((a,b)=>a[0].localeCompare(b[0]));
