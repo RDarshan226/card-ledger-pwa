@@ -1955,9 +1955,11 @@ function renderLedger(){
     const limitGroups=new Map();
     let individualLimit=0;
     utilisationCards.forEach(c=>{
-      const limit=Math.max(0,Number(c.limit)||0);
+      const master=masterCardByName(c.name);
+      const limit=Math.max(0,Number(master&&master.limit)||Number(c.limit)||0);
+      const group=(master&&master.limitGroup)||c.limitGroup;
       if(limit>0){
-        if(c.limitGroup) limitGroups.set(c.limitGroup,Math.max(limitGroups.get(c.limitGroup)||0,limit));
+        if(group) limitGroups.set(group,Math.max(limitGroups.get(group)||0,limit));
         else individualLimit+=limit;
       }
     });
@@ -1988,7 +1990,7 @@ function renderLedger(){
     };
     const addSnapshot=(key,card,cutoff)=>{
       const matchedEntries=allUtilisationEntries.filter(e=>{
-        if(!e||!e.id||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||''))||String(e.date)>=cutoff)return false;
+        if(!e||!e.id||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||''))||String(e.date)>cutoff)return false;
         const matched=utilisationCards.find(c=>
           (e.cardId&&String(e.cardId)===String(c.id))||
           (!e.cardId&&String(e.card||'').trim().toLowerCase()===String(c.name||'').trim().toLowerCase())||
@@ -1996,12 +1998,11 @@ function renderLedger(){
         );
         return matched&&String(matched.id)===String(card.id)&&['txn','refund','repay'].includes(e.type);
       });
-      const calculated=Math.max(0,matchedEntries.reduce((sum,e)=>sum+signedEntry(e),0));
-      const saved=(Array.isArray(statementSnapshots)?statementSnapshots:[])
-        .find(x=>String(x.cardId||'')===String(card.id)&&String(x.statementDate||'')===cutoff);
-      const amount=saved?Math.max(0,Number(saved.amount)||0):calculated;
+      // Always recompute from the ledger. Persisted snapshots can become stale
+      // when a same-day repayment, refund, or corrected statement date is added.
+      const amount=Math.max(0,matchedEntries.reduce((sum,e)=>sum+signedEntry(e),0));
       cycleTotals[key]+=amount;
-      cycleDetails[key].set(card.name,{amount,cutoff,saved:!!saved,items:matchedEntries.map(e=>({...e,_signed:signedEntry(e)}))});
+      cycleDetails[key].set(card.name,{amount,cutoff,saved:false,items:matchedEntries.map(e=>({...e,_signed:signedEntry(e)}))});
     };
     utilisationCards.forEach(card=>{
       if(card.isDebit||card.feeOnly)return;
