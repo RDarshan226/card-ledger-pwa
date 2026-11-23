@@ -1965,7 +1965,7 @@ function renderLedger(){
     });
     const combinedLimit=individualLimit+[...limitGroups.values()].reduce((sum,n)=>sum+n,0);
     // Monthly utilisation is based on a separate snapshot for each card's statement date.
-    // Transactions before the date add to the balance; refunds and repayments reduce it.
+    // Each statement month gets only its own cycle entries; prior-cycle balances never roll forward.
     const cycleTotals={current:0,next:0};
     const cycleDetails={current:new Map(),next:new Map()};
     const cardEntryCopies=utilisationCards.flatMap(c=>
@@ -1988,9 +1988,10 @@ function renderLedger(){
       if(e.type==='refund'||e.type==='repay')return -amount;
       return 0;
     };
-    const addSnapshot=(key,card,cutoff)=>{
+    const addSnapshot=(key,card,cutoff,previousCutoff)=>{
       const matchedEntries=allUtilisationEntries.filter(e=>{
-        if(!e||!e.id||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.date||''))||String(e.date)>cutoff)return false;
+        const entryDate=String(e&&e.date||'');
+        if(!e||!e.id||!/^\d{4}-\d{2}-\d{2}$/.test(entryDate)||entryDate>=cutoff||(previousCutoff&&entryDate<=previousCutoff))return false;
         const matched=utilisationCards.find(c=>
           (e.cardId&&String(e.cardId)===String(c.id))||
           (!e.cardId&&String(e.card||'').trim().toLowerCase()===String(c.name||'').trim().toLowerCase())||
@@ -2008,8 +2009,15 @@ function renderLedger(){
       if(card.isDebit||card.feeOnly)return;
       const day=parseDay(masterBillingDate(card)||card.billingDate||'');
       if(!day)return;
-      addSnapshot('current',card,snapshotDate(day,0));
-      addSnapshot('next',card,snapshotDate(day,1));
+      const currentCutoff=snapshotDate(day,0);
+      const nextCutoff=snapshotDate(day,1);
+      const previousCutoff=snapshotDate(day,-1);
+      // November 2026 is the user's confirmed baseline month. From December onward,
+      // each month's utilisation includes only entries in that card's new statement cycle.
+      const now=new Date();
+      const currentStart=(now.getFullYear()===2026&&now.getMonth()===10)?null:previousCutoff;
+      addSnapshot('current',card,currentCutoff,currentStart);
+      addSnapshot('next',card,nextCutoff,currentCutoff);
     });
     const meter=(key,label,amount)=>{
       const pct=combinedLimit>0?amount/combinedLimit*100:0;
@@ -2031,7 +2039,7 @@ function renderLedger(){
         });
         html+='</div>';
       });
-      html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;font-size:12px;font-weight:800"><span>Combined statement balance</span><span>'+inr(cycleTotals[key])+'</span></div><div class="sub" style="margin-top:8px">The snapshot is the balance immediately before the statement date. Same-day activity is excluded; repayments and refunds before the date reduce the balance.</div></div>';
+      html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;font-size:12px;font-weight:800"><span>Combined statement balance</span><span>'+inr(cycleTotals[key])+'</span></div><div class="sub" style="margin-top:8px">Only transactions in this statement cycle are counted. Prior-cycle unpaid balances are not carried forward; same-day activity is excluded.</div></div>';
       return html;
     };
     const monthLabel=new Date().toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
@@ -2042,7 +2050,7 @@ function renderLedger(){
     const warnings=[];
     if(currentPct>25)warnings.push(monthLabel+' cycle is '+currentPct.toFixed(2)+'%');
     if(nextPct>25)warnings.push(nextMonthLabel+' cycle is '+nextPct.toFixed(2)+'%');
-    const utilisationWarning=warnings.length?'<div style="margin-top:12px;padding:13px 15px;border:1px solid rgba(255,77,109,.65);border-left:4px solid #ff4d6d;border-radius:10px;background:rgba(127,29,29,.22);color:#ff879b;box-shadow:0 0 16px rgba(255,77,109,.12)"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.08em">⚠ HIGH CREDIT UTILISATION</div><div style="font-size:13px;font-weight:600;margin-top:5px">'+warnings.join(' · ')+' — above the 25% threshold.</div><div style="font-size:11px;margin-top:4px;color:var(--ink-soft)">Paid bills remain included in their statement month; repayments do not reduce purchase utilisation.</div></div>':'';
+    const utilisationWarning=warnings.length?'<div style="margin-top:12px;padding:13px 15px;border:1px solid rgba(255,77,109,.65);border-left:4px solid #ff4d6d;border-radius:10px;background:rgba(127,29,29,.22);color:#ff879b;box-shadow:0 0 16px rgba(255,77,109,.12)"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.08em">⚠ HIGH CREDIT UTILISATION</div><div style="font-size:13px;font-weight:600;margin-top:5px">'+warnings.join(' · ')+' — above the 25% threshold.</div><div style="font-size:11px;margin-top:4px;color:var(--ink-soft)">Each transaction is counted only in its assigned statement month; prior-cycle balances and repayments are not carried forward.</div></div>':'';
     let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">Next statement date</div><div class="v" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v" style="color:#22d3ee;text-shadow:0 0 2px rgba(34,211,238,.65),0 0 4px rgba(34,211,238,.35)">'+inr(amountDueOnNextStatement)+'</div></div></div>'+utilisationMeter+utilisationWarning;
     if(dues.length){
       html+='<div class="tab-heading-row" style="margin-top:18px"><h3>Outstanding by Card</h3><span class="sub">Sorted by statement date</span></div><div class="due-list">';
