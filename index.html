@@ -2008,7 +2008,8 @@ function renderLedger(){
       const amount=Number(e.amount)||0;
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
       const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
-      const balanceSigned=e.type==='refund'?-amount:(e.type==='repay'?-amount:(e.type==='txn'?amount:0));
+      // Utilisation is purchases less refunds; repayments never reduce it.
+      const balanceSigned=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
       if(balanceSigned&&date<=previousMonthEnd){
         if(!openingHistoryByCard.has(card.name))openingHistoryByCard.set(card.name,[]);
         openingHistoryByCard.get(card.name).push({...e,_signed:balanceSigned});
@@ -2060,8 +2061,8 @@ function renderLedger(){
       html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;font-size:12px;font-weight:800"><span>Cycle total</span><span>'+inr(cycleTotals[key])+'</span></div></div>';
       return html;
     };
-    const monthLabel=new Date(new Date().getFullYear(),new Date().getMonth()-1,1).toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
-    const nextMonthLabel=new Date().toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
+    const monthLabel=new Date().toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
+    const nextMonthLabel=new Date(new Date().getFullYear(),new Date().getMonth()+1,1).toLocaleDateString('en-IN',{month:'long'}).toUpperCase();
     const utilisationMeter='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">'+meter('current','CURRENT MONTH · '+monthLabel,cycleTotals.current)+meter('next','NEXT MONTH · '+nextMonthLabel,cycleTotals.next)+'</div>'+(openUtilisationDetail?detailHtml(openUtilisationDetail):'');
     const currentPct=combinedLimit>0?cycleTotals.current/combinedLimit*100:0;
     const nextPct=combinedLimit>0?cycleTotals.next/combinedLimit*100:0;
