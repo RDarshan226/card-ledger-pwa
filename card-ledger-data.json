@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-21T17:52:20.714Z",
+  "updatedAt": "2026-11-23T03:37:54.343Z",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -552,6 +552,20 @@
           "amount": 368,
           "note": "Ixigo app payment",
           "category": "Travel",
+          "platform": "Ixigo app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "9af73eeg",
+          "card": "AU Ixigo"
+        },
+        {
+          "id": "au-ixigo-refund-210-ixigo-app-20261121",
+          "type": "refund",
+          "date": "2026-11-21",
+          "amount": 210,
+          "note": "Refund against Ixigo app payment of ₹368",
+          "category": "Refund",
           "platform": "Ixigo app",
           "rewardRatePct": null,
           "rewardAmountOverride": null,
@@ -5243,6 +5257,20 @@
       "amount": 368,
       "note": "Ixigo app payment",
       "category": "Travel",
+      "platform": "Ixigo app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "9af73eeg",
+      "card": "AU Ixigo"
+    },
+    {
+      "id": "au-ixigo-refund-210-ixigo-app-20261121",
+      "type": "refund",
+      "date": "2026-11-21",
+      "amount": 210,
+      "note": "Refund against Ixigo app payment of ₹368",
+      "category": "Refund",
       "platform": "Ixigo app",
       "rewardRatePct": null,
       "rewardAmountOverride": null,
