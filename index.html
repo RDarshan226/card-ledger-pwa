@@ -400,7 +400,7 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v208</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v209</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
   <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v208</span></div>
@@ -1970,18 +1970,27 @@ function renderLedger(){
       const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       return {start:iso(prev),end:iso(stmt)};
     };
-    utilisationCards.forEach(c=>{
-      const day=parseDay(masterBillingDate(c)||c.billingDate||'');
+    // Use the published flat ledger feed as the primary source. It is kept in
+    // sync with card entries and avoids stale per-card arrays after data refresh.
+    const allUtilisationEntries=Array.isArray(window.chatUpdatesForSecurity)&&window.chatUpdatesForSecurity.length
+      ? window.chatUpdatesForSecurity
+      : utilisationCards.flatMap(c=>(Array.isArray(c.entries)?c.entries:[]).map(e=>({...e,card:e.card||c.name})));
+    const seenUtilisationEntries=new Set();
+    const utilisationCardByName=new Map(utilisationCards.map(c=>[String(c.name||'').trim().toLowerCase(),c]));
+    allUtilisationEntries.forEach(e=>{
+      if(!e||!e.id||seenUtilisationEntries.has(String(e.id)))return;
+      seenUtilisationEntries.add(String(e.id));
+      const card=utilisationCardByName.get(String(e.card||'').trim().toLowerCase());
+      if(!card)return;
+      const day=parseDay(masterBillingDate(card)||card.billingDate||'');
       if(!day)return;
       const current=cycleBounds(day,0),next=cycleBounds(day,1);
-      (Array.isArray(c.entries)?c.entries:[]).forEach(e=>{
-        const date=String(e.date||'');
-        const amount=Number(e.amount)||0;
-        const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
-        if(!signed||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
-        if(date>current.start&&date<=current.end)cycleTotals.current+=signed;
-        else if(date>next.start&&date<=next.end)cycleTotals.next+=signed;
-      });
+      const date=String(e.date||'');
+      const amount=Number(e.amount)||0;
+      const signed=e.type==='refund'?-amount:(e.type==='txn'?amount:0);
+      if(!signed||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
+      if(date>current.start&&date<=current.end)cycleTotals.current+=signed;
+      else if(date>next.start&&date<=next.end)cycleTotals.next+=signed;
     });
     cycleTotals.current=Math.max(0,cycleTotals.current);
     cycleTotals.next=Math.max(0,cycleTotals.next);
@@ -1997,8 +2006,8 @@ function renderLedger(){
     const currentPct=combinedLimit>0?cycleTotals.current/combinedLimit*100:0;
     const nextPct=combinedLimit>0?cycleTotals.next/combinedLimit*100:0;
     const warnings=[];
-    if(currentPct>25)warnings.push('November cycle is '+currentPct.toFixed(2)+'%');
-    if(nextPct>25)warnings.push('December cycle is '+nextPct.toFixed(2)+'%');
+    if(currentPct>25)warnings.push(monthLabel+' cycle is '+currentPct.toFixed(2)+'%');
+    if(nextPct>25)warnings.push(nextMonthLabel+' cycle is '+nextPct.toFixed(2)+'%');
     const utilisationWarning=warnings.length?'<div style="margin-top:12px;padding:13px 15px;border:1px solid rgba(255,77,109,.65);border-left:4px solid #ff4d6d;border-radius:10px;background:rgba(127,29,29,.22);color:#ff879b;box-shadow:0 0 16px rgba(255,77,109,.12)"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.08em">⚠ HIGH CREDIT UTILISATION</div><div style="font-size:13px;font-weight:600;margin-top:5px">'+warnings.join(' · ')+' — above the 25% threshold.</div><div style="font-size:11px;margin-top:4px;color:var(--ink-soft)">Paid bills remain included in their statement month; repayments do not reduce purchase utilisation.</div></div>':'';
     let html='<div class="panel"><div class="tab-heading-row"><h2>Outstanding Summary</h2></div><div class="sub">Current outstanding calculated from recorded card transactions and repayments.</div><div class="due-summary"><div class="due-stat alert"><div class="k">Total outstanding</div><div class="v">'+inr(totalOutstanding)+'</div></div><div class="due-stat"><div class="k">Cards with outstanding</div><div class="v">'+cardsWithOutstanding+'</div></div><div class="due-stat"><div class="k" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">Next statement date</div><div class="v" style="color:#f8fafc;text-shadow:0 0 5px #fff,0 0 10px #fff">'+(nextDue?new Date(nextDue+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'—')+'</div></div><div class="due-stat"><div class="k">Due on next statement</div><div class="v" style="color:#22d3ee;text-shadow:0 0 2px rgba(34,211,238,.65),0 0 4px rgba(34,211,238,.35)">'+inr(amountDueOnNextStatement)+'</div></div></div>'+utilisationMeter+utilisationWarning;
     if(dues.length){
