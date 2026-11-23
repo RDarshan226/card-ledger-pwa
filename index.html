@@ -400,10 +400,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v212</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v213</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v210</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v211</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -461,7 +461,7 @@ const DEFAULTS = {
   "AU Ixigo":             { limit: 15000,  billingDate: "19th" },
   "Jupiter Edge+":        { limit: 30000,  billingDate: "27th" },
   "Amazon ICICI":         { limit: 150000, billingDate: "12th" },
-  "DCB Niyo Credit":      { limit: 5000,   billingDate: "21st" },
+  "DCB Niyo Credit":      { limit: 5000,   billingDate: "23rd" },
   "BOB Uni GoldX (Visa)":  { limit: 65000, billingDate: "7th", limitGroup: "bob-unigoldx" },
   "BOB Uni GoldX (RuPay)": { limit: 65000, billingDate: "7th", limitGroup: "bob-unigoldx" },
   "Yes Bank Finbooster":  { limit: 115000, billingDate: "20th" },
@@ -1362,7 +1362,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v210';
+const APP_VERSION='v211';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -1819,10 +1819,10 @@ async function loadData(){
     }
   }
 
-  // DCB Niyo Credit's billing date corrected to 21st.
+  // DCB Niyo Credit billing date set to 23rd.
   const niyoCredit = cards.find(c => c.name === "DCB Niyo Credit");
-  if(niyoCredit && niyoCredit.billingDate === "18th"){
-    niyoCredit.billingDate = "21st";
+  if(niyoCredit){
+    niyoCredit.billingDate = "23rd";
   }
 
   // SBI SimplyClick and both BOB Uni GoldX variants actually bill on the 7th, not the 8th.
