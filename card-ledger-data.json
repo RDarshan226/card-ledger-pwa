@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-23T15:30:00+05:30",
+  "updatedAt": "2026-11-24T12:44:00+05:30",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -2331,6 +2331,34 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "hdfc-moneyback-repay-15705-cheq-20261124",
+          "type": "repay",
+          "date": "2026-11-24",
+          "amount": 15705,
+          "note": "HDFC MoneyBack+ bill repayment via CheQ; ₹35 discount received",
+          "category": "Card Repayment",
+          "platform": "CheQ",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "mube3d80",
+          "card": "HDFC MoneyBack+"
+        },
+        {
+          "id": "hdfc-moneyback-repay-2000-kotak-20261124",
+          "type": "repay",
+          "date": "2026-11-24",
+          "amount": 2000,
+          "note": "HDFC MoneyBack+ bill repayment via Kotak app; earned ₹20 cashback",
+          "category": "Card Repayment",
+          "platform": "Kotak app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "mube3d80",
+          "card": "HDFC MoneyBack+"
         }
       ],
       "fee": {
@@ -5291,6 +5319,34 @@
       "surchargeAmount": null,
       "cardId": "9af73eeg",
       "card": "AU Ixigo"
+    },
+    {
+      "id": "hdfc-moneyback-repay-15705-cheq-20261124",
+      "type": "repay",
+      "date": "2026-11-24",
+      "amount": 15705,
+      "note": "HDFC MoneyBack+ bill repayment via CheQ; ₹35 discount received",
+      "category": "Card Repayment",
+      "platform": "CheQ",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "mube3d80",
+      "card": "HDFC MoneyBack+"
+    },
+    {
+      "id": "hdfc-moneyback-repay-2000-kotak-20261124",
+      "type": "repay",
+      "date": "2026-11-24",
+      "amount": 2000,
+      "note": "HDFC MoneyBack+ bill repayment via Kotak app; earned ₹20 cashback",
+      "category": "Card Repayment",
+      "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "mube3d80",
+      "card": "HDFC MoneyBack+"
     }
   ],
   "cashback": [
@@ -5709,6 +5765,22 @@
       "amount": 10.2,
       "date": "2026-11-20",
       "note": "₹10.20 cashback earned for IDFC Power+ bill payment via Kotak app"
+    },
+    {
+      "id": "hdfc-moneyback-cheq-discount-35-20261124",
+      "type": "cashback",
+      "category": "Card Repayment Cashback",
+      "amount": 35,
+      "date": "2026-11-24",
+      "note": "₹35 CheQ discount on HDFC MoneyBack+ bill repayment"
+    },
+    {
+      "id": "hdfc-moneyback-kotak-cashback-20-20261124",
+      "type": "cashback",
+      "category": "Card Repayment Cashback",
+      "amount": 20,
+      "date": "2026-11-24",
+      "note": "₹20 cashback earned for HDFC MoneyBack+ bill payment via Kotak app"
     }
   ],
   "dueBills": [],
