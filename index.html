@@ -400,10 +400,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v213</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v214</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v211</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v212</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1362,7 +1362,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v211';
+const APP_VERSION='v212';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -2031,13 +2031,7 @@ function renderLedger(){
       if(!groups.length)return '<div class="sub" style="margin-top:10px">No statement dates are configured.</div>';
       let html='<div style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.25))"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px">CARD-WISE STATEMENT SNAPSHOTS</div>';
       groups.forEach(([name,snapshot])=>{
-        html+='<div style="padding:10px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><span>'+name+'</span><span>'+inr(snapshot.amount)+'</span></div><div style="font-size:10px;color:var(--ink-soft);margin-top:3px">Statement date: '+snapshot.cutoff+' · '+(snapshot.saved?'Saved snapshot':'Provisional until statement date')+'</div>';
-        snapshot.items.sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(e=>{
-          const deduction=e._signed<0,tag=e.type==='refund'?' · Refund':(e.type==='repay'?' · Repayment':'');
-          const title=e.platform||e.note||e.category||(e.type==='refund'?'Refund':(e.type==='repay'?'Repayment':'Purchase'));
-          html+='<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0 0 8px;font-size:11px;color:var(--ink-soft)"><span style="min-width:0;overflow-wrap:anywhere">'+String(e.date).slice(5)+' · '+title+tag+'</span><span style="white-space:nowrap;color:'+(deduction?'#22c55e':'var(--ink)')+'">'+(deduction?'−':'')+inr(Math.abs(e._signed))+'</span></div>';
-        });
-        html+='</div>';
+        html+='<div style="padding:10px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><span>'+name+'</span><span>'+inr(snapshot.amount)+'</span></div>';
       });
       html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;font-size:12px;font-weight:800"><span>Combined statement balance</span><span>'+inr(cycleTotals[key])+'</span></div><div class="sub" style="margin-top:8px">Only transactions in this statement cycle are counted. Prior-cycle unpaid balances are not carried forward; same-day activity is excluded.</div></div>';
       return html;
