@@ -1,7 +1,7 @@
 {
   "version": 4,
   "app": "Card Ledger PWA",
-  "updatedAt": "2026-11-26T14:51:00+05:30",
+  "updatedAt": "2026-11-27T16:00:00+05:30",
   "cards": [
     {
       "id": "8gcl42aa",
@@ -987,6 +987,20 @@
           "rewardRatePct": null,
           "rewardAmountOverride": null,
           "surchargeAmount": null
+        },
+        {
+          "id": "jupiter-edge-repay-427-kotak-20261127",
+          "type": "repay",
+          "date": "2026-11-27",
+          "amount": 427,
+          "note": "Jupiter Edge+ outstanding repayment via Kotak app",
+          "category": "Card Repayment",
+          "platform": "Kotak app",
+          "rewardRatePct": null,
+          "rewardAmountOverride": null,
+          "surchargeAmount": null,
+          "cardId": "vkkef24j",
+          "card": "Jupiter Edge+"
         }
       ],
       "fee": {
@@ -5347,6 +5361,20 @@
       "surchargeAmount": null,
       "cardId": "mube3d80",
       "card": "HDFC MoneyBack+"
+    },
+    {
+      "id": "jupiter-edge-repay-427-kotak-20261127",
+      "type": "repay",
+      "date": "2026-11-27",
+      "amount": 427,
+      "note": "Jupiter Edge+ outstanding repayment via Kotak app",
+      "category": "Card Repayment",
+      "platform": "Kotak app",
+      "rewardRatePct": null,
+      "rewardAmountOverride": null,
+      "surchargeAmount": null,
+      "cardId": "vkkef24j",
+      "card": "Jupiter Edge+"
     }
   ],
   "cashback": [
