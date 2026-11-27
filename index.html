@@ -400,10 +400,10 @@
 </style>
 </head>
 <body>
-<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v214</div></div>
+<div id="startup-splash" aria-label="Opening Card Ledger"><img src="./icon-192.svg" alt="Card Ledger"><div class="startup-name">CARD LEDGER</div><div class="startup-version" id="startup-version">v215</div></div>
 <div class="margin-rule"></div>
 <div class="wrap">
-  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v212</span></div>
+  <div class="top-meta"><div class="eyebrow" id="dateline">Card Ledger</div><span class="app-version" id="app-version">v213</span></div>
   <div class="main-title-row"><h1 class="glossy-title">Utilisation &amp; Repayments</h1><div class="main-title-actions"><button class="heading-lock" onclick="setTab('secure')" title="data source Data" aria-label="data source Data">📁</button><button class="heading-alerts" onclick="setTab('alerts')" title="Statement Alerts" aria-label="Statement Alerts">💡</button><button class="heading-sync main-sync" onclick="refreshLatestLedgerData()" title="Refresh latest transaction data">↻ Refresh</button></div></div>
   <div class="tabs">
     <button class="tab-btn" id="tab-ledger" onclick="setTab('ledger')">Ledger</button>
@@ -1362,7 +1362,7 @@ let CARD_MASTER = [
   }
 ];
 
-const APP_VERSION='v212';
+const APP_VERSION='v213';
 function bytesToB64(bytes){return btoa(String.fromCharCode(...bytes));}
 function B64(bytes){return bytesToB64(bytes);}
 function b64(bytes){return bytesToB64(bytes);}
@@ -2027,8 +2027,8 @@ function renderLedger(){
       return '<div role="button" tabindex="0" aria-expanded="'+expanded+'" onclick="toggleUtilisationDetail(\''+key+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();toggleUtilisationDetail(\''+key+'\')}" title="Tap to view card-wise transactions" style="cursor:pointer;flex:1 1 260px;min-width:0;padding:13px 14px;border:1px solid '+(expanded?'rgba(34,211,238,.65)':'var(--line)')+';border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.35));box-shadow:'+(expanded?'0 0 12px rgba(34,211,238,.12)':'none')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft)">'+label+'</div><div style="font-size:20px;font-weight:800;color:'+color+';margin-top:4px;text-shadow:0 0 8px '+color+'55">'+pct.toFixed(2)+'%</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:700">'+inr(amount)+'</div><div style="font-size:10px;color:var(--ink-soft)">of '+inr(combinedLimit)+'</div></div></div><div style="position:relative;height:10px;border-radius:20px;background:var(--line);margin-top:12px;overflow:visible"><div style="height:100%;width:'+width+'%;border-radius:20px;background:'+color+';box-shadow:0 0 10px '+color+'88"></div><div style="position:absolute;left:25%;top:-4px;height:18px;border-left:2px dashed #ff4d6d" title="25% warning threshold"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px;font:10px IBM Plex Mono,monospace;color:var(--ink-soft)"><span>0%</span><span style="color:#ff6b81">25% alert</span><span>100%</span></div><div style="font-size:10px;color:var(--ink-soft);margin-top:8px;text-align:right">'+(expanded?'Tap to close':'Tap for card-wise transaction breakup')+' ▾</div></div>';
     };
     const detailHtml=key=>{
-      const groups=[...cycleDetails[key].entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-      if(!groups.length)return '<div class="sub" style="margin-top:10px">No statement dates are configured.</div>';
+      const groups=[...cycleDetails[key].entries()].filter(([name,snapshot])=>Number(snapshot.amount)>0).sort((a,b)=>a[0].localeCompare(b[0]));
+      if(!groups.length)return '<div class="sub" style="margin-top:10px">No cards have an outstanding balance for this month.</div>';
       let html='<div style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-soft,rgba(15,23,42,.25))"><div style="font:700 11px IBM Plex Mono,monospace;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:8px">CARD-WISE STATEMENT SNAPSHOTS</div>';
       groups.forEach(([name,snapshot])=>{
         html+='<div style="padding:10px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700"><span>'+name+'</span><span>'+inr(snapshot.amount)+'</span></div>';
